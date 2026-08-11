@@ -42,13 +42,17 @@
 - `generations` — prompt, model (lite/medium/pro), status, media_key, duration
 - `gallery` — public showcase of generated works
 
+## Backend (auth + credits)
+
+See **[BACKEND.md](./BACKEND.md)** for exact wrangler create commands, where to paste IDs in `wrangler.toml`, and Cloudflare Pages dashboard binding checklist (`DB`, `SESSIONS`, `MEDIA`).
+
+**Needs Cloudflare auth** to provision live D1/KV/R2. Until then, `/api/health` works; auth returns 503; generate runs in demo mode without deducting credits.
+
 ## Deploy
 
-1. `wrangler d1 create dreamutopia-db` → put database_id in wrangler.toml
-2. `wrangler kv namespace create SESSIONS` → put id in wrangler.toml
-3. `wrangler r2 bucket create dreamutopia-media`
-4. `wrangler d1 execute dreamutopia-db --file=schema.sql`
-5. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
+1. Follow BACKEND.md to create D1/KV/R2 and run `schema.sql`
+2. Bind `DB` / `SESSIONS` / `MEDIA` in Pages Settings → Bindings
+3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
 ## Cost
 
