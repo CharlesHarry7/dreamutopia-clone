@@ -444,17 +444,7 @@ async function quickAuth(mode) {
   if (!password || password.length < 6) return toast("Password too short", true);
   try {
     const endpoint = mode === "signup" ? "/auth/register" : "/auth/login";
-    // try register path first for signup; fall back to /auth/signup if needed
-    let data;
-    try {
-      data = await api(endpoint, { method: "POST", body: JSON.stringify({ email, password }) });
-    } catch (err) {
-      if (mode === "signup") {
-        data = await api("/auth/signup", { method: "POST", body: JSON.stringify({ email, password }) });
-      } else {
-        throw err;
-      }
-    }
+    const data = await api(endpoint, { method: "POST", body: JSON.stringify({ email, password }) });
     token = data.token;
     localStorage.setItem(TOKEN_KEY, token);
     toast(mode === "signup" ? "Welcome! You got 10 free credits 🎉" : "Welcome back!");
