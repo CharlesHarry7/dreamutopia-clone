@@ -2,15 +2,16 @@ name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "dreamutopia-db"
-database_id = "replace-with-d1-database-id"
+# Bindings (commented out — set real IDs after creating D1/KV/R2 resources in Cloudflare dashboard)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "dreamutopia-db"
+# database_id = "REPLACE_ME"
 
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "replace-with-kv-namespace-id"
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "REPLACE_ME"
 
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "dreamutopia-media"
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "dreamutopia-media"
