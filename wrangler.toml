@@ -1,0 +1,25 @@
+name = "taletok-clone"
+compatibility_date = "2024-07-01"
+pages_build_output_dir = "out"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "taletok-db"
+database_id = "local"
+
+# KV Namespace (sessions, cache)
+[[kv_namespaces]]
+binding = "KV"
+id = "local"
+
+# R2 Bucket (file storage)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "taletok-storage"
+
+# Environment variables (set via `wrangler pages secret put`)
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# RESEND_API_KEY
+# JWT_SECRET

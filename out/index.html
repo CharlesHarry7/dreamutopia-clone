@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Automation AI for Faceless Channels | TaleTok</title>
+  <meta name="description" content="Build monetisable long-form YouTube videos and schedule faceless reels for TikTok, Instagram Reels and YouTube Shorts.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed',700:'#6d28d9',800:'#5b21b6',900:'#4c1d95' },
+            bg: { primary:'#0a0a0f', secondary:'#0c0c14', card:'#1a1a2e' }
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:#0a0a0f;color:#f8f8ff;font-family:Inter,system-ui,sans-serif}
+    ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:#0a0a0f}::-webkit-scrollbar-thumb{background:#33334d;border-radius:4px}
+    .gradient-text{background:linear-gradient(135deg,#a78bfa,#818cf8,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .glass-card{background:rgba(26,26,46,.6);backdrop-filter:blur(12px);border:1px solid rgba(139,92,246,.15);transition:all .3s ease}
+    .glass-card:hover{border-color:rgba(139,92,246,.4);transform:translateY(-4px)}
+    .glow{box-shadow:0 0 40px rgba(139,92,246,.3)}
+    .btn-primary{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;padding:.75rem 2rem;border-radius:.75rem;font-weight:600;transition:all .3s;display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;border:none}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(139,92,246,.4)}
+    .btn-secondary{background:rgba(139,92,246,.1);color:#a78bfa;padding:.75rem 2rem;border-radius:.75rem;font-weight:600;border:1px solid rgba(139,92,246,.3);transition:all .3s;display:inline-flex;align-items:center;gap:.5rem;cursor:pointer}
+    .btn-secondary:hover{background:rgba(139,92,246,.2);border-color:rgba(139,92,246,.5)}
+    .grid-bg{background-image:linear-gradient(rgba(139,92,246,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.05) 1px,transparent 1px);background-size:50px 50px}
+    .radial-glow{background:radial-gradient(circle at 50% 0%,rgba(139,92,246,.15),transparent 50%)}
+    .section{padding:6rem 0}
+    @media(max-width:768px){.section{padding:4rem 0}}
+    .container-max{max-width:1200px;margin:0 auto;padding:0 1.5rem}
+    .faq-answer{max-height:0;overflow:hidden;transition:max-height .3s ease,opacity .3s ease;opacity:0}
+    .faq-answer.open{max-height:500px;opacity:1}
+  </style>
+</head>
+<body>
+
+<!-- ============ NAVBAR ============ -->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
+  <div class="container-max flex items-center justify-between h-16">
+    <a href="/" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <span class="text-xl font-bold text-white">TaleTok</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="#episodes" class="text-sm text-gray-400 hover:text-white transition-colors">Episodes</a>
+      <a href="#how-it-works" class="text-sm text-gray-400 hover:text-white transition-colors">How It Works</a>
+      <a href="#formats" class="text-sm text-gray-400 hover:text-white transition-colors">Formats</a>
+      <a href="#pricing" class="text-sm text-gray-400 hover:text-white transition-colors">Pricing</a>
+      <a href="#faq" class="text-sm text-gray-400 hover:text-white transition-colors">FAQ</a>
+    </div>
+    <div class="hidden md:flex items-center gap-4">
+      <a href="#" class="text-sm text-gray-400 hover:text-white">Sign In</a>
+      <a href="#" class="btn-primary text-sm">Create a Free Video</a>
+    </div>
+    <button class="md:hidden text-gray-400" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 bg-[#0a0a0f] px-4 py-4 space-y-3">
+    <a href="#episodes" class="block text-sm text-gray-400">Episodes</a>
+    <a href="#how-it-works" class="block text-sm text-gray-400">How It Works</a>
+    <a href="#formats" class="block text-sm text-gray-400">Formats</a>
+    <a href="#pricing" class="block text-sm text-gray-400">Pricing</a>
+    <a href="#" class="btn-primary text-sm w-full justify-center">Create a Free Video</a>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="relative pt-32 pb-20 overflow-hidden">
+  <div class="absolute inset-0 grid-bg"></div>
+  <div class="absolute inset-0 radial-glow"></div>
+  <div class="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-brand-600/20 blur-[120px] rounded-full"></div>
+  <div class="container-max relative z-10">
+    <div class="flex justify-center mb-6">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20">
+        <span class="text-sm text-brand-400">✨ AI-powered YouTube automation</span>
+      </div>
+    </div>
+    <h1 class="text-center text-5xl md:text-7xl font-bold tracking-tight mb-6">
+      <span class="text-white">YouTube Automation</span><br>
+      <span class="gradient-text">for Faceless Channels</span>
+    </h1>
+    <p class="text-center text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
+      Build monetisable long-form YouTube videos and schedule faceless reels for TikTok, Instagram Reels and YouTube Shorts.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+      <a href="#" class="btn-primary text-base">▶ Start an Episode</a>
+      <a href="#how-it-works" class="btn-secondary text-base">Create a Free Video</a>
+    </div>
+    <div class="relative max-w-4xl mx-auto">
+      <div class="relative aspect-video rounded-2xl overflow-hidden glass-card glow">
+        <div class="absolute inset-0 bg-gradient-to-br from-brand-900/40 via-[#12121a] to-[#0a0a0f]"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <button class="group relative cursor-pointer">
+            <div class="absolute inset-0 bg-brand-500/30 blur-2xl rounded-full"></div>
+            <div class="relative w-20 h-20 rounded-full bg-brand-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg class="w-8 h-8 text-white fill-white ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </button>
+        </div>
+        <div class="absolute bottom-4 right-4">
+          <button class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-sm">🔊 Unmute preview</button>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/10"><div class="h-full w-1/3 bg-brand-500 rounded-r-full"></div></div>
+      </div>
+      <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-2 flex-wrap justify-center">
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-brand-500 text-white">Episodes</span>
+        <span class="px-3 py-1 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Reddit Story</span>
+        <span class="px-3 py-1 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Zack D Films</span>
+        <span class="px-3 py-1 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">True Crime</span>
+        <span class="px-3 py-1 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">POV Shorts</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LONG-FORM EPISODES ============ -->
+<section id="episodes" class="section">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">🎬 Long-form</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">Long-form videos that <span class="gradient-text">earn watch time</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-12">Build monetisable episodes up to 10 minutes with 2D stickman explainers. Review every segment before you publish — then scale your faceless channel beyond shorts.</p>
+    <div class="flex flex-wrap gap-3 mb-12">
+      <span class="px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-sm">Up to 10 minutes</span>
+      <span class="px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-sm">Segment-by-segment review</span>
+      <span class="px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-sm">Higher watch time</span>
+      <span class="px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-sm">16:9 export</span>
+    </div>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">🎬</span></div>
+        <h3 class="text-lg font-semibold mb-2">2D stickman explainers</h3>
+        <p class="text-gray-400 text-sm">High-retention educational entertainment with realistic narration and engaging flat visuals.</p>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">🎛️</span></div>
+        <h3 class="text-lg font-semibold mb-2">You control every segment</h3>
+        <p class="text-gray-400 text-sm">Review the outline, approve frames, and lock each ~60s segment before stitching the full episode.</p>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">💰</span></div>
+        <h3 class="text-lg font-semibold mb-2">Built to monetise</h3>
+        <p class="text-gray-400 text-sm">Longer watch time and ad-friendly structure for channels scaling past shorts-only growth.</p>
+      </div>
+    </div>
+    <div class="mt-12 grid md:grid-cols-3 gap-4">
+      <div class="glass-card rounded-xl p-4 flex items-center gap-3"><span class="text-xl">🎬</span><div><div class="text-sm font-medium">2D Stickman</div><div class="text-xs text-gray-500">4:32 duration</div></div></div>
+      <div class="glass-card rounded-xl p-4 flex items-center gap-3"><span class="text-xl">⏰</span><div><div class="text-sm font-medium">Reddit Story</div><div class="text-xs text-gray-500">8:15 duration</div></div></div>
+      <div class="glass-card rounded-xl p-4 flex items-center gap-3"><span class="text-xl">🖥️</span><div><div class="text-sm font-medium">16:9 Export</div><div class="text-xs text-gray-500">10:00 duration</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how-it-works" class="section bg-[#0c0c14] border-y border-white/5">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">⚙️ How It Works</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">How YouTube Automation Works<br>with <span class="gradient-text">TaleTok</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-16">Three steps from signup to a channel publishing long-form episodes and scheduled shorts.</p>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="relative">
+        <div class="absolute -top-4 -left-4 w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg z-10">1</div>
+        <div class="glass-card rounded-2xl p-6 pt-8 h-full">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">🔗</span></div>
+          <h3 class="text-xl font-semibold mb-3">Connect your channel</h3>
+          <p class="text-gray-400 text-sm mb-4">Link your YouTube channel to TaleTok in three clicks. No API keys. No technical setup.</p>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-400">📺 OAuth 2.0 secure connection</span>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="absolute -top-4 -left-4 w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg z-10">2</div>
+        <div class="glass-card rounded-2xl p-6 pt-8 h-full">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">📐</span></div>
+          <h3 class="text-xl font-semibold mb-3">Pick your format</h3>
+          <p class="text-gray-400 text-sm mb-4">Choose Episodes for monetisable long-form explainers, or series formats like reddit story videos, Zack D Films 3D shorts, and timelapse AI.</p>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-400">📺 8+ trending formats</span>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="absolute -top-4 -left-4 w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg z-10">3</div>
+        <div class="glass-card rounded-2xl p-6 pt-8 h-full">
+          <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center mb-4"><span class="text-2xl">📤</span></div>
+          <h3 class="text-xl font-semibold mb-3">Post automatically</h3>
+          <p class="text-gray-400 text-sm mb-4">TaleTok publishes at your chosen times. Edit, reschedule or swap any upcoming post up to five days ahead.</p>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-xs text-gray-400">📺 Auto-scheduling included</span>
+        </div>
+      </div>
+    </div>
+    <div class="mt-16">
+      <div class="flex items-center justify-between mb-4">
+        <div><h3 class="text-xl font-semibold">Your command center</h3><p class="text-gray-400 text-sm">Run series from one dashboard, track momentum, and keep output consistent without manual uploads.</p></div>
+      </div>
+      <div class="glass-card rounded-2xl p-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white/5 rounded-xl p-4"><div class="text-xs text-gray-500 mb-1">Scheduled Posts</div><div class="text-2xl font-bold text-white">12</div><div class="text-xs text-green-400 mt-1">+3 this week</div></div>
+          <div class="bg-white/5 rounded-xl p-4"><div class="text-xs text-gray-500 mb-1">Published</div><div class="text-2xl font-bold text-white">47</div><div class="text-xs text-green-400 mt-1">+8 this week</div></div>
+          <div class="bg-white/5 rounded-xl p-4"><div class="text-xs text-gray-500 mb-1">Total Views</div><div class="text-2xl font-bold text-white">2.4M</div><div class="text-xs text-green-400 mt-1">+340K</div></div>
+          <div class="bg-white/5 rounded-xl p-4"><div class="text-xs text-gray-500 mb-1">Watch Time</div><div class="text-2xl font-bold text-white">18.2K hrs</div><div class="text-xs text-green-400 mt-1">+2.1K hrs</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRENDING FORMATS ============ -->
+<section id="formats" class="section">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">📈 Trending Formats</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">We add formats when they're trending.<br><span class="gradient-text">Not six months later.</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-12">TaleTok tracks faceless formats that are actually getting views right now and builds them before your competitors find them.</p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">💬</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-brand-500/10 text-brand-300 border border-brand-500/20">Long-form</span></div><h3 class="font-semibold mb-1">Reddit Story Videos</h3><p class="text-sm text-gray-400">Binge-friendly story structure. Long-form reddit drives fast monetisation.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">🎥</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Shorts</span></div><h3 class="font-semibold mb-1">Zack D Films 3D Shorts</h3><p class="text-sm text-gray-400">Cinematic quality at scale. The most-copied short format on YouTube right now.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">👻</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Shorts</span></div><h3 class="font-semibold mb-1">4chan Greentext</h3><p class="text-sm text-gray-400">Cult following, low competition, strong retention.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">💀</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Shorts</span></div><h3 class="font-semibold mb-1">True Crime Shorts</h3><p class="text-sm text-gray-400">Consistently high RPM. Story-driven with broad appeal.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">✨</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Shorts</span></div><h3 class="font-semibold mb-1">AI Shorts</h3><p class="text-sm text-gray-400">Fully generative. Zero source material needed.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">⏱️</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400 border border-white/10">Shorts</span></div><h3 class="font-semibold mb-1">Timelapse AI Shorts</h3><p class="text-sm text-gray-400">Construction, renovation, epoxy — the satisfying video category growing 3x.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">🎨</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Soon</span></div><h3 class="font-semibold mb-1">Horror Story</h3><p class="text-sm text-gray-400">Seasonal spikes, year-round demand. High share rate.</p></div>
+      <div class="glass-card rounded-2xl p-5 cursor-pointer"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center"><span class="text-xl">📈</span></div><span class="px-2 py-0.5 rounded-full text-xs bg-brand-500/10 text-brand-300 border border-brand-500/20">Long-form</span></div><h3 class="font-semibold mb-1">Paint Explainer</h3><p class="text-sm text-gray-400">Monetisable long-form explainers with segment-by-segment control. Built for watch time.</p></div>
+    </div>
+    <div class="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 p-6 glass-card rounded-2xl">
+      <p class="text-gray-400 text-sm">New formats ship based on what the algorithm is rewarding now.</p>
+      <a href="#pricing" class="inline-flex items-center gap-1 text-brand-400 hover:text-brand-300 text-sm font-medium">Suggest a format →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FORMAT SHOWCASE ============ -->
+<section class="section">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">🎬 Format Showcase</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">Create trending <span class="gradient-text">Stickman</span> episodes</h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-8">Monetisable long-form explainers up to 10 minutes. 2D stickman visuals, realistic narration, and segment-by-segment review before you publish.</p>
+    <div id="format-tabs" class="flex flex-wrap gap-2 mb-8">
+      <button onclick="switchTab('Stickman')" class="format-tab px-4 py-2 rounded-full text-sm font-medium bg-brand-500 text-white" data-tab="Stickman">Stickman</button>
+      <button onclick="switchTab('Zack D Films')" class="format-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-400 border border-white/10 hover:text-white" data-tab="Zack D Films">Zack D Films</button>
+      <button onclick="switchTab('Reddit')" class="format-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-400 border border-white/10 hover:text-white" data-tab="Reddit">Reddit</button>
+      <button onclick="switchTab('AI Shorts')" class="format-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-400 border border-white/10 hover:text-white" data-tab="AI Shorts">AI Shorts</button>
+      <button onclick="switchTab('Timelapse')" class="format-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-400 border border-white/10 hover:text-white" data-tab="Timelapse">Timelapse</button>
+    </div>
+    <div class="flex flex-wrap gap-3 mb-8">
+      <span class="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs">Up to 10 minutes</span>
+      <span class="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs">Segment review</span>
+      <span class="px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs">Higher watch time</span>
+    </div>
+    <div class="glass-card rounded-2xl overflow-hidden">
+      <div class="grid md:grid-cols-2 gap-0">
+        <div class="relative aspect-video md:aspect-auto bg-gradient-to-br from-brand-900/30 to-[#0a0a0f] flex items-center justify-center p-8">
+          <button class="group relative cursor-pointer">
+            <div class="absolute inset-0 bg-brand-500/30 blur-2xl rounded-full"></div>
+            <div class="relative w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6 text-white fill-white ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </button>
+          <div class="absolute top-4 left-4"><span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs">⏱ 6:42 preview</span></div>
+        </div>
+        <div class="p-8">
+          <div class="flex items-center gap-2 mb-3">
+            <span id="active-tab-badge" class="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-300 text-xs">Stickman</span>
+            <span class="text-xs text-gray-500">Episode #1</span>
+          </div>
+          <h3 class="text-2xl font-bold mb-3">How AI is Changing Education</h3>
+          <p class="text-gray-400 text-sm mb-6">A 2D stickman explainer covering the impact of AI on modern education. Includes realistic narration, engaging visuals, and ad-friendly structure for monetisation.</p>
+          <div class="space-y-2 mb-6">
+            <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-xs text-gray-400">Segment 1 — Introduction</span><span class="text-xs ml-auto text-green-400">approved</span></div>
+            <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-xs text-gray-400">Segment 2 — Current State</span><span class="text-xs ml-auto text-green-400">approved</span></div>
+            <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-yellow-400"></div><span class="text-xs text-gray-400">Segment 3 — Future Impact</span><span class="text-xs ml-auto text-yellow-400">reviewing</span></div>
+            <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-gray-600"></div><span class="text-xs text-gray-400">Segment 4 — Conclusion</span><span class="text-xs ml-auto text-gray-600">pending</span></div>
+          </div>
+          <button class="btn-primary text-sm">▶ Start creating <span id="active-tab-name">Stickman</span> episodes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GLOBAL REACH ============ -->
+<section class="section bg-[#0c0c14] border-y border-white/5">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">🌍 Global Reach</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">Content in <span class="gradient-text">many languages</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-12">Same trending formats, narrated in the language your audience speaks. Pick a voice, write or generate your script, and publish without re-editing from scratch.</p>
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇬🇧</div><div class="text-sm font-medium">English</div><div class="text-xs text-gray-500">EN</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇫🇷</div><div class="text-sm font-medium">French</div><div class="text-xs text-gray-500">FR</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇪🇸</div><div class="text-sm font-medium">Spanish</div><div class="text-xs text-gray-500">ES</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇮🇳</div><div class="text-sm font-medium">Hindi</div><div class="text-xs text-gray-500">HI</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇨🇳</div><div class="text-sm font-medium">Mandarin</div><div class="text-xs text-gray-500">ZH</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇧🇷</div><div class="text-sm font-medium">Portuguese</div><div class="text-xs text-gray-500">PT</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇯🇵</div><div class="text-sm font-medium">Japanese</div><div class="text-xs text-gray-500">JA</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇩🇪</div><div class="text-sm font-medium">German</div><div class="text-xs text-gray-500">DE</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇸🇦</div><div class="text-sm font-medium">Arabic</div><div class="text-xs text-gray-500">AR</div></div>
+      <div class="glass-card rounded-xl p-4 text-center cursor-pointer"><div class="text-3xl mb-2">🇰🇷</div><div class="text-sm font-medium">Korean</div><div class="text-xs text-gray-500">KO</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURED ON ============ -->
+<section class="py-12 border-b border-white/5">
+  <div class="container-max flex flex-col items-center gap-6">
+    <p class="text-sm text-gray-500 uppercase tracking-wider">Featured On</p>
+    <div class="flex flex-wrap items-center justify-center gap-8">
+      <span class="text-xl font-semibold text-gray-500 hover:text-gray-300 transition-colors">AI Video Tools Pro</span>
+      <span class="text-xl font-semibold text-gray-500 hover:text-gray-300 transition-colors">Toolify</span>
+      <span class="text-xl font-semibold text-gray-500 hover:text-gray-300 transition-colors">TAAFT</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MONETISATION ============ -->
+<section class="section">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">🚀 Results</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4"><span class="gradient-text">Monetisation</span> Methods</h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-12">Long-form watch time and consistent shorts output — two paths to earning with your faceless channel.</p>
+    <div class="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div class="glass-card rounded-2xl p-5 text-center"><div class="text-3xl mb-3">🚀</div><h3 class="font-semibold mb-2">YouTube Adsense</h3><p class="text-xs text-gray-400">Long-form videos above 8 minutes qualify for mid-roll ads. TaleTok's long-form Reddit format is built for this.</p></div>
+      <div class="glass-card rounded-2xl p-5 text-center"><div class="text-3xl mb-3">💰</div><h3 class="font-semibold mb-2">Platform Partnerships</h3><p class="text-xs text-gray-400">YouTube Shorts Fund, TikTok Creator Fund, and Instagram monetisation reward consistent posting.</p></div>
+      <div class="glass-card rounded-2xl p-5 text-center"><div class="text-3xl mb-3">📈</div><h3 class="font-semibold mb-2">Flip Viral Accounts</h3><p class="text-xs text-gray-400">Build channels to a meaningful follower count and sell. A niche channel with 10k subscribers has real value.</p></div>
+      <div class="glass-card rounded-2xl p-5 text-center"><div class="text-3xl mb-3">🔗</div><h3 class="font-semibold mb-2">Affiliate Marketing</h3><p class="text-xs text-gray-400">Add affiliate links to video descriptions. Story and review-adjacent niches convert well.</p></div>
+      <div class="glass-card rounded-2xl p-5 text-center"><div class="text-3xl mb-3">📺</div><h3 class="font-semibold mb-2">Brand Partnerships</h3><p class="text-xs text-gray-400">Channels with consistent output and defined niches attract outreach from brands.</p></div>
+    </div>
+    <div class="mt-12 text-center"><a href="#pricing" class="btn-primary text-base">Start Earning Today →</a></div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section id="pricing" class="section bg-[#0c0c14] border-y border-white/5">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">✨ Pricing</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">YouTube Automation <span class="gradient-text">Pricing</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-4">Guided growth for committed creators. Lock in one price and monetise your channel within 12 months.</p>
+    <p class="text-sm text-gray-500 mb-12">From $27/mo — $47/mo — $77/mo per month</p>
+    <div class="flex items-center justify-center gap-4 mb-12">
+      <span class="text-sm text-gray-400">Monthly</span>
+      <div class="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/10">
+        <span class="px-3 py-1 rounded-full bg-brand-500 text-white text-xs font-medium">Monthly</span>
+        <span class="px-3 py-1 rounded-full text-gray-400 text-xs cursor-pointer">Yearly (3 months free)</span>
+      </div>
+      <span class="text-sm text-gray-400">Yearly</span>
+    </div>
+    <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <!-- Starter -->
+      <div class="glass-card rounded-2xl p-6">
+        <div class="mb-6"><h3 class="text-xl font-bold mb-1">Starter</h3><p class="text-sm text-gray-400">Easy content creation for enthusiasts</p></div>
+        <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">$20</span><span class="text-gray-400">USD/mo</span></div><div class="text-sm text-gray-500 mt-1">$243 USD/year · Save $81 USD/year</div></div>
+        <button class="w-full py-3 rounded-xl font-semibold text-sm bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-all">Subscribe</button>
+        <ul class="mt-6 space-y-3">
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Credits roll over — up to 2 months</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Priority rendering</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Monthly personalised channel audit</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">400 credits</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Channel analytics tracking</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Custom branded watermark</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">YouTube autopost 2x per week</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Edit scheduled posts up to 5 days ahead</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">All content formats</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Realistic voices & HD download</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Live chat support</span></li>
+        </ul>
+      </div>
+      <!-- Pro (Popular) -->
+      <div class="relative glass-card glow rounded-2xl p-6 border-brand-500/30">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2"><span class="inline-flex items-center gap-1 px-4 py-1 rounded-full bg-gradient-to-r from-brand-500 to-brand-700 text-white text-xs font-semibold">⭐ Most Popular</span></div>
+        <div class="mb-6 pt-2"><h3 class="text-xl font-bold mb-1">Pro</h3><p class="text-sm text-gray-400">Focused monetisable faceless channel growth</p></div>
+        <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">$35</span><span class="text-gray-400">USD/mo</span></div><div class="text-sm text-gray-500 mt-1">$423 USD/year · Save $141 USD/year</div></div>
+        <button class="btn-primary w-full justify-center text-sm">Subscribe</button>
+        <ul class="mt-6 space-y-3">
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Credits roll over — up to 2 months</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Priority rendering</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Monthly personalised channel audit</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">1,200 credits</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">YouTube autopost daily</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">All content formats</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Experimental features early access</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Priority support</span></li>
+        </ul>
+      </div>
+      <!-- Optimum -->
+      <div class="glass-card rounded-2xl p-6">
+        <div class="mb-6"><h3 class="text-xl font-bold mb-1">Optimum</h3><p class="text-sm text-gray-400">Maximum scale and automation</p></div>
+        <div class="mb-6"><div class="flex items-baseline gap-1"><span class="text-4xl font-bold">$58</span><span class="text-gray-400">USD/mo</span></div><div class="text-sm text-gray-500 mt-1">$693 USD/year · Save $231 USD/year</div></div>
+        <button class="w-full py-3 rounded-xl font-semibold text-sm bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-all">Subscribe</button>
+        <ul class="mt-6 space-y-3">
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Credits roll over — up to 2 months</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Priority rendering</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Monthly personalised channel audit</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">3,000 credits</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">YouTube autopost daily (multiple channels)</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">All content formats</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Experimental features early access</span></li>
+          <li class="flex items-start gap-2 text-sm"><span class="text-brand-400 mt-0.5 flex-shrink-0">✓</span><span class="text-gray-300">Priority support</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="text-center text-sm text-gray-500 mt-8">Not sure which plan is right for you? <a href="#" class="text-brand-400 hover:text-brand-300 font-medium">Create Free Taster Video</a></p>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" class="section">
+  <div class="container-max">
+    <div class="flex items-center gap-2 mb-4"><span class="text-sm font-medium text-brand-400 uppercase tracking-wide">❓ FAQ</span></div>
+    <h2 class="text-4xl md:text-5xl font-bold mb-4">Frequently Asked <span class="gradient-text">Questions</span></h2>
+    <p class="text-lg text-gray-400 max-w-2xl mb-12">Everything you need to know about TaleTok.</p>
+    <div class="max-w-3xl mx-auto space-y-3" id="faq-list">
+      <div class="glass-card rounded-xl overflow-hidden">
+        <button class="w-full flex items-center justify-between p-5 text-left" onclick="toggleFAQ(0)"><span class="font-medium text-white pr-4">What is TaleTok and how does it work?</span><span class="faq-icon text-brand-400 text-xl flex-shrink-0">▾</span></button>
+        <div class="faq-answer px-5"><p class="text-gray-400 text-sm pb-5">TaleTok is an AI-powered YouTube automation platform for faceless channels. Connect your YouTube channel, pick a trending format, and TaleTok automatically generates and publishes videos on your chosen schedule.</p></div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <button class="w-full flex items-center justify-between p-5 text-left" onclick="toggleFAQ(1)"><span class="font-medium text-white pr-4">Do credits rollover?</span><span class="faq-icon text-brand-400 text-xl flex-shrink-0">▾</span></button>
+        <div class="faq-answer px-5"><p class="text-gray-400 text-sm pb-5">Yes. Unused credits carry forward for up to 2 months, giving you flexibility without losing what you've paid for.</p></div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <button class="w-full flex items-center justify-between p-5 text-left" onclick="toggleFAQ(2)"><span class="font-medium text-white pr-4">What are AI Shorts videos?</span><span class="faq-icon text-brand-400 text-xl flex-shrink-0">▾</span></button>
+        <div class="faq-answer px-5"><p class="text-gray-400 text-sm pb-5">AI Shorts are fully generative short-form videos created from scratch — no source material needed. TaleTok's AI writes the script, generates visuals, adds narration, and produces a complete short ready for TikTok, Instagram Reels, or YouTube Shorts.</p></div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <button class="w-full flex items-center justify-between p-5 text-left" onclick="toggleFAQ(3)"><span class="font-medium text-white pr-4">What platforms does TaleTok post to?</span><span class="faq-icon text-brand-400 text-xl flex-shrink-0">▾</span></button>
+        <div class="faq-answer px-5"><p class="text-gray-400 text-sm pb-5">TaleTok primarily posts to YouTube (both long-form and Shorts). Autoposting is available on all paid plans, with the Starter plan posting 2x per week and Pro/Optimum plans posting daily.</p></div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <button class="w-full flex items-center justify-between p-5 text-left" onclick="toggleFAQ(4)"><span class="font-medium text-white pr-4">Do I need any technical skills?</span><span class="faq-icon text-brand-400 text-xl flex-shrink-0">▾</span></button>
+        <div class="faq-answer px-5"><p class="text-gray-400 text-sm pb-5">No. TaleTok is designed for creators, not developers. Connect your channel in 3 clicks, pick a format, and the AI handles everything. No API keys, no video editing software, no technical setup required.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-white/5 bg-[#08080d]">
+  <div class="container-max py-16">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+      <div class="col-span-2">
+        <a href="/" class="flex items-center gap-2 mb-4">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center"><svg class="w-4 h-4 text-white fill-white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+          <span class="text-xl font-bold text-white">TaleTok</span>
+        </a>
+        <p class="text-sm text-gray-400 max-w-xs mb-4">YouTube Automation AI for Faceless Channels. Build monetisable long-form videos and schedule faceless reels automatically.</p>
+        <div class="flex gap-3">
+          <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:text-brand-400 hover:bg-brand-500/10 transition-colors">📺</a>
+          <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:text-brand-400 hover:bg-brand-500/10 transition-colors">🐦</a>
+          <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:text-brand-400 hover:bg-brand-500/10 transition-colors">📧</a>
+        </div>
+      </div>
+      <div><h4 class="text-sm font-semibold text-white mb-3">Product</h4><ul class="space-y-2"><li><a href="#episodes" class="text-sm text-gray-400 hover:text-brand-300">Episodes</a></li><li><a href="#how-it-works" class="text-sm text-gray-400 hover:text-brand-300">How It Works</a></li><li><a href="#formats" class="text-sm text-gray-400 hover:text-brand-300">Formats</a></li><li><a href="#pricing" class="text-sm text-gray-400 hover:text-brand-300">Pricing</a></li></ul></div>
+      <div><h4 class="text-sm font-semibold text-white mb-3">Formats</h4><ul class="space-y-2"><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Reddit Story</a></li><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Zack D Films</a></li><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">True Crime</a></li><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Timelapse AI</a></li></ul></div>
+      <div><h4 class="text-sm font-semibold text-white mb-3">Legal</h4><ul class="space-y-2"><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Terms of Service</a></li><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Privacy Policy</a></li><li><a href="#" class="text-sm text-gray-400 hover:text-brand-300">Refund Policy</a></li></ul></div>
+    </div>
+    <div class="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p class="text-xs text-gray-500">© 2026 TaleTok. Built with Next.js + Tailwind + Cloudflare Pages. $0/month hosting.</p>
+      <div class="flex items-center gap-2 text-xs text-gray-500"><span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>All systems operational</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// FAQ accordion
+function toggleFAQ(index) {
+  const answers = document.querySelectorAll('.faq-answer');
+  const icons = document.querySelectorAll('.faq-icon');
+  answers[index].classList.toggle('open');
+  icons[index].style.transform = answers[index].classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// Format tabs
+function switchTab(name) {
+  document.querySelectorAll('.format-tab').forEach(tab => {
+    if (tab.dataset.tab === name) {
+      tab.className = 'format-tab px-4 py-2 rounded-full text-sm font-medium bg-brand-500 text-white';
+    } else {
+      tab.className = 'format-tab px-4 py-2 rounded-full text-sm font-medium bg-white/5 text-gray-400 border border-white/10 hover:text-white';
+    }
+  });
+  document.getElementById('active-tab-badge').textContent = name;
+  document.getElementById('active-tab-name').textContent = name;
+}
+</script>
+</body>
+</html>
