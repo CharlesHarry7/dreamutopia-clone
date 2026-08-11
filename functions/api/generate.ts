@@ -5,7 +5,7 @@ import type { Env } from "../../libs/utils";
 export const onRequestOptions = (): Response => preflight();
 
 // 模型价格表 (credits 每次生成)
-const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 10 };
+const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
 
 // POST /api/generate  { prompt, model, durationSec?, startImageKey? }
 // 创建生成任务并扣减额度
