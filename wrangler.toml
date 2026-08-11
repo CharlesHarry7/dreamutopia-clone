@@ -2,15 +2,31 @@ name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
-# Bindings (commented out — set real IDs after creating D1/KV/R2 resources in Cloudflare dashboard)
+# -----------------------------------------------------------------------------
+# Bindings — keep COMMENTED until real Cloudflare resource IDs exist.
+# Invalid / REPLACE_ME IDs break Pages deploys.
+#
+# Create resources (see BACKEND.md):
+#   npx wrangler d1 create dreamutopia-db
+#   npx wrangler kv namespace create SESSIONS
+#   npx wrangler r2 bucket create dreamutopia-media
+#   npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
+#
+# Then uncomment and paste IDs. Also add the same binding NAMES in the
+# Cloudflare Pages project: Settings → Bindings
+#   DB       → D1  dreamutopia-db
+#   SESSIONS → KV  SESSIONS
+#   MEDIA    → R2  dreamutopia-media
+# -----------------------------------------------------------------------------
+
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "dreamutopia-db"
-# database_id = "REPLACE_ME"
+# database_id = "REPLACE_ME_D1_DATABASE_ID"
 
 # [[kv_namespaces]]
 # binding = "SESSIONS"
-# id = "REPLACE_ME"
+# id = "REPLACE_ME_KV_NAMESPACE_ID"
 
 # [[r2_buckets]]
 # binding = "MEDIA"

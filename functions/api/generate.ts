@@ -1,72 +1,136 @@
-import { json, error, preflight, randomId } from "../../libs/utils";
+import {
+  json,
+  error,
+  preflight,
+  randomId,
+  hasDb,
+  hasSessions,
+} from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
-// 模型价格表 (credits 每次生成)
+// Credits per generation
 const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
 
-// POST /api/generate  { prompt, model, durationSec?, startImageKey? }
-// 创建生成任务并扣减额度
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
-  if (!session) return error("unauthorized", 401);
+/** Demo response when D1/KV are not bound — no credit deduction */
+function demoGenerate(prompt: string, model: string, durationSec: number, cost: number) {
+  const generationId = Date.now();
+  const mediaKey = randomId("media");
+  return json({
+    ok: true,
+    demo: true,
+    generationId,
+    model,
+    cost,
+    credits: null,
+    mediaKey,
+    status: "processing",
+    message: "demo mode — DB/KV not bound; credits not deducted (see BACKEND.md)",
+    prompt: prompt.slice(0, 200),
+    durationSec,
+  });
+}
 
+// POST /api/generate  { prompt, model, durationSec? }
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   let body: { prompt?: string; model?: string; durationSec?: number };
   try {
     body = await request.json();
   } catch {
     return error("invalid json");
   }
+
   const prompt = (body.prompt || "").trim();
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
   const model = body.model && MODEL_COST[body.model] ? body.model : "lite";
   const cost = MODEL_COST[model];
-  const durationSec = Math.min(Math.max(body.durationSec || 5, 3), 15);
+  const durationSec = Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
 
-  // 查余额并扣减 (事务)
-  const tx = env.DB.batch([
-    env.DB.prepare("SELECT credits FROM users WHERE id = ?").bind(session.userId),
-    env.DB.prepare("INSERT INTO generations (user_id, model, prompt, status, duration_sec) VALUES (?, ?, ?, 'pending', ?)")
-      .bind(session.userId, model, prompt, durationSec),
-  ]);
-  const [creditsRes, insertRes] = await tx;
-  const credits = Number(creditsRes.results?.[0]?.credits ?? 0);
-  if (credits < cost) return error("insufficient credits", 402);
+  // Graceful demo when bindings missing
+  if (!hasDb(env) || !hasSessions(env)) {
+    return demoGenerate(prompt, model, durationSec, cost);
+  }
 
-  const generationId = Number(insertRes.meta.last_row_id);
+  const token = tokenFromRequest(request);
+  const session = await getSession(env, token);
+  if (!session) return error("unauthorized", 401);
+
+  // Atomic deduct: only succeeds when balance >= cost
+  const deduct = await env.DB.prepare(
+    "UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?"
+  )
+    .bind(cost, session.userId, cost)
+    .run();
+
+  if (!deduct.success || (deduct.meta.changes ?? 0) === 0) {
+    const row = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+      .bind(session.userId)
+      .first<{ credits: number }>();
+    const credits = row ? Number(row.credits) : 0;
+    return json({ error: "insufficient credits", credits }, 402);
+  }
+
   const mediaKey = randomId("media");
+  let insert;
+  try {
+    insert = await env.DB.prepare(
+      "INSERT INTO generations (user_id, model, prompt, status, media_key, duration_sec) VALUES (?, ?, ?, 'processing', ?, ?)"
+    )
+      .bind(session.userId, model, prompt, mediaKey, durationSec)
+      .run();
+  } catch {
+    // Best-effort refund if generation row insert fails after deduct
+    await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?")
+      .bind(cost, session.userId)
+      .run();
+    return error("failed to create generation", 500);
+  }
 
-  // 扣减 + 标记处理中
-  await env.DB.batch([
-    env.DB.prepare("UPDATE users SET credits = credits - ? WHERE id = ?").bind(cost, session.userId),
-    env.DB.prepare("UPDATE generations SET status = 'processing', media_key = ? WHERE id = ?").bind(mediaKey, generationId),
-  ]);
+  if (!insert.success) {
+    await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?")
+      .bind(cost, session.userId)
+      .run();
+    return error("failed to create generation", 500);
+  }
+
+  const generationId = Number(insert.meta.last_row_id);
+  const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+    .bind(session.userId)
+    .first<{ credits: number }>();
+  const credits = bal ? Number(bal.credits) : 0;
 
   return json({
     ok: true,
+    demo: false,
     generationId,
     model,
     cost,
+    credits,
     mediaKey,
     status: "processing",
-    message: "generation queued — demo mode, media simulated",
+    message: "generation queued — demo inference, media simulated",
   });
 };
 
-// GET /api/generate — 当前用户生成历史
+// GET /api/generate — current user history
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hasDb(env) || !hasSessions(env)) {
+    return json({ ok: true, demo: true, generations: [] });
+  }
+
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
   if (!session) return error("unauthorized", 401);
 
   const rows = await env.DB.prepare(
-    "SELECT id, model, prompt, status, duration_sec, created_at FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50"
-  ).bind(session.userId).all();
+    "SELECT id, model, prompt, status, media_key, duration_sec, created_at FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50"
+  )
+    .bind(session.userId)
+    .all();
 
-  return json({ ok: true, generations: rows.results });
+  return json({ ok: true, demo: false, generations: rows.results || [] });
 };
