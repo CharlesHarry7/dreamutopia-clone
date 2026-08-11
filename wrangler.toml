@@ -1,25 +1,16 @@
-name = "taletok-clone"
-compatibility_date = "2024-07-01"
+name = "dreamutopia-clone"
+compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
-# D1 Database
 [[d1_databases]]
 binding = "DB"
-database_name = "taletok-db"
-database_id = "local"
+database_name = "dreamutopia-db"
+database_id = "replace-with-d1-database-id"
 
-# KV Namespace (sessions, cache)
 [[kv_namespaces]]
-binding = "KV"
-id = "local"
+binding = "SESSIONS"
+id = "replace-with-kv-namespace-id"
 
-# R2 Bucket (file storage)
 [[r2_buckets]]
-binding = "R2"
-bucket_name = "taletok-storage"
-
-# Environment variables (set via `wrangler pages secret put`)
-# STRIPE_SECRET_KEY
-# STRIPE_WEBHOOK_SECRET
-# RESEND_API_KEY
-# JWT_SECRET
+binding = "MEDIA"
+bucket_name = "dreamutopia-media"

@@ -1,40 +1,28 @@
-import { createUser, getUserByEmail } from '../../../libs/db';
-import { createSession } from '../../../libs/auth';
-import { sendEmail } from '../../../libs/email';
+import { json, error, preflight } from "../../../libs/utils";
+import { verifyPassword, safeEqual } from "../../../libs/password";
+import { createSession } from "../../../libs/auth";
+import type { Env } from "../../../libs/utils";
 
-// POST /api/auth/login - Email-based login (magic link)
-export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { request, env } = context;
-  const { email } = await request.json();
+export const onRequestOptions = (): Response => preflight();
 
-  if (!email || !email.includes('@')) {
-    return Response.json({ error: 'Valid email required' }, { status: 400 });
+// POST /api/auth/login  { email, password }
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  let body: { email?: string; password?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("invalid json");
   }
+  const email = (body.email || "").trim().toLowerCase();
+  const password = body.password || "";
 
-  // Find or create user
-  let user = await getUserByEmail(env.DB, email);
-  if (!user) {
-    user = await createUser(env.DB, { email });
-  }
+  const row = await env.DB.prepare("SELECT id, email, password_hash, credits FROM users WHERE email = ?").bind(email).first();
+  if (!row) return error("invalid credentials", 401);
 
-  // Create session
-  const token = await createSession(env, user.id as number, email);
+  const [salt, hash] = String(row.password_hash).split(":");
+  const ok = await verifyPassword(password, salt, hash);
+  if (!ok || !safeEqual) return error("invalid credentials", 401);
 
-  // Send magic link email
-  const magicLink = `${env.APP_URL}/auth/callback?token=${token}`;
-  await sendEmail(env, {
-    to: email,
-    subject: 'Your TaleTok login link',
-    html: `
-      <h2>Welcome to TaleTok!</h2>
-      <p>Click the link below to sign in:</p>
-      <a href="${magicLink}" style="display:inline-block;padding:12px 24px;background:#8b5cf6;color:#fff;border-radius:8px;text-decoration:none;">Sign In</a>
-      <p>This link expires in 7 days.</p>
-    `,
-  }).catch(() => {}); // Don't fail if email doesn't send in dev
-
-  return Response.json({
-    message: 'Check your email for a login link',
-    dev_token: process.env.NODE_ENV === 'development' ? token : undefined,
-  });
+  const token = await createSession(env, Number(row.id), String(row.email));
+  return json({ ok: true, token, userId: Number(row.id), email: row.email, credits: Number(row.credits) });
 };

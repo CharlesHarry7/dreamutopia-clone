@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace — DreamUtopia AI Video Generator</title>
+<meta name="description" content="Create AI videos from your images. Pick a model, describe the motion, generate in seconds.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d12;--bg2:#16161e;--card:#1c1c26;--border:#2a2a38;--border2:#3a3a4a;--text:#fff;--text2:#a8a8b8;--text3:#6a6a7a;--primary:#a855f7;--accent:#ec4899;--green:#22c55e;--radius:12px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+header{background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
+.logo-img{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px}
+nav{display:flex;gap:28px}
+nav a{font-size:14px;color:var(--text2);font-weight:500;transition:color .2s}
+nav a:hover,nav a.active{color:var(--text)}
+.header-right{display:flex;gap:12px;align-items:center}
+.credits-pill{background:var(--card);border:1px solid var(--border);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2,#c084fc)}
+.btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
+.btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
+.workspace{max-width:1200px;margin:0 auto;padding:40px 20px 80px;display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px}
+.panel h2{font-size:18px;font-weight:700;margin-bottom:18px}
+.step-label{font-size:12px;color:var(--text3);font-weight:600;margin:20px 0 8px;display:flex;align-items:center;gap:6px}
+.step-label .n{width:20px;height:20px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700}
+.upload-area{border:2px dashed var(--border2);border-radius:12px;padding:44px 20px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg2)}
+.upload-area:hover{border-color:var(--primary)}
+.upload-area .icon{font-size:44px;color:var(--text3);margin-bottom:10px}
+.upload-area .p1{font-size:15px;font-weight:500}
+.upload-area .p2{font-size:12.5px;color:var(--text3);margin-top:4px}
+.upload-area.has-img{border-color:var(--green);border-style:solid;padding:12px}
+.upload-area.has-img img{max-height:200px;margin:0 auto;border-radius:8px}
+.upload-area .remove{position:absolute;top:8px;right:8px;background:var(--red,#ef4444);color:#fff;width:24px;height:24px;border-radius:50%;font-size:12px;display:none}
+.prompt-input{width:100%;min-height:90px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical}
+.prompt-input:focus{border-color:var(--primary);outline:none}
+.prompt-input::placeholder{color:var(--text3)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.ctl label{font-size:12px;color:var(--text3);display:block;margin-bottom:6px}
+.ctl select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-size:13px;font-family:inherit}
+.model-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.model-card{border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
+.model-card:hover{border-color:var(--border2)}
+.model-card.active{border-color:var(--primary);background:rgba(168,85,247,.1)}
+.model-card .m-name{font-size:13px;font-weight:700}
+.model-card .m-cost{font-size:11px;color:var(--text3);margin-top:3px}
+.model-card .m-tag{font-size:10px;color:var(--primary2,#c084fc);font-weight:600;margin-top:3px}
+.gen-btn{width:100%;margin-top:20px;padding:15px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:10px;font-size:15px;font-weight:700;transition:opacity .2s}
+.gen-btn:hover{opacity:.9}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed}
+.gen-note{margin-top:12px;font-size:12px;color:var(--text3);text-align:center}
+.history-panel h2{font-size:16px;font-weight:700;margin-bottom:14px}
+.history-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;font-size:12.5px}
+.history-item .h-top{display:flex;justify-content:space-between;margin-bottom:6px}
+.history-item .h-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+.history-item .h-status.done{background:rgba(34,197,94,.15);color:var(--green)}
+.history-item .h-status.processing{background:rgba(168,85,247,.15);color:#c084fc}
+.history-item .h-status.failed{background:rgba(239,68,68,.15);color:#ef4444}
+.history-item .h-prompt{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-box{margin-top:16px;aspect-ratio:9/16;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.preview-box .ph{text-align:center;color:var(--text3);font-size:13px;padding:20px}
+.preview-box .ph .big{font-size:44px;margin-bottom:10px}
+.preview-box .ph.video-ready{color:var(--text)}
+.preview-box .ph.video-ready .cap{margin-top:10px;font-size:12px;color:var(--text2)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:13px;z-index:100;display:none;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.toast.show{display:block;animation:fadeIn .3s}
+.toast.error{border-color:var(--red,#ef4444)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<a href="/" class="logo"><div class="logo-img">🌸</div><span>DreamUtopia AI</span></a>
+<nav>
+<a href="/">Home</a>
+<a href="/pricing">Pricing</a>
+<a href="/#faq">FAQ</a>
+<a href="/workspace" class="active">Workspace</a>
+</nav>
+<div class="header-right">
+<span class="credits-pill">⚡ <span id="creditsBadge">—</span> credits</span>
+<a href="#" class="btn-login" id="loginBtn">Log In</a>
+<button class="btn-signup" id="signupBtn">Sign Up</button>
+</div>
+</header>
+
+<div class="workspace">
+<!-- Left: 创建表单 -->
+<div class="panel">
+<h2>Create AI Video</h2>
+
+<div class="step-label"><span class="n">1</span> Upload start image</div>
+<div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+<input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+<div class="icon">🖼️</div>
+<div class="p1">Click to browse</div>
+<div class="p2">JPG, PNG, WebP up to 20 MB</div>
+</div>
+
+<div class="step-label"><span class="n">2</span> Describe your video</div>
+<textarea class="prompt-input" id="promptInput" placeholder="Describe the motion: camera movement, action, mood, and style... e.g. 'A futuristic city with flying cars, cinematic camera pan'"></textarea>
+
+<div class="controls">
+<div class="ctl">
+<label>Duration</label>
+<select id="durationSel">
+<option value="5">5 seconds</option>
+<option value="10" selected>10 seconds</option>
+<option value="15">15 seconds</option>
+</select>
+</div>
+<div class="ctl">
+<label>Model</label>
+<select id="modelSel" onchange="pickModel(this.value)">
+<option value="lite">Lite (3 credits)</option>
+<option value="medium">Medium (5 credits)</option>
+<option value="pro">Pro with Sound (10 credits)</option>
+</select>
+</div>
+</div>
+
+<button class="gen-btn" id="genBtn" onclick="generate()">✨ Generate Video</button>
+<div class="gen-note">Demo build — generation is simulated, API wired to /api/generate</div>
+</div>
+
+<!-- Right: 预览 + 历史 -->
+<div class="panel history-panel">
+<h2>Preview</h2>
+<div class="preview-box" id="previewBox">
+<div class="ph">
+<div class="big">🎬</div>
+<div>Your video will appear here</div>
+</div>
+</div>
+
+<h2 style="margin-top:26px">Generation History</h2>
+<div id="historyList">
+<div style="font-size:13px;color:var(--text3)">No generations yet.</div>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- 状态 ----------
+const TOKEN_KEY = "dreamutopia_token";
+let token = localStorage.getItem(TOKEN_KEY) || "";
+let uploadedImage = null;
+let currentModel = "lite";
+
+// ---------- 工具 ----------
+function toast(msg, isError) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "toast show" + (isError ? " error" : "");
+  setTimeout(() => el.classList.remove("show"), 3500);
+}
+
+async function api(path, options = {}) {
+  const headers = { "content-type": "application/json", ...(options.headers || {}) };
+  if (token) headers.authorization = "Bearer " + token;
+  const res = await fetch("/api" + path, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "request failed");
+  return data;
+}
+
+function updateAuthUI(credits) {
+  const badge = document.getElementById("creditsBadge");
+  if (token) {
+    badge.textContent = credits !== undefined ? credits : "10";
+    document.getElementById("loginBtn").textContent = "Log out";
+    document.getElementById("loginBtn").onclick = async () => {
+      try { await api("/auth/logout", { method: "POST" }); } catch (e) {}
+      token = ""; localStorage.removeItem(TOKEN_KEY); location.reload();
+    };
+    document.getElementById("signupBtn").textContent = "Workspace";
+    document.getElementById("signupBtn").onclick = () => {};
+  } else {
+    badge.textContent = "—";
+    document.getElementById("loginBtn").textContent = "Log In";
+    document.getElementById("loginBtn").onclick = () => quickAuth("login");
+    document.getElementById("signupBtn").textContent = "Sign Up";
+    document.getElementById("signupBtn").onclick = () => quickAuth("signup");
+  }
+}
+
+// 快速注册/登录 (demo: 自动注册并充值 10 credits)
+async function quickAuth(mode) {
+  const email = prompt(mode === "signup" ? "Create account — enter email:" : "Log in — enter email:");
+  if (!email) return;
+  const password = prompt("Enter password (min 6 chars):");
+  if (!password || password.length < 6) return toast("Password too short", true);
+  try {
+    const data = await api("/auth/" + mode, { method: "POST", body: JSON.stringify({ email, password }) });
+    token = data.token;
+    localStorage.setItem(TOKEN_KEY, token);
+    toast("Welcome, " + email + "! You got 10 free credits 🎉");
+    updateAuthUI(data.credits);
+    loadHistory();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ---------- 上传 ----------
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  uploadedImage = file;
+  const area = document.getElementById("uploadArea");
+  area.classList.add("has-img");
+  area.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="preview">`;
+}
+
+// ---------- 模型选择 ----------
+function pickModel(v) {
+  currentModel = v;
+  document.getElementById("modelSel").value = v;
+}
+
+// ---------- 生成 ----------
+async function generate() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return toast("Please describe your video first", true);
+  if (!token) return toast("Please sign up / log in first (top right)", true);
+
+  const dur = Number(document.getElementById("durationSel").value);
+  const btn = document.getElementById("genBtn");
+  btn.disabled = true; btn.textContent = "Generating...";
+
+  const preview = document.getElementById("previewBox");
+  preview.innerHTML = `<div class="ph"><div class="spinner"></div><div>AI is generating your video...</div></div>`;
+
+  try {
+    const data = await api("/generate", {
+      method: "POST",
+      body: JSON.stringify({ prompt, model: currentModel, durationSec: dur }),
+    });
+    updateAuthUI();
+    // 模拟渲染进度
+    setTimeout(() => {
+      preview.innerHTML = `
+        <div class="ph video-ready">
+          <div style="font-size:64px">🎬</div>
+          <div class="cap">"${prompt.length > 46 ? prompt.slice(0,46) + "..." : prompt}"</div>
+          <div class="cap" style="color:var(--green)">✅ Video ready (${dur}s · ${currentModel} model)</div>
+        </div>`;
+      btn.disabled = false; btn.textContent = "✨ Generate Video";
+      loadHistory();
+    }, 3000);
+  } catch (e) {
+    toast(e.message, true);
+    preview.innerHTML = `<div class="ph"><div class="big">❌</div><div>Generation failed</div></div>`;
+    btn.disabled = false; btn.textContent = "✨ Generate Video";
+  }
+}
+
+// ---------- 历史 ----------
+async function loadHistory() {
+  if (!token) return;
+  try {
+    const data = await api("/generate");
+    const list = document.getElementById("historyList");
+    if (!data.generations.length) {
+      list.innerHTML = `<div style="font-size:13px;color:var(--text3)">No generations yet.</div>`;
+      return;
+    }
+    list.innerHTML = data.generations.map(g => `
+      <div class="history-item">
+        <div class="h-top">
+          <span style="font-weight:600">#${g.id} · ${g.model} · ${g.duration_sec}s</span>
+          <span class="h-status ${g.status}">${g.status}</span>
+        </div>
+        <div class="h-prompt">${escapeHtml(g.prompt)}</div>
+      </div>`).join("");
+  } catch (e) {}
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ---------- 初始化 ----------
+(async function init() {
+  updateAuthUI();
+  if (token) {
+    try {
+      const me = await api("/auth/me");
+      updateAuthUI(me.user.credits);
+      loadHistory();
+    } catch (e) { token = ""; localStorage.removeItem(TOKEN_KEY); updateAuthUI(); }
+  }
+})();
+</script>
+</body>
+</html>

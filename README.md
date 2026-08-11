@@ -1,63 +1,54 @@
-# TaleTok Clone — Cloudflare Full Stack
+# DreamUtopia Clone — Cloudflare Full Stack
 
-1:1 clone of [taletok.io](https://taletok.io) built with Next.js static export + Cloudflare Pages.
+1:1 clone of [dreamutopia.net](https://dreamutopia.net) — AI image-to-video generator, built with pure HTML/CSS/JS + Cloudflare Pages Functions.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 (static export) + TypeScript + Tailwind CSS |
+| Frontend | Pure HTML + CSS + vanilla JS (no build step) |
 | Hosting | Cloudflare Pages (unlimited bandwidth, free) |
 | API | Cloudflare Pages Functions |
 | Database | Cloudflare D1 (SQLite at the edge) |
-| Cache/Sessions | Cloudflare KV |
+| Sessions | Cloudflare KV |
 | File Storage | Cloudflare R2 (zero egress) |
-| Payments | Stripe (via Workers fetch API) |
-| Email | Resend |
-| Auth | JWT + KV (magic link) |
+| Auth | Session token + KV + PBKDF2 (Web Crypto) |
 
 ## Project Structure
 
 ```
-/app              # Next.js static pages (exported to /out)
-/components       # React UI components (12 sections)
-/functions/api    # Cloudflare Pages Functions (API routes)
-/libs             # Shared backend logic (db, auth, stripe, email)
-/schema.sql       # D1 database schema
-/wrangler.toml    # Cloudflare configuration
+/out               # Static pages (build output dir)
+  index.html       # Homepage (1:1 clone of DreamUtopia)
+  pricing.html     # Pricing page
+  workspace.html   # Generation workspace (wired to /api)
+/functions/api     # Cloudflare Pages Functions (API routes)
+  health.ts        # GET /api/health
+  auth/            # register / login / logout / me
+  credits.ts       # GET /api/credits
+  generate.ts      # POST/GET /api/generate
+  gallery.ts       # GET /api/gallery
+  upload-ticket.ts # GET /api/upload-ticket
+/libs              # Shared backend logic
+  utils.ts         # Env types, JSON helpers, randomId
+  auth.ts          # KV session management
+  password.ts      # PBKDF2 hash/verify
+/schema.sql        # D1 database schema
+/wrangler.toml     # Cloudflare configuration
 ```
 
-## Quick Start
+## D1 Schema
 
-```bash
-# 1. Install dependencies
-npm install
+- `users` — email, password_hash, credits (10 free on signup)
+- `generations` — prompt, model (lite/medium/pro), status, media_key, duration
+- `gallery` — public showcase of generated works
 
-# 2. Run dev server (frontend only)
-npm run dev
+## Deploy
 
-# 3. Build static export
-npm run build
-
-# 4. Run with Cloudflare local dev (frontend + API + D1 + KV)
-npm start
-
-# 5. Initialize D1 database
-npm run db:init
-```
-
-## Deploy to Cloudflare
-
-```bash
-# Set secrets
-npx wrangler pages secret put STRIPE_SECRET_KEY
-npx wrangler pages secret put STRIPE_WEBHOOK_SECRET
-npx wrangler pages secret put RESEND_API_KEY
-npx wrangler pages secret put JWT_SECRET
-
-# Deploy
-npm run deploy
-```
+1. `wrangler d1 create dreamutopia-db` → put database_id in wrangler.toml
+2. `wrangler kv namespace create SESSIONS` → put id in wrangler.toml
+3. `wrangler r2 bucket create dreamutopia-media`
+4. `wrangler d1 execute dreamutopia-db --file=schema.sql`
+5. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
 ## Cost
 
@@ -67,7 +58,4 @@ npm run deploy
 | Cloudflare D1 | $0 (5GB free) |
 | Cloudflare KV | $0 (1GB free) |
 | Cloudflare R2 | $0 (10GB free) |
-| Bandwidth | $0 (unlimited free) |
 | **Total** | **$0** |
-
-Stripe charges 2.9% + 30c per transaction. Resend free tier: 3,000 emails/month.

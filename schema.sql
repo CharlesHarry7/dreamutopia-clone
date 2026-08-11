@@ -1,41 +1,35 @@
--- D1 Schema for TaleTok Clone
--- Cloudflare D1 (SQLite at the edge)
+-- DreamUtopia Clone — D1 Schema
+-- 用户/额度/生成记录/作品墙
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  image TEXT,
-  credits INTEGER DEFAULT 0,
-  plan TEXT DEFAULT 'free' CHECK(plan IN ('free', 'starter', 'pro', 'optimum')),
-  stripe_customer_id TEXT,
-  youtube_channel_id TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  password_hash TEXT NOT NULL,
+  credits INTEGER NOT NULL DEFAULT 10,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS subscriptions (
+CREATE TABLE IF NOT EXISTS generations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER REFERENCES users(id),
-  stripe_subscription_id TEXT UNIQUE NOT NULL,
-  stripe_customer_id TEXT NOT NULL,
-  plan TEXT NOT NULL CHECK(plan IN ('starter', 'pro', 'optimum')),
-  status TEXT DEFAULT 'active' CHECK(status IN ('active', 'canceled', 'past_due', 'trialing')),
-  current_period_end TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  user_id INTEGER NOT NULL,
+  model TEXT NOT NULL DEFAULT 'lite',
+  prompt TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending | processing | done | failed
+  media_key TEXT,                          -- R2 object key
+  duration_sec INTEGER DEFAULT 5,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE IF NOT EXISTS gallery (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER REFERENCES users(id),
-  token TEXT UNIQUE NOT NULL,
-  expires_at TEXT NOT NULL,
-  created_at TEXT DEFAULT (datetime('now'))
+  generation_id INTEGER,
+  media_key TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  likes INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (generation_id) REFERENCES generations(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_generations_user ON generations(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery(created_at DESC);

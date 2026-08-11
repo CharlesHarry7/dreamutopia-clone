@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing — DreamUtopia AI Video Generator</title>
+<meta name="description" content="Flexible credits plans for AI video generation. Start free with 10 credits on signup.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d12;--bg2:#16161e;--card:#1c1c26;--border:#2a2a38;--border2:#3a3a4a;--text:#fff;--text2:#a8a8b8;--text3:#6a6a7a;--primary:#a855f7;--accent:#ec4899;--green:#22c55e;--radius:12px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+header{background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
+.logo-img{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px}
+nav{display:flex;gap:28px}
+nav a{font-size:14px;color:var(--text2);font-weight:500;transition:color .2s}
+nav a:hover,nav a.active{color:var(--text)}
+.header-right{display:flex;gap:12px;align-items:center}
+.btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
+.btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+.page-head{text-align:center;padding:70px 20px 40px}
+.page-head .tag{font-size:13px;color:var(--text2);font-weight:600;margin-bottom:12px}
+.page-head h1{font-size:40px;font-weight:800;margin-bottom:14px}
+.page-head p{font-size:15px;color:var(--text2);max-width:520px;margin:0 auto}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding-bottom:80px}
+.plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 26px;position:relative;transition:transform .3s,border-color .3s}
+.plan:hover{transform:translateY(-4px);border-color:var(--primary)}
+.plan.popular{border-color:var(--primary);background:linear-gradient(180deg,rgba(168,85,247,.08),var(--card))}
+.plan .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),var(--accent));padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.plan .name{font-size:15px;font-weight:700;margin-bottom:10px}
+.plan .price{font-size:44px;font-weight:800;margin-bottom:2px}
+.plan .price .unit{font-size:16px;font-weight:400;color:var(--text3)}
+.plan .desc{font-size:13px;color:var(--text3);margin-bottom:22px}
+.plan ul{list-style:none;margin-bottom:26px}
+.plan ul li{font-size:13.5px;color:var(--text2);padding:7px 0;display:flex;gap:8px;align-items:flex-start}
+.plan ul li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.plan .btn{width:100%;padding:12px;border-radius:9px;font-size:14px;font-weight:600;text-align:center;transition:opacity .2s}
+.plan .btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
+.plan .btn.outline{background:var(--bg2);border:1px solid var(--border2);color:var(--text)}
+.plan .btn:hover{opacity:.88}
+.note{text-align:center;padding-bottom:60px;font-size:13px;color:var(--text3)}
+footer{margin-top:40px;background:var(--bg2);border-top:1px solid var(--border);padding:36px 20px}
+.footer-inner{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.footer-copy{font-size:13px;color:var(--text3)}
+.footer-links{display:flex;gap:20px}
+.footer-links a{font-size:13px;color:var(--text2)}
+.footer-links a:hover{color:var(--text)}
+@media(max-width:800px){.plans{grid-template-columns:1fr}.page-head h1{font-size:30px}}
+</style>
+</head>
+<body>
+<header>
+<a href="/" class="logo"><div class="logo-img">🌸</div><span>DreamUtopia AI</span></a>
+<nav>
+<a href="/">Home</a>
+<a href="/pricing" class="active">Pricing</a>
+<a href="/#faq">FAQ</a>
+<a href="/workspace">Workspace</a>
+</nav>
+<div class="header-right">
+<a href="#" class="btn-login">Log In</a>
+<a href="#" class="btn-signup">Sign Up</a>
+</div>
+</header>
+
+<section class="page-head">
+<div class="tag">Pricing</div>
+<h1>Simple credits. <span style="background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent">No surprises.</span></h1>
+<p>Every plan starts with 10 free credits. Pay only for what you generate — Lite, Medium, or Pro models.</p>
+</section>
+
+<div class="container">
+<div class="plans">
+<div class="plan">
+<div class="name">Starter</div>
+<div class="price">$9<span class="unit">/mo</span></div>
+<div class="desc">For casual creators</div>
+<ul>
+<li>100 credits / month</li>
+<li>Lite & Medium models</li>
+<li>5s video clips</li>
+<li>Standard queue priority</li>
+<li>Email support</li>
+</ul>
+<a href="#" class="btn outline">Choose Starter</a>
+</div>
+<div class="plan popular">
+<div class="badge">Most Popular</div>
+<div class="name">Creator</div>
+<div class="price">$29<span class="unit">/mo</span></div>
+<div class="desc">For daily content makers</div>
+<ul>
+<li>400 credits / month</li>
+<li>All models incl. Pro with Sound</li>
+<li>Up to 15s clips</li>
+<li>Priority queue — 2x faster</li>
+<li>Full generation history</li>
+<li>Priority support</li>
+</ul>
+<a href="#" class="btn primary">Choose Creator</a>
+</div>
+<div class="plan">
+<div class="name">Studio</div>
+<div class="price">$79<span class="unit">/mo</span></div>
+<div class="desc">For teams & agencies</div>
+<ul>
+<li>1500 credits / month</li>
+<li>All models, unlimited features</li>
+<li>Up to 15s clips</li>
+<li>Highest queue priority</li>
+<li>API access & webhooks</li>
+<li>Dedicated support</li>
+</ul>
+<a href="#" class="btn outline">Choose Studio</a>
+</div>
+</div>
+<p class="note">All plans include free 2-try preview for new devices. Credits never expire while subscribed.</p>
+</div>
+
+<footer>
+<div class="footer-inner">
+<div class="footer-copy">© 2026 DreamUtopia AI. All rights reserved.</div>
+<div class="footer-links">
+<a href="/">Home</a>
+<a href="/workspace">Workspace</a>
+<a href="/#faq">FAQ</a>
+<a href="#">Privacy</a>
+<a href="#">Terms</a>
+</div>
+</div>
+</footer>
+</body>
+</html>

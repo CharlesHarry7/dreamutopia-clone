@@ -1,8 +1,5 @@
-// Health check endpoint
-export const onRequestGet: PagesFunction<Env> = async () => {
-  return Response.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    runtime: 'cloudflare-pages',
-  });
-};
+import { json } from "../../libs/utils";
+
+export const onRequestGet = (): Response => json({ ok: true, service: "dreamutopia-clone", time: Date.now() });
+
+export const onRequestOptions = (): Response => new Response(null, { status: 204 });

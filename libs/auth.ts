@@ -1,95 +1,38 @@
-// JWT-based auth for Cloudflare Workers/Pages Functions
-// Uses Web Crypto API (available in Workers runtime)
+// 会话管理 — KV 存储 session token
+import { randomId } from "./utils";
 
-async function signJWT(payload: object, secret: string): Promise<string> {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '');
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '');
-  const data = `${encodedHeader}.${encodedPayload}`;
+const TTL = 60 * 60 * 24 * 30; // 30天
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-
-  return `${data}.${encodedSignature}`;
+export interface Session {
+  userId: number;
+  email: string;
 }
 
-async function verifyJWT(token: string, secret: string): Promise<any | null> {
+export async function createSession(env: { SESSIONS: KVNamespace }, userId: number, email: string): Promise<string> {
+  const token = randomId("sess");
+  await env.SESSIONS.put(token, JSON.stringify({ userId, email } satisfies Session), { expirationTtl: TTL });
+  return token;
+}
+
+export async function getSession(env: { SESSIONS: KVNamespace }, token: string | null): Promise<Session | null> {
+  if (!token) return null;
+  const raw = await env.SESSIONS.get(token);
+  if (!raw) return null;
   try {
-    const [encodedHeader, encodedPayload, encodedSignature] = token.split('.');
-    const data = `${encodedHeader}.${encodedPayload}`;
-
-    const key = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    const signature = Uint8Array.from(
-      atob(encodedSignature.replace(/-/g, '+').replace(/_/g, '/')),
-      (c) => c.charCodeAt(0)
-    );
-
-    const valid = await crypto.subtle.verify('HMAC', key, signature, new TextEncoder().encode(data));
-    if (!valid) return null;
-
-    const payload = JSON.parse(atob(encodedPayload));
-    if (payload.exp && Date.now() > payload.exp * 1000) return null;
-
-    return payload;
+    return JSON.parse(raw) as Session;
   } catch {
     return null;
   }
 }
 
-export async function createSession(env: Env, userId: number, email: string): Promise<string> {
-  const token = await signJWT(
-    { sub: userId, email, exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600 },
-    env.JWT_SECRET
-  );
-
-  // Store session in KV with 7-day TTL
-  await env.KV.put(`session:${token}`, JSON.stringify({ userId, email }), {
-    expirationTtl: 7 * 24 * 3600,
-  });
-
-  return token;
+export async function destroySession(env: { SESSIONS: KVNamespace }, token: string | null): Promise<void> {
+  if (token) await env.SESSIONS.delete(token);
 }
 
-export async function verifySession(env: Env, request: Request): Promise<{ userId: number; email: string } | null> {
-  const cookie = request.headers.get('Cookie') || '';
-  const tokenMatch = cookie.match(/auth_token=([^;]+)/);
-  if (!tokenMatch) return null;
-
-  const token = tokenMatch[1];
-  const payload = await verifyJWT(token, env.JWT_SECRET);
-  if (!payload) return null;
-
-  // Verify session exists in KV
-  const session = await env.KV.get(`session:${token}`);
-  if (!session) return null;
-
-  return { userId: payload.sub, email: payload.email };
+// 从请求头提取 bearer token
+export function tokenFromRequest(req: Request): string | null {
+  const auth = req.headers.get("authorization");
+  if (!auth) return null;
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : null;
 }
-
-export async function destroySession(env: Env, request: Request): Promise<void> {
-  const cookie = request.headers.get('Cookie') || '';
-  const tokenMatch = cookie.match(/auth_token=([^;]+)/);
-  if (tokenMatch) {
-    await env.KV.delete(`session:${tokenMatch[1]}`);
-  }
-}
-
-export { signJWT, verifyJWT };
