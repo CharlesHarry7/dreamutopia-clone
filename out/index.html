@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DreamUtopia — Free AI Image & Video Generator</title>
 <meta name="description" content="Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — no account needed.">
+<link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -32,20 +34,26 @@ img{max-width:100%;display:block}
 .promo-close:hover{color:#fff}
 
 /* Header */
-header{background:var(--bg);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(10px)}
-.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
-.logo-img{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:18px}
-nav{display:flex;gap:28px;align-items:center}
-nav a{color:var(--text);font-size:14px;font-weight:500;transition:color .2s}
-nav a:hover{color:var(--primary2)}
-nav .has-arrow{display:flex;align-items:center;gap:4px}
-nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
-.header-right{display:flex;align-items:center;gap:12px}
+header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.2px}
+.logo-img{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0;display:block}
+nav{display:flex;gap:8px;align-items:center}
+nav>a,.nav-drop>summary{color:var(--text2);font-size:14px;font-weight:500;padding:8px 12px;border-radius:8px;transition:color .2s,background .2s;list-style:none;cursor:pointer}
+nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-drop{position:relative}
+.nav-drop>summary{display:flex;align-items:center;gap:5px}
+.nav-drop>summary::-webkit-details-marker{display:none}
+.nav-drop>summary::after{content:'▾';font-size:10px;opacity:.6}
+.nav-drop[open]>summary{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.45);z-index:60}
+.nav-menu a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--text2)}
+.nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
+.header-right{display:flex;align-items:center;gap:10px}
 .btn-login{color:var(--text);font-size:14px;font-weight:500;padding:6px 14px;transition:color .2s}
 .btn-login:hover{color:var(--primary2)}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600;transition:opacity .2s}
 .btn-signup:hover{opacity:.9}
-.lang-select{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px;font-family:inherit;cursor:pointer}
+.lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
 
 /* Hero */
 .hero{padding:60px 20px 40px;text-align:center;background:var(--bg)}
@@ -96,8 +104,10 @@ nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
 .features-3{max-width:1100px;margin:80px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
 .feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .3s}
 .feat-card:hover{transform:translateY(-4px)}
-.feat-card .feat-img{width:100%;aspect-ratio:16/10;background:linear-gradient(135deg,#3a1a5c,#1a1a2e);position:relative;overflow:hidden}
-.feat-card .feat-img::after{content:attr(data-emoji);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:72px;opacity:.6}
+.feat-card .feat-img{width:100%;aspect-ratio:16/10;position:relative;overflow:hidden;background:var(--bg2)}
+.feat-card .feat-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.feat-card:hover .feat-img img{transform:scale(1.05)}
+.feat-card .feat-img::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 55%);pointer-events:none}
 .feat-card.new .feat-img::before{content:'NEW';position:absolute;top:12px;left:12px;background:var(--primary);color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;z-index:2}
 .feat-card .feat-body{padding:20px}
 .feat-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
@@ -130,9 +140,9 @@ nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
 .gallery-head h2{font-size:30px;font-weight:800;margin-bottom:10px}
 .gallery-head p{font-size:14.5px;color:var(--text2)}
 .gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
-.gallery-item{aspect-ratio:9/16;background:linear-gradient(135deg,#2a1a4a,#1a1a2e);border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:transform .3s}
+.gallery-item{aspect-ratio:3/4;background:var(--bg2);border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:transform .3s}
 .gallery-item:hover{transform:scale(1.03)}
-.gallery-item::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(236,72,153,.3));opacity:.5}
+.gallery-item img{width:100%;height:100%;object-fit:cover}
 .gallery-item .play{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2}
 
 /* Why section */
@@ -143,7 +153,8 @@ nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
 .why ul li{padding:10px 0;font-size:14px;color:var(--text2);display:flex;align-items:flex-start;gap:10px;line-height:1.5}
 .why ul li::before{content:'✓';color:var(--green);font-weight:700;font-size:14px;margin-top:1px}
 .why-actions{display:flex;gap:12px;flex-wrap:wrap}
-.why-img{aspect-ratio:1;background:linear-gradient(135deg,#3a1a5c,#1a1a2e);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:120px;position:relative;overflow:hidden}
+.why-img{aspect-ratio:4/3;border-radius:16px;position:relative;overflow:hidden;background:var(--bg2)}
+.why-img img{width:100%;height:100%;object-fit:cover}
 .why-img-cap{position:absolute;bottom:16px;left:16px;right:16px;background:rgba(0,0,0,.7);padding:8px 12px;border-radius:8px;font-size:12px;color:var(--text2)}
 
 /* Steps section */
@@ -156,7 +167,9 @@ nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
 .steps-list li .num{width:32px;height:32px;background:var(--card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--primary2);flex-shrink:0}
 .steps-list li .text{font-size:14.5px;color:var(--text);line-height:1.5}
 .steps-imgs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.steps-imgs .img-tile{aspect-ratio:1;background:linear-gradient(135deg,#2a1a4a,#1a1a2e);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:48px}
+.steps-imgs .img-tile{aspect-ratio:16/11;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;padding:8px}
+.steps-imgs .img-tile img{width:100%;height:100%;object-fit:cover;border-radius:8px;transition:transform .5s}
+.steps-imgs .img-tile:hover img{transform:scale(1.03)}
 
 /* Credits CTA */
 .credits-cta{max-width:1100px;margin:100px auto 0;padding:50px 30px;background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(236,72,153,.08));border:1px solid var(--border);border-radius:20px;text-align:center}
@@ -181,11 +194,10 @@ nav .has-arrow::after{content:'▾';font-size:10px;opacity:.6}
 .faq-item.open .faq-a{max-height:200px;margin-top:12px}
 
 /* Footer */
-footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);padding:50px 20px 20px}
-.footer-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 2fr;gap:60px}
-.footer-brand .logo{margin-bottom:12px}
-.footer-brand .copy{font-size:13px;color:var(--text3)}
-.footer-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:30px}
+footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);padding:56px 20px 28px}
+.footer-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:40px}
+.footer-brand .logo{margin-bottom:14px}
+.footer-brand .copy{font-size:13px;color:var(--text3);line-height:1.5}
 .footer-col h4{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text);text-transform:uppercase;letter-spacing:.5px}
 .footer-col ul{list-style:none}
 .footer-col ul li{margin-bottom:8px}
@@ -198,12 +210,13 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 .features-3,.compare-grid,.why,.steps-section{grid-template-columns:1fr;gap:30px}
 .gallery-grid{grid-template-columns:repeat(3,1fr)}
 .compare-vs{display:none}
-.footer-grid,.footer-cols{grid-template-columns:1fr;gap:30px}
+.footer-grid{grid-template-columns:1fr 1fr;gap:30px}
 }
 @media(max-width:600px){
 .hero h1{font-size:30px}
 .gallery-grid{grid-template-columns:repeat(2,1fr)}
 nav{display:none}
+.footer-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -219,20 +232,28 @@ nav{display:none}
 
 <!-- Header -->
 <header>
-<a href="/" class="logo">
-<div class="logo-img">🌸</div>
+<a href="/" class="logo" aria-label="DreamUtopia AI">
+<img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
 <nav>
-<a href="/">Home</a>
+<a href="/" class="active">Home</a>
 <a href="/pricing">Pricing</a>
 <a href="/#faq">FAQ</a>
-<a href="#" class="has-arrow">Features</a>
+<details class="nav-drop">
+<summary>Features</summary>
+<div class="nav-menu">
+<a href="/#features">AI Models</a>
+<a href="/#gallery">Gallery</a>
+<a href="/#get-started">How it works</a>
+<a href="/workspace">Workspace</a>
+</div>
+</details>
 </nav>
 <div class="header-right">
 <a href="#" class="btn-login">Log In</a>
 <a href="#" class="btn-signup">Sign Up</a>
-<select class="lang-select">
+<select class="lang-select" aria-label="Language">
 <option>English</option>
 <option>中文</option>
 <option>日本語</option>
@@ -285,23 +306,23 @@ nav{display:none}
 </section>
 
 <!-- 3 Feature Cards -->
-<section class="features-3">
+<section class="features-3" id="features">
 <div class="feat-card">
-<div class="feat-img" data-emoji="🧠"></div>
+<div class="feat-img"><img src="/assets/images/feature-ai-models.webp" alt="Multiple Premium AI Models" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3>Multiple Premium AI Models</h3>
 <p>Choose from Lite, Medium, and Pro tiers — each optimized for different styles, quality levels, and motion types.</p>
 </div>
 </div>
 <div class="feat-card">
-<div class="feat-img" data-emoji="✨"></div>
+<div class="feat-img"><img src="/assets/images/feature-image-to-video.webp" alt="Ready in Seconds" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3>Ready in Seconds</h3>
 <p>Upload an image, describe the motion you want, and get your AI video in seconds. Zero technical skills needed.</p>
 </div>
 </div>
 <div class="feat-card new">
-<div class="feat-img" data-emoji="🎵"></div>
+<div class="feat-img"><img src="/assets/images/feature-cinematic.webp" alt="Pro Model with Sound" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3>Pro Model with Sound</h3>
 <p>Generate AI videos with synchronized audio. The Pro model brings your creations to life with full sound output.</p>
@@ -348,24 +369,24 @@ nav{display:none}
 </section>
 
 <!-- Gallery -->
-<section class="gallery">
+<section class="gallery" id="gallery">
 <div class="gallery-head">
 <h2>Crafted with DreamUtopia</h2>
 <p>A gallery of stunning visuals our creators have made</p>
 </div>
 <div class="gallery-grid">
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
-<div class="gallery-item"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g3.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g4.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g5.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g6.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g7.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g8.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g9.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/g10.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/b1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item"><img src="/assets/images/b2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
 </div>
 </section>
 
@@ -386,7 +407,8 @@ nav{display:none}
 </div>
 </div>
 <div>
-<div class="why-img">🎬
+<div class="why-img">
+<img src="/assets/images/feature-workspace.webp" alt="Transform any photo into cinematic AI video with one click." width="1200" height="800" loading="lazy">
 <div class="why-img-cap">Transform any photo into cinematic AI video with one click.</div>
 </div>
 </div>
@@ -405,10 +427,10 @@ nav{display:none}
 <a href="#" class="btn-primary-lg">Start Free Now</a>
 </div>
 <div class="steps-imgs">
-<div class="img-tile">🧠</div>
-<div class="img-tile">✨</div>
-<div class="img-tile">🎵</div>
-<div class="img-tile">🚀</div>
+<div class="img-tile"><img src="/assets/images/feature-ai-models.webp" alt="Multiple AI models powering video generation" width="800" height="800" loading="lazy"></div>
+<div class="img-tile"><img src="/assets/images/feature-image-to-video.webp" alt="Image transforming into video" width="800" height="800" loading="lazy"></div>
+<div class="img-tile"><img src="/assets/images/feature-cinematic.webp" alt="Cinematic quality AI output" width="800" height="800" loading="lazy"></div>
+<div class="img-tile"><img src="/assets/images/feature-workspace.webp" alt="AI creative workspace" width="800" height="800" loading="lazy"></div>
 </div>
 </section>
 
@@ -472,31 +494,32 @@ nav{display:none}
 <footer>
 <div class="footer-grid">
 <div class="footer-brand">
-<div class="logo">
-<div class="logo-img">🌸</div>
+<a href="/" class="logo" aria-label="DreamUtopia AI">
+<img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
+</a>
+<p class="copy">© 2026 DreamUtopia AI. All rights reserved.</p>
 </div>
-<p class="copy" style="margin-top:14px">© 2026 DreamUtopia AI. All rights reserved.</p>
-</div>
-<div class="footer-cols">
 <div class="footer-col">
 <h4>Features</h4>
 <ul>
-<li><a href="#">Free AI Video Generator</a></li>
-<li><a href="#">Picture to Dance</a></li>
-<li><a href="#">Anime AI Generator</a></li>
-<li><a href="#">Photo to Video AI Free</a></li>
-<li><a href="#">AI Video Enhancer</a></li>
-<li><a href="#">Image to Video AI</a></li>
-<li><a href="#">AI Image Animator</a></li>
-<li><a href="#">Free Fast AI Video Generator</a></li>
+<li><a href="/#features">Free AI Video Generator</a></li>
+<li><a href="/#features">Photo to Video AI Free</a></li>
+<li><a href="/#features">AI Video Enhancer</a></li>
+<li><a href="/#gallery">Image to Video AI</a></li>
+<li><a href="/#get-started">AI Image Animator</a></li>
+<li><a href="/workspace">Free Fast AI Video Generator</a></li>
+<li><a href="/#features">Anime AI Generator</a></li>
+<li><a href="/#gallery">Picture to Dance</a></li>
 </ul>
 </div>
 <div class="footer-col">
 <h4>Resources</h4>
 <ul>
-<li><a href="#get-started">Get started</a></li>
-<li><a href="#faq">FAQ</a></li>
+<li><a href="/#get-started">Get started</a></li>
+<li><a href="/#faq">FAQ</a></li>
+<li><a href="/pricing">Pricing</a></li>
+<li><a href="/workspace">Workspace</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -505,7 +528,6 @@ nav{display:none}
 <li><a href="#">Privacy Policy</a></li>
 <li><a href="#">Terms of Service</a></li>
 </ul>
-</div>
 </div>
 </div>
 </footer>
