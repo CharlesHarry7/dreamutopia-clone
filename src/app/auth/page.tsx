@@ -22,6 +22,7 @@ function AuthForm() {
   const initialMode = params.get("mode") === "login" ? "login" : "register";
   const pack = params.get("pack") || "";
   const ref = params.get("ref") || getStoredReferral();
+  const resetOk = params.get("reset") === "1";
 
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
@@ -29,17 +30,32 @@ function AuthForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotMsg, setForgotMsg] = useState("");
+  const [infoMsg, setInfoMsg] = useState(
+    resetOk ? "Password updated — log in with your new password." : ""
+  );
 
   const nextPath = useMemo(() => {
     if (pack) return `/workspace?pack=${encodeURIComponent(pack)}`;
     return "/workspace";
   }, [pack]);
 
+  function switchMode(next: "login" | "register", keepError?: string) {
+    setMode(next);
+    setError(keepError || "");
+    setForgotMsg("");
+    const q = new URLSearchParams();
+    q.set("mode", next);
+    if (pack) q.set("pack", pack);
+    if (ref) q.set("ref", ref);
+    router.replace(`/auth?${q.toString()}`, { scroll: false });
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     setForgotMsg("");
+    setInfoMsg("");
     try {
       const path = mode === "login" ? "/auth/login" : "/auth/register";
       const body: Record<string, string> = { email, password };
@@ -57,7 +73,7 @@ function AuthForm() {
     } catch (err) {
       const e = err as ApiError;
       if (e.status === 409 || e.message?.includes("already registered")) {
-        setError("That email is already registered — try Log In.");
+        switchMode("login", "That email is already registered — switched to Log In.");
       } else if (e.status === 401) {
         setError("Invalid email or password.");
       } else if (e.code === "schema_migration_required") {
@@ -108,11 +124,7 @@ function AuthForm() {
       <CardContent>
         <Tabs
           value={mode}
-          onValueChange={(v) => {
-            setMode(v as "login" | "register");
-            setError("");
-            setForgotMsg("");
-          }}
+          onValueChange={(v) => switchMode(v as "login" | "register")}
           className="mb-4"
         >
           <TabsList className="w-full">
@@ -153,8 +165,21 @@ function AuthForm() {
             />
           </div>
 
-          {error && <p className="text-sm text-[var(--red)]">{error}</p>}
-          {forgotMsg && <p className="text-sm text-[var(--green)]">{forgotMsg}</p>}
+          {infoMsg && (
+            <p className="text-sm text-[var(--green)]" role="status">
+              {infoMsg}
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-[var(--red)]" role="alert">
+              {error}
+            </p>
+          )}
+          {forgotMsg && (
+            <p className="text-sm text-[var(--green)]" role="status">
+              {forgotMsg}
+            </p>
+          )}
 
           <Button type="submit" className="w-full" disabled={busy}>
             {busy

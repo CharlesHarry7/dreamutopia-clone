@@ -27,7 +27,7 @@ function ResetForm() {
         method: "POST",
         body: JSON.stringify({ token, password }),
       });
-      router.push("/auth?mode=login");
+      router.push("/auth?mode=login&reset=1");
     } catch (err) {
       setError((err as ApiError).message || "Reset failed");
     } finally {

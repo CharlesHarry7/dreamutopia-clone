@@ -96,6 +96,7 @@ function WorkspaceInner() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [kieReady, setKieReady] = useState<boolean | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const activeModel = mode === "image" && model === "medium" ? "lite" : model;
   const inviteUrl = user?.referralUrl || "";
@@ -445,11 +446,19 @@ function WorkspaceInner() {
               <Button
                 type="button"
                 variant="outline"
-                aria-label="Copy invite URL"
-                onClick={() => void navigator.clipboard.writeText(inviteUrl)}
+                aria-label={inviteCopied ? "Invite URL copied" : "Copy invite URL"}
+                onClick={() => {
+                  void navigator.clipboard.writeText(inviteUrl).then(() => {
+                    setInviteCopied(true);
+                    window.setTimeout(() => setInviteCopied(false), 1600);
+                  });
+                }}
               >
-                Copy
+                {inviteCopied ? "Copied" : "Copy"}
               </Button>
+              <span className="sr-only" aria-live="polite">
+                {inviteCopied ? "Invite URL copied to clipboard" : ""}
+              </span>
             </CardContent>
           </Card>
         )}
@@ -469,7 +478,7 @@ function WorkspaceInner() {
               <Tabs value={mode} onValueChange={(v) => switchMode(v as Mode)}>
                 <TabsList aria-label="Generation mode">
                   <TabsTrigger value="video">{t("tab.video", "Video")}</TabsTrigger>
-                  <TabsTrigger value="image" disabled={!user}>
+                  <TabsTrigger value="image" disabled={!user} title={!user ? "Sign up for image models" : undefined}>
                     {t("tab.image", "Image")}
                   </TabsTrigger>
                 </TabsList>
@@ -479,9 +488,9 @@ function WorkspaceInner() {
               <p className="mb-4 text-center text-xs text-muted-foreground">
                 Guests: Lite image-to-video only ·{" "}
                 <Link href="/auth?mode=register" className="text-[var(--primary2)] hover:underline">
-                  sign up
+                  Sign up
                 </Link>{" "}
-                for text-to-video, first/last frame, and stills.
+                for Image mode, Medium/Pro, text-to-video, and first/last frame.
               </p>
             )}
 
@@ -598,25 +607,35 @@ function WorkspaceInner() {
                             : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
                         const locked = !user && m !== "lite";
                         const selected = activeModel === m;
+                        if (locked) {
+                          return (
+                            <Link
+                              key={m}
+                              href="/auth?mode=register"
+                              className="rounded-xl border border-white/10 bg-black/20 px-2.5 py-3 text-center opacity-70 transition hover:border-[var(--primary2)]/50 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`${m} model — sign up to unlock`}
+                            >
+                              <div className="text-[13px] font-bold capitalize">{m}</div>
+                              <div className="mt-0.5 text-[11px] text-[var(--primary2)]">Sign up</div>
+                            </Link>
+                          );
+                        }
                         return (
                           <button
                             key={m}
                             type="button"
                             role="radio"
                             aria-checked={selected}
-                            aria-label={`${m} model${locked ? ", sign in required" : `, ${c} credits`}`}
-                            disabled={locked}
+                            aria-label={`${m} model, ${c} credits`}
                             onClick={() => setModel(m)}
                             className={`rounded-xl border px-2.5 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                               selected
                                 ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
                                 : "border-white/10 bg-black/20 hover:border-white/22"
-                            } ${locked ? "cursor-not-allowed opacity-40" : ""}`}
+                            }`}
                           >
                             <div className="text-[13px] font-bold capitalize">{m}</div>
-                            <div className="mt-0.5 text-[11px] text-[var(--text3)]">
-                              {locked ? "sign in" : `${c} credits`}
-                            </div>
+                            <div className="mt-0.5 text-[11px] text-[var(--text3)]">{c} credits</div>
                           </button>
                         );
                       })}

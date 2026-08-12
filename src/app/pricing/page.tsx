@@ -42,11 +42,11 @@ export default function PricingPage() {
         setNote(
           data.configured
             ? user
-              ? "Checkout is live. Select opens Stripe. First purchase adds 31 bonus credits."
-              : "Checkout is live. Sign in, then Select opens Stripe."
+              ? "Select opens Stripe. First purchase adds 31 bonus credits."
+              : "Sign in, then Select opens Stripe."
             : user
-              ? "Stripe is not configured yet. No payment will be charged. Continue opens your workspace and remembers the pack."
-              : "Stripe is not configured yet. No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits."
+              ? "Stripe isn’t configured — nothing will be charged. Continue opens workspace and remembers the pack."
+              : "Stripe isn’t configured — nothing will be charged. Continue free opens sign-up (10 free credits)."
         );
       } catch (err) {
         if (cancelled) return;
@@ -56,8 +56,8 @@ export default function PricingPage() {
         setConfigured(false);
         setNote(
           user
-            ? "Stripe is not configured yet. No payment will be charged. Continue opens your workspace and remembers the pack."
-            : "Stripe is not configured yet. No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits."
+            ? "Stripe isn’t configured — nothing will be charged. Continue opens workspace and remembers the pack."
+            : "Stripe isn’t configured — nothing will be charged. Continue free opens sign-up (10 free credits)."
         );
       }
     })();
@@ -111,7 +111,10 @@ export default function PricingPage() {
             )}
           </p>
           {note && (
-            <p className="mx-auto mt-5 max-w-2xl rounded-xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]">
+            <p
+              className="mx-auto mt-5 max-w-2xl rounded-xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
+              role="status"
+            >
               <b>{configured ? "Checkout is live." : "No fake charge."}</b> {note}
             </p>
           )}
