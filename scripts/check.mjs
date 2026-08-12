@@ -206,7 +206,26 @@ function extractI18nKeys(src) {
   mustContain("functions/api/generate.ts", "kie_file_type_unsupported", "KIE file type mapped");
   mustContain("libs/kie.ts", "classifyProviderCreateError", "classify KIE create errors");
   mustContain("libs/kie.ts", "kieImageUrlIssue", "reject non-image URL extensions");
+  mustContain("functions/api/generate.ts", "kie_api_key_missing", "missing KIE key");
   mustContain("functions/api/generate.ts", "kie_unauthorized", "bad KIE key");
+  if (read("functions/api/generate.ts").includes("Check KIE_API_KEY")) {
+    fail.push("generate.ts must not tell guests to Check KIE_API_KEY");
+  } else ok.push("generate.ts guest errors do not name KIE_API_KEY");
+  if (read("functions/api/generate.ts").includes("Set it as a Cloudflare Pages secret")) {
+    fail.push("generate.ts kie_api_key_missing must be user copy, not operator secret hint");
+  } else ok.push("kie_api_key_missing message is user-honest");
+  mustContain(
+    "functions/api/generate.ts",
+    "Generation isn’t available on this preview yet",
+    "kie missing copy matches preview i18n"
+  );
+  if (read("functions/api/health.ts").includes("set Pages secret KIE_API_KEY")) {
+    fail.push("health generateReady message must not tell users to set KIE_API_KEY");
+  } else ok.push("health generateReady message is user-honest");
+  mustContain("functions/api/health.ts", "Generation isn’t available yet", "health message when generateReady false");
+  if (read("libs/kie.ts").includes("Check KIE_API_KEY")) {
+    fail.push("libs/kie.ts must not leak Check KIE_API_KEY to clients");
+  } else ok.push("kie unauthorized copy does not name the secret");
   mustContain("functions/api/generate.ts", "guestRemaining", "guest remaining on generate");
   mustContain("functions/api/generate.ts", "GUEST_LIMIT", "guest limit");
   mustContain("functions/api/generate.ts", "onRequestHead", "generate HEAD");

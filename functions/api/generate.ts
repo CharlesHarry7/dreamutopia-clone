@@ -101,7 +101,7 @@ function kieMissingResponse(
 ): Response {
   return structuredError(
     "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
+    "Generation isn’t available on this preview yet. Try again later.",
     503,
     { kieConfigured: false, mediaRequired: false, ...(extra || {}) },
     extraHeaders
@@ -273,7 +273,7 @@ function createFailedResponse(
     if (classified.code === "kie_unauthorized") {
       return structuredError(
         "kie_unauthorized",
-        "Generation provider rejected the API key. Check KIE_API_KEY.",
+        "Generation isn’t available right now. Please try again later.",
         503,
         { providerCode, kieConfigured: true, ...more },
         extraHeaders

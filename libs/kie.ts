@@ -355,7 +355,7 @@ export function classifyProviderCreateError(created: {
     return {
       code: "kie_unauthorized",
       status: 503,
-      message: "Generation provider rejected the API key. Check KIE_API_KEY.",
+      message: "Generation isn’t available right now. Please try again later.",
       providerCode,
     };
   }
