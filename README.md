@@ -44,10 +44,11 @@
 ## Generate path
 
 1. Sign up (10 credits) and open `/workspace`.
-2. Upload a JPG/PNG/WebP/GIF (POST `/api/upload` → R2) **or** paste a public https image URL.
-3. `POST /api/generate` deducts credits, calls KIE `kling-2.6/image-to-video`, stores the job in D1.
-4. Client polls `GET /api/generate?id=…` until `status=done` and plays the provider `resultUrl`.
-5. Image-only generation and paid checkout are **not live**.
+2. **Video:** upload a start image (or paste a public URL) + motion prompt.
+   **Image:** prompt only (optional reference photo to edit).
+3. `POST /api/generate` deducts credits, calls KIE (`kling-2.6/image-to-video` or `nano-banana-2`), stores the job in D1.
+4. Client polls `GET /api/generate?id=…` until `status=done`. When R2 is bound, the provider file is copied to `/api/media` so the link does not expire with KIE.
+5. Paid checkout is **not live**.
 
 ## Backend setup
 

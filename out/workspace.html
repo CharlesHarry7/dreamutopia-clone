@@ -106,7 +106,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .url-input::placeholder{color:rgba(255,255,255,.3)}
 .gen-result{margin-top:16px;display:none;text-align:center}
 .gen-result.show{display:block}
-.gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;border:1px solid rgba(255,255,255,.1)}
+.gen-result video,.gen-result img.preview-out{width:100%;max-width:480px;border-radius:12px;background:#000;border:1px solid rgba(255,255,255,.1);margin:0 auto}
+.gen-result img.preview-out{max-height:480px;object-fit:contain;background:rgba(0,0,0,.35)}
 .gen-result a{display:inline-block;margin-top:10px;font-size:13px;color:var(--primary2);text-decoration:underline}
 
 .label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -270,7 +271,7 @@ nav{display:none}
 <section class="welcome" id="welcomeBanner">
 <div>
 <h2>Welcome to DreamUtopia Workspace</h2>
-<p>Sign up for 10 free credits, then upload an image and generate video. No credit card required.</p>
+<p>Sign up for 10 free credits, then generate video from a photo or images from a prompt. No credit card required.</p>
 </div>
 <div class="welcome-actions">
 <a href="/auth?mode=login" class="btn-outline" id="welcomeLogin">Log In</a>
@@ -329,7 +330,7 @@ Image
 <span><span id="charCount">0</span>/8000</span>
 </div>
 
-<div class="model-row" id="modelRow">
+<div class="model-row" id="videoModels">
 <button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
 <div class="n">Lite</div>
 <div class="c">3 credits</div>
@@ -342,6 +343,16 @@ Image
 <div class="n">Pro</div>
 <div class="c">16 credits</div>
 <div class="t">with Sound</div>
+</button>
+</div>
+<div class="model-row" id="imageModels" style="display:none">
+<button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
+<div class="n">Lite</div>
+<div class="c">1 credit · 1K</div>
+</button>
+<button type="button" class="model-opt" data-model="pro" onclick="pickModel('pro')">
+<div class="n">Pro</div>
+<div class="c">2 credits · 2K</div>
 </button>
 </div>
 
@@ -357,6 +368,7 @@ Image
 </div>
 <div class="gen-result" id="genResult">
 <video id="genResultVideo" controls playsinline></video>
+<img id="genResultImage" class="preview-out" alt="Generated image" hidden>
 <a id="genResultLink" href="#" target="_blank" rel="noopener">Open result URL</a>
 </div>
 </div>
@@ -510,17 +522,33 @@ async function fetchAuthMe(retriesLeft) {
   }
 }
 
-function showResultVideo(url) {
+function showResult(url, kind) {
   const box = document.getElementById("genResult");
   const video = document.getElementById("genResultVideo");
+  const image = document.getElementById("genResultImage");
   const link = document.getElementById("genResultLink");
   if (!url) {
     box.classList.remove("show");
     video.removeAttribute("src");
     video.load();
+    image.removeAttribute("src");
+    image.hidden = true;
+    video.hidden = false;
     return;
   }
-  video.src = url;
+  const isImage = kind === "image" || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+  if (isImage) {
+    video.hidden = true;
+    video.removeAttribute("src");
+    video.load();
+    image.hidden = false;
+    image.src = url;
+  } else {
+    image.hidden = true;
+    image.removeAttribute("src");
+    video.hidden = false;
+    video.src = url;
+  }
   link.href = url;
   box.classList.add("show");
 }
@@ -534,7 +562,7 @@ async function pollGeneration(generationId, statusText) {
     const status = data.status || g.status;
     const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
     if (status === "done" && resultUrl) {
-      return { status, resultUrl, generation: g };
+      return { status, resultUrl, generation: g, kind: g.kind || data.kind || "video" };
     }
     if (status === "failed") {
       const msg = g.error_message || "Generation failed";
@@ -656,22 +684,35 @@ function switchPrimaryTab(tab) {
 }
 
 function switchMode(mode) {
-  currentMode = mode;
-  document.getElementById("modeVideo").classList.toggle("active", mode === "video");
-  document.getElementById("modeImage").classList.toggle("active", mode === "image");
-  document.getElementById("genTitle").textContent = mode === "video" ? "AI Video Generator" : "AI Image Generator";
-  document.getElementById("uploadLabel").textContent = mode === "video" ? "Upload Start Image" : "Upload Image";
-  document.getElementById("promptLabel").textContent = mode === "video" ? "Describe Your Video" : "Describe Your Image";
-  document.getElementById("promptInput").placeholder = mode === "video"
+  currentMode = mode === "image" ? "image" : "video";
+  document.getElementById("modeVideo").classList.toggle("active", currentMode === "video");
+  document.getElementById("modeImage").classList.toggle("active", currentMode === "image");
+  document.getElementById("genTitle").textContent = currentMode === "video" ? "AI Video Generator" : "AI Image Generator";
+  document.getElementById("uploadLabel").textContent = currentMode === "video" ? "Upload Start Image" : "Reference image (optional)";
+  document.getElementById("promptLabel").textContent = currentMode === "video" ? "Describe Your Video" : "Describe Your Image";
+  document.getElementById("promptInput").placeholder = currentMode === "video"
     ? "A futuristic city with flying cars..."
     : "A cinematic portrait with soft lighting...";
-  document.getElementById("modelRow").style.display = mode === "video" ? "grid" : "none";
+  document.getElementById("videoModels").style.display = currentMode === "video" ? "grid" : "none";
+  document.getElementById("imageModels").style.display = currentMode === "image" ? "grid" : "none";
+  const hint = document.getElementById("urlHint");
   const note = document.getElementById("modeNote");
-  if (mode === "image") {
+  if (currentMode === "image") {
     currentModel = "lite";
+    pickModel("lite");
+    if (hint) hint.innerHTML = "Optional — add a photo to edit, or leave empty for text-to-image.";
     note.classList.add("show");
-    note.innerHTML = "<b>Image generation isn’t live yet.</b> Switch back to Video to create with KIE (image-to-video).";
+    note.innerHTML = "<b>Image generation is live.</b> Lite 1 credit (1K) · Pro 2 credits (2K). Reference photo optional.";
   } else {
+    if (currentModel === "medium" || currentModel === "pro" || currentModel === "lite") {
+      /* keep */
+    } else {
+      currentModel = "lite";
+    }
+    pickModel(currentModel);
+    if (hint && uploadReady) {
+      hint.innerHTML = 'Or paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> if you already have one hosted.';
+    }
     note.classList.remove("show");
     note.textContent = "";
   }
@@ -679,7 +720,9 @@ function switchMode(mode) {
 
 function pickModel(v) {
   currentModel = v;
-  document.querySelectorAll(".model-opt").forEach((el) => {
+  const row = document.getElementById(currentMode === "image" ? "imageModels" : "videoModels");
+  if (!row) return;
+  row.querySelectorAll(".model-opt").forEach((el) => {
     el.classList.toggle("active", el.dataset.model === v);
   });
 }
@@ -768,12 +811,8 @@ async function generate() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return toast("Please enter a prompt.", true);
 
-  if (currentMode === "image") {
-    return toast("Image generation isn’t live yet — switch to Video.", true);
-  }
-
   let imageUrl = document.getElementById("imageUrlInput").value.trim();
-  if (token && !uploadedImage && !imageUrl) {
+  if (currentMode === "video" && token && !uploadedImage && !imageUrl) {
     return toast("Upload an image or paste a public https URL.", true);
   }
 
@@ -786,7 +825,7 @@ async function generate() {
   document.getElementById("genBtnLabel").textContent = "Generating...";
   status.classList.add("show");
   spinner.style.display = "";
-  showResultVideo(null);
+  showResult(null);
   statusText.textContent = "Starting KIE job…";
 
   try {
@@ -806,25 +845,26 @@ async function generate() {
         if (uploadedImageUrl) document.getElementById("imageUrlInput").value = uploadedImageUrl;
         imageUrl = uploadedImageUrl || imageUrl;
       } catch (upErr) {
-        if (upErr && upErr.code === "media_not_bound" && imageUrl) {
-          statusText.textContent = "Upload unavailable — using pasted URL…";
+        if (upErr && upErr.code === "media_not_bound" && (imageUrl || currentMode === "image")) {
+          statusText.textContent = currentMode === "image" ? "Upload unavailable — generating from prompt…" : "Upload unavailable — using pasted URL…";
         } else {
           throw upErr;
         }
       }
     }
 
-    if (!imageUrl) {
+    if (currentMode === "video" && !imageUrl) {
       throw Object.assign(new Error("Upload an image or paste a public https URL."), { code: "image_url_required" });
     }
 
     statusText.textContent = "Starting KIE job…";
     const payload = {
       prompt,
+      kind: currentMode,
       model: currentModel,
       durationSec: currentModel === "lite" ? 5 : 10,
-      imageUrl,
     };
+    if (imageUrl) payload.imageUrl = imageUrl;
     if (uploadedMediaKey) payload.mediaKey = uploadedMediaKey;
     const data = await api("/generate", {
       method: "POST",
@@ -835,9 +875,10 @@ async function generate() {
     statusText.textContent = "Queued · waiting for provider…";
     const done = await pollGeneration(data.generationId, statusText);
     spinner.style.display = "none";
-    statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(currentModel)} · provider URL ready`;
-    showResultVideo(done.resultUrl);
-    toast("Video ready");
+    const kind = done.kind || data.kind || currentMode;
+    statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
+    showResult(done.resultUrl, kind);
+    toast(kind === "image" ? "Image ready" : "Video ready");
     loadHistory();
   } catch (e) {
     spinner.style.display = "none";
@@ -907,17 +948,26 @@ async function loadHistory() {
     list.hidden = false;
     list.innerHTML = gens.map((g) => {
       const url = g.result_url || g.resultUrl || "";
+      const kind = g.kind || (String(g.model).indexOf("image") === 0 ? "image" : "video");
+      const meta = kind === "image"
+        ? `#${g.id} · image · ${escapeHtml(String(g.model))}`
+        : `#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s`;
       const link = url
         ? `<div class="h-prompt" style="margin-top:6px"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color:var(--primary2)">Open result</a></div>`
         : "";
+      const preview = !url
+        ? ""
+        : kind === "image"
+          ? `<img src="${escapeHtml(url)}" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
+          : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
       return `
       <div class="history-item">
         <div class="h-top">
-          <span class="h-meta">#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s</span>
+          <span class="h-meta">${meta}</span>
           <span class="h-status ${escapeHtml(String(g.status))}">${escapeHtml(String(g.status))}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
-        ${url ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>` : ""}
+        ${preview}
         ${link}
       </div>`;
     }).join("");
@@ -951,6 +1001,8 @@ function escapeHtml(s) {
   if (hint && !uploadReady) {
     hint.innerHTML = 'File upload isn’t bound yet — paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> that KIE can fetch.';
   }
+  const modeParam = new URLSearchParams(location.search).get("mode");
+  if (modeParam === "image") switchMode("image");
   if (token) {
     try {
       // Only a real unauthorized response may wipe the session. Transient

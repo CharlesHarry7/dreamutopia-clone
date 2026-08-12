@@ -1,9 +1,11 @@
 # Backend wiring — D1 + KV + KIE + R2 upload
 
-Auth, credits, and generation history need Cloudflare bindings. Image-to-video accepts either:
+Auth, credits, and generation history need Cloudflare bindings. Image-to-video and text-to-image accept either:
 
 - a file uploaded to R2 (`POST /api/upload` → public `GET /api/media?key=`), or
-- any public `https` `imageUrl` that KIE can fetch.
+- any public `https` `imageUrl` that KIE can fetch (video requires this; image generation does not).
+
+When a job finishes, the Function copies the provider file into R2 when `MEDIA` is bound, then stores that `/api/media` URL as `result_url`.
 
 Payment/Stripe is out of scope. `GET/POST /api/checkout` returns `checkout_not_configured` (503).
 
@@ -25,17 +27,17 @@ POST /api/upload          Authorization: Bearer <session>
 
 POST /api/generate
   Authorization: Bearer <session>
-  { "prompt", "imageUrl", "mediaKey?", "model", "durationSec" }
+  { "prompt", "kind": "video"|"image", "imageUrl?", "mediaKey?", "model", "durationSec?" }
 
-→ deduct credits
-→ KIE createTask (kling-2.6/image-to-video)
-→ INSERT generations (status=processing, provider_job_id, input_image_url, media_key)
-→ { generationId, status, providerJobId, credits }
+→ deduct credits (video Lite 3 / Med 5 / Pro 16 · image Lite 1 / Pro 2)
+→ KIE createTask (kling-2.6/image-to-video or nano-banana-2)
+→ INSERT generations
+→ { generationId, kind, status, providerJobId, credits }
 
 GET /api/generate?id=<generationId>
 → poll KIE recordInfo when still processing
-→ update D1 to done/failed
-→ { status, resultUrl }   // provider video URL
+→ copy result into R2 when MEDIA is bound
+→ { status, resultUrl, generation.kind }
 ```
 
 If `KIE_API_KEY` is missing:

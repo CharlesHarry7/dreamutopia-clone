@@ -6,20 +6,37 @@ import {
   hasDb,
   hasSessions,
   hasKieKey,
+  hasMedia,
 } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
   createImageToVideoTask,
+  createImageTask,
   getTaskInfo,
   isPublicHttpsUrl,
 } from "../../libs/kie";
-import { isSafeMediaKey, mediaKeyFromUrl } from "../../libs/media";
+import { isSafeMediaKey, mediaKeyFromUrl, persistRemoteMedia } from "../../libs/media";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
 // Credits per generation
-const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
+const VIDEO_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
+const IMAGE_COST: Record<string, number> = { lite: 1, pro: 2 };
+
+type GenerationKind = "video" | "image";
+
+function parseStoredModel(stored: string): { kind: GenerationKind; model: string } {
+  if (stored.startsWith("image-")) {
+    const model = stored.slice(6);
+    return { kind: "image", model: IMAGE_COST[model] ? model : "lite" };
+  }
+  return { kind: "video", model: VIDEO_COST[stored] ? stored : "lite" };
+}
+
+function storeModel(kind: GenerationKind, model: string): string {
+  return kind === "image" ? `image-${model}` : model;
+}
 
 type GenerationRow = {
   id: number;
@@ -39,7 +56,7 @@ type GenerationRow = {
 function kieMissingResponse(): Response {
   return structuredError(
     "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable image-to-video generation. MEDIA/R2 is not required for this path.",
+    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
     503,
     { kieConfigured: false, mediaRequired: false }
   );
@@ -53,23 +70,36 @@ async function refundCredits(env: Env & { DB: D1Database }, userId: number, cost
 
 async function syncProviderStatus(
   env: Env & { DB: D1Database; KIE_API_KEY: string },
-  row: GenerationRow
+  row: GenerationRow,
+  origin: string
 ): Promise<GenerationRow> {
   if (row.status !== "processing" || !row.provider_job_id) return row;
 
   const info = await getTaskInfo(env.KIE_API_KEY, row.provider_job_id);
   if (!info.ok) {
-    // Transient poll failure — leave row as processing
     return row;
   }
 
   if (info.state === "success" && info.resultUrl) {
+    let resultUrl = info.resultUrl;
+    if (hasMedia(env)) {
+      try {
+        const copied = await persistRemoteMedia(env.MEDIA, {
+          userId: row.user_id,
+          sourceUrl: info.resultUrl,
+          origin,
+        });
+        if (copied) resultUrl = copied;
+      } catch {
+        // Keep provider URL if R2 copy fails
+      }
+    }
     await env.DB.prepare(
       "UPDATE generations SET status = 'done', result_url = ?, error_message = NULL WHERE id = ?"
     )
-      .bind(info.resultUrl, row.id)
+      .bind(resultUrl, row.id)
       .run();
-    return { ...row, status: "done", result_url: info.resultUrl, error_message: null };
+    return { ...row, status: "done", result_url: resultUrl, error_message: null };
   }
 
   if (info.state === "fail") {
@@ -86,9 +116,12 @@ async function syncProviderStatus(
 }
 
 function publicGeneration(row: GenerationRow) {
+  const parsed = parseStoredModel(row.model);
   return {
     id: row.id,
-    model: row.model,
+    kind: parsed.kind,
+    model: parsed.model,
+    storedModel: row.model,
     prompt: row.prompt,
     status: row.status,
     media_key: row.media_key,
@@ -104,12 +137,13 @@ function publicGeneration(row: GenerationRow) {
 
 /**
  * POST /api/generate
- * Body: { prompt, imageUrl, mediaKey?, model?, durationSec? }
- * imageUrl: public HTTPS (uploaded via POST /api/upload or any KIE-fetchable URL).
+ * Body: { prompt, kind?: "video"|"image", imageUrl?, mediaKey?, model?, durationSec? }
+ * Video requires imageUrl. Image is text-to-image, or image-to-image when imageUrl is set.
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   let body: {
     prompt?: string;
+    kind?: string;
     model?: string;
     durationSec?: number;
     imageUrl?: string;
@@ -127,16 +161,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
+  const kind: GenerationKind = body.kind === "image" ? "image" : "video";
   const imageUrl = (body.imageUrl || body.image_url || "").trim();
-  if (!imageUrl) {
-    return structuredError(
-      "image_url_required",
-      "imageUrl is required. Upload a file via POST /api/upload or paste a public https image URL that KIE can fetch.",
-      400,
-      { mediaRequired: false }
-    );
+
+  if (kind === "video") {
+    if (!imageUrl) {
+      return structuredError(
+        "image_url_required",
+        "imageUrl is required for video. Upload a file via POST /api/upload or paste a public https image URL.",
+        400,
+        { mediaRequired: false }
+      );
+    }
   }
-  if (!isPublicHttpsUrl(imageUrl)) {
+  if (imageUrl && !isPublicHttpsUrl(imageUrl)) {
     return structuredError(
       "image_url_invalid",
       "imageUrl must be a public https:// URL that KIE can fetch.",
@@ -148,12 +186,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (requestedKey && !isSafeMediaKey(requestedKey)) {
     return structuredError("media_key_invalid", "mediaKey is not a valid upload key.", 400);
   }
-  const mediaKey = requestedKey || mediaKeyFromUrl(imageUrl) || null;
+  const mediaKey = requestedKey || (imageUrl ? mediaKeyFromUrl(imageUrl) : null) || null;
 
-  const model = body.model && MODEL_COST[body.model] ? body.model : "lite";
-  const cost = MODEL_COST[model];
-  const durationSec = Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
-  const sound = model === "pro";
+  const model =
+    kind === "image"
+      ? IMAGE_COST[body.model || ""]
+        ? (body.model as string)
+        : "lite"
+      : VIDEO_COST[body.model || ""]
+        ? (body.model as string)
+        : "lite";
+  const cost = kind === "image" ? IMAGE_COST[model] : VIDEO_COST[model];
+  const durationSec = kind === "image" ? null : Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
+  const storedModel = storeModel(kind, model);
+  const sound = kind === "video" && model === "pro";
 
   if (!hasDb(env) || !hasSessions(env)) {
     return structuredError(
@@ -188,12 +234,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   // Create KIE task before D1 insert so we can refund cleanly on provider failure
-  const created = await createImageToVideoTask(env.KIE_API_KEY, {
-    prompt,
-    imageUrl,
-    durationSec,
-    sound,
-  });
+  const created =
+    kind === "image"
+      ? await createImageTask(env.KIE_API_KEY, {
+          prompt,
+          imageUrl: imageUrl || null,
+          resolution: model === "pro" ? "2K" : "1K",
+        })
+      : await createImageToVideoTask(env.KIE_API_KEY, {
+          prompt,
+          imageUrl,
+          durationSec: durationSec || 5,
+          sound,
+        });
 
   if (!created.ok) {
     await refundCredits(env, session.userId, cost);
@@ -220,7 +273,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         (user_id, model, prompt, status, media_key, duration_sec, input_image_url, provider_job_id, result_url, error_message)
        VALUES (?, ?, ?, 'processing', ?, ?, ?, ?, NULL, NULL)`
     )
-      .bind(session.userId, model, prompt, mediaKey, durationSec, imageUrl, created.taskId)
+      .bind(session.userId, storedModel, prompt, mediaKey, durationSec, imageUrl || null, created.taskId)
       .run();
   } catch (e) {
     await refundCredits(env, session.userId, cost);
@@ -251,19 +304,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     ok: true,
     demo: false,
     generationId,
+    kind,
     model,
     cost,
     credits,
     status: "processing",
     providerJobId: created.taskId,
-    imageUrl,
+    imageUrl: imageUrl || null,
     mediaKey,
     resultUrl: null,
     mediaRequired: false,
     message:
       "KIE job created — poll GET /api/generate?id=" +
       generationId +
-      " for status; resultUrl is the provider video URL (no R2).",
+      " for status.",
   });
 };
 
@@ -286,6 +340,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   const url = new URL(request.url);
   const idParam = url.searchParams.get("id");
+
+  const origin = new URL(request.url).origin;
 
   if (idParam) {
     const id = Number(idParam);
@@ -318,7 +374,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      row = await syncProviderStatus(env, row);
+      row = await syncProviderStatus(env, row, origin);
     }
 
     return json({
@@ -355,7 +411,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // Best-effort sync a few in-flight jobs so history stays fresh
   if (hasKieKey(env)) {
     for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
-      await syncProviderStatus(env, g);
+      await syncProviderStatus(env, g, origin);
     }
     const refreshed = await env.DB.prepare(
       `SELECT id, user_id, model, prompt, status, media_key, duration_sec,

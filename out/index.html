@@ -458,7 +458,7 @@ nav{display:none}
 <h3>Frequently Asked Questions</h3>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Is DreamUtopia really free to use?</div>
-<div class="faq-a">Yes. Create a free account and you instantly get 10 credits — no credit card required. Video costs: Lite 3 · Medium 5 · Pro 16. Paid checkout for extra packs is not live yet.</div>
+<div class="faq-a">Yes. Create a free account and you instantly get 10 credits — no credit card required. Video: Lite 3 · Medium 5 · Pro 16. Image: Lite 1 · Pro 2. Paid checkout for extra packs is not live yet.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What AI models are available?</div>
@@ -534,17 +534,22 @@ nav{display:none}
 
 <script>
 // Tab切换
+function goCreate(){
+  const token=localStorage.getItem("dreamutopia_token");
+  const imageTab=document.querySelector(".gen-tab.active");
+  const isImage=imageTab && /image/i.test(imageTab.textContent||"");
+  const dest=isImage?"/workspace?mode=image":"/workspace";
+  location.href=token?dest:"/auth?mode=register"+(isImage?"&next=image":"");
+}
+
 document.querySelectorAll('.gen-tab').forEach(tab=>{
 tab.addEventListener('click',()=>{
 document.querySelectorAll('.gen-tab').forEach(t=>t.classList.remove('active'));
 tab.classList.add('active');
+const card=document.querySelector('.gen-card h2');
+if(card) card.textContent=/image/i.test(tab.textContent||'')?"AI Image Generator":"AI Video Generator";
 });
 });
-
-function goCreate(){
-  const token=localStorage.getItem("dreamutopia_token");
-  location.href=token?"/workspace":"/auth?mode=register";
-}
 
 // Generate按钮激活
 function updateGen(ta){

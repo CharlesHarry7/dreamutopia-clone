@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS generations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  model TEXT NOT NULL DEFAULT 'lite',
+  model TEXT NOT NULL DEFAULT 'lite',       -- lite|medium|pro or image-lite|image-pro
   prompt TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',  -- pending | processing | done | failed
   media_key TEXT,                          -- R2 object key (optional; unused on URL path)

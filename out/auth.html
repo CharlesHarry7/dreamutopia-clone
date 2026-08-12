@@ -124,6 +124,7 @@ const params = new URLSearchParams(location.search);
 let mode = params.get("mode") === "login" ? "login" : "register";
 const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
 const selectedPack = packId ? PACKS[packId] : null;
+const nextMode = params.get("next") === "image" ? "image" : "";
 
 const title = document.getElementById("title");
 const lead = document.getElementById("lead");
@@ -138,14 +139,18 @@ const passwordInput = document.getElementById("password");
 const hdrLogin = document.getElementById("hdrLogin");
 const hdrSignup = document.getElementById("hdrSignup");
 
-function authUrl(nextMode) {
-  let url = "/auth?mode=" + nextMode;
+function authUrl(nextAuthMode) {
+  let url = "/auth?mode=" + nextAuthMode;
   if (packId) url += "&pack=" + encodeURIComponent(packId);
+  if (nextMode) url += "&next=" + encodeURIComponent(nextMode);
   return url;
 }
 
 function workspaceUrl() {
-  return packId ? "/workspace?pack=" + encodeURIComponent(packId) : "/workspace";
+  const q = [];
+  if (packId) q.push("pack=" + encodeURIComponent(packId));
+  if (nextMode) q.push("mode=" + encodeURIComponent(nextMode));
+  return q.length ? "/workspace?" + q.join("&") : "/workspace";
 }
 
 function setMode(next) {

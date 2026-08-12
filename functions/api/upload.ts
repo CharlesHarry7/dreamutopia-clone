@@ -7,7 +7,6 @@ import {
   hasSessions,
   hasMedia,
   bindingsUnavailable,
-  randomId,
 } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
@@ -15,6 +14,7 @@ import {
   IMAGE_TYPES,
   extForContentType,
   publicMediaUrl,
+  makeObjectKey,
 } from "../../libs/media";
 import type { Env } from "../../libs/utils";
 
@@ -90,7 +90,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
-  const key = `${session.userId}_${randomId("img")}.${ext}`;
+  const key = makeObjectKey(session.userId, "img", ext);
   const type = contentType.split(";")[0].trim().toLowerCase();
 
   try {
