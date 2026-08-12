@@ -182,6 +182,9 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover}
 .gallery-item .play{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2}
 .gallery-item .play.hidden{display:none}
+.gallery-like{position:absolute;bottom:8px;right:8px;z-index:3;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit}
+.gallery-like:hover{background:rgba(0,0,0,.75)}
+.gallery-like.liked{color:#fb7185}
 
 /* Why section */
 .why{max-width:1100px;margin:100px auto 0;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
@@ -703,7 +706,7 @@ if (homeUpload && homeFileInput) {
     if (file.size > DU.MAX_UPLOAD_BYTES) {
       if (status && text) {
         status.classList.add("show");
-        text.textContent = "Image must be 20 MB or smaller.";
+        text.textContent = DU.t("err.file_too_large", "Image must be 20 MB or smaller.");
       }
       return;
     }
@@ -718,6 +721,19 @@ if (homeUpload && homeFileInput) {
     homeFileInput.value = "";
     setHomePreview(null);
   });
+}
+
+function setGuestFoot(n) {
+  const foot = document.getElementById("homeFoot");
+  if (!foot || n === undefined || n === null) return;
+  window.__duGuestLeft = n;
+  const key = n <= 0 ? "guest.left.none" : n === 1 ? "guest.left.one" : "guest.left.many";
+  const fallback = n <= 0
+    ? 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.'
+    : n === 1
+      ? '1 free Lite video left. <a href="/auth?mode=register">Sign up</a> for 10 credits.'
+      : '{n} free Lite videos left. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
+  foot.innerHTML = DU.t(key, fallback).replace(/\{n\}/g, String(n));
 }
 
 async function homeGenerate() {
@@ -753,18 +769,13 @@ async function homeGenerate() {
       const up = await DU.uploadImage(homeFile);
       imageUrl = up.imageUrl || "";
       homeImageUrl = imageUrl;
+      if (up.guestRemaining !== undefined) setGuestFoot(up.guestRemaining);
     }
     text.textContent = "Starting KIE job…";
     const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5, idempotencyKey: DU.newIdempotencyKey() };
     if (imageUrl) payload.imageUrl = imageUrl;
     const data = await DU.api("/generate", { method: "POST", body: JSON.stringify(payload) });
-    if (data.guestRemaining !== undefined) {
-      const foot = document.getElementById("homeFoot");
-      const n = data.guestRemaining;
-      foot.innerHTML = n > 0
-        ? n + " free Lite video" + (n === 1 ? "" : "s") + " left. <a href=\"/auth?mode=register\">Sign up</a> for 10 credits."
-        : 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
-    }
+    if (data.guestRemaining !== undefined) setGuestFoot(data.guestRemaining);
     text.textContent = "Queued · waiting for provider…";
     const done = await DU.pollGeneration(data.generationId, (st, payload) => {
       text.textContent = DU.progressLabel(st, payload && payload.providerState);
@@ -778,11 +789,9 @@ async function homeGenerate() {
     text.innerHTML = '<span style="color:#22c55e">Done</span>';
   } catch (e) {
     const code = e && e.code ? String(e.code) : "";
-    if (code === "provider_credits_insufficient") {
-      text.textContent = "Generation is temporarily unavailable. Please try again later.";
-    } else {
-      text.textContent = e.message || "Generation failed";
-    }
+    text.textContent = DU.errorMessage(e, e.message || "Generation failed");
+    if (code === "guest_limit") setGuestFoot(0);
+    if (e && e.payload && e.payload.guestRemaining !== undefined) setGuestFoot(e.payload.guestRemaining);
   }
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));
@@ -824,6 +833,13 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
 (function loadLiveGallery() {
   const grid = document.getElementById("galleryGrid");
   if (!grid) return;
+  function likeBtn(item) {
+    const id = item.id;
+    if (!id) return "";
+    const likes = Number(item.likes) || 0;
+    const label = DU.t("gallery.like", "Like");
+    return '<button type="button" class="gallery-like" data-like-id="' + id + '" aria-label="' + label.replace(/"/g, "&quot;") + '">♥ <span>' + likes + "</span></button>";
+  }
   fetch("/api/gallery")
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -833,15 +849,32 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
         const url = item.url || "";
         const kind = item.kind || "image";
         const prompt = (item.prompt || "").replace(/</g, "&lt;");
+        const like = likeBtn(item);
         if (kind === "video") {
-          return '<div class="gallery-item" data-kind="video" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><video src="' + url.replace(/"/g, "&quot;") + '" muted playsinline preload="metadata"></video><div class="play">▶</div></div>';
+          return '<div class="gallery-item" data-id="' + (item.id || "") + '" data-kind="video" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><video src="' + url.replace(/"/g, "&quot;") + '" muted playsinline preload="metadata"></video><div class="play">▶</div>' + like + "</div>";
         }
-        return '<div class="gallery-item" data-kind="image" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><img src="' + url.replace(/"/g, "&quot;") + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div></div>';
+        return '<div class="gallery-item" data-id="' + (item.id || "") + '" data-kind="image" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><img src="' + url.replace(/"/g, "&quot;") + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div>' + like + "</div>";
       }).join("");
       if (items.length >= 6) grid.innerHTML = live;
       else grid.insertAdjacentHTML("afterbegin", live);
     })
     .catch(function () {});
+  grid.addEventListener("click", function (e) {
+    const btn = e.target.closest(".gallery-like");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = Number(btn.getAttribute("data-like-id"));
+    if (!id) return;
+    DU.likeGallery(id)
+      .then(function (res) {
+        const span = btn.querySelector("span");
+        if (span && res && res.likes !== undefined) span.textContent = String(res.likes);
+        btn.classList.add("liked");
+        btn.setAttribute("aria-label", DU.t("gallery.liked", "Liked"));
+      })
+      .catch(function () {});
+  });
 })();
 
 (function lightbox() {
@@ -879,12 +912,25 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
     box.classList.add("show");
   }
   grid.addEventListener("click", function (e) {
+    if (e.target.closest(".gallery-like")) return;
     const item = e.target.closest(".gallery-item");
     if (item) show(item);
   });
   if (close) close.addEventListener("click", hide);
   box.addEventListener("click", function (e) { if (e.target === box) hide(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") hide(); });
+})();
+
+(function hydrateGuestFoot() {
+  document.addEventListener("du:i18n", function () {
+    if (window.__duGuestLeft !== undefined && window.__duGuestLeft !== null) setGuestFoot(window.__duGuestLeft);
+  });
+  if (DU.getToken()) return;
+  DU.api("/credits")
+    .then(function (data) {
+      if (data && data.guestRemaining !== undefined) setGuestFoot(data.guestRemaining);
+    })
+    .catch(function () {});
 })();
 </script>
 </body>

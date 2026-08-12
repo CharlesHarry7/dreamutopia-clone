@@ -151,6 +151,19 @@
     return api("/gallery", { method: "POST", body: JSON.stringify({ generationId: generationId }) });
   }
 
+  function errorMessage(err, fallback) {
+    const code = (err && (err.code || (err.payload && err.payload.code))) || "";
+    if (code) {
+      const translated = t("err." + code, "");
+      if (translated) return translated;
+    }
+    return (err && err.message) || fallback || t("progress.failed", "Generation failed");
+  }
+
+  async function likeGallery(id) {
+    return api("/gallery/like", { method: "POST", body: JSON.stringify({ id: id }) });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -163,6 +176,8 @@
     progressLabel: progressLabel,
     downloadResult: downloadResult,
     publishGallery: publishGallery,
+    likeGallery: likeGallery,
+    errorMessage: errorMessage,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
   };

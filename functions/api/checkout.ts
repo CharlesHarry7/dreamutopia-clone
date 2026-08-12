@@ -1,4 +1,4 @@
-import { json, preflight, hasDb, hasSessions, type Env } from "../../libs/utils";
+import { json, preflight, asHead, hasDb, hasSessions, type Env } from "../../libs/utils";
 import { getSessionUser } from "../../libs/auth";
 import { getStripeCustomerId } from "../../libs/account";
 import {
@@ -35,6 +35,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   // Honest 503 until Stripe is configured — never look like a live charge endpoint.
   return json(catalog(configured), configured ? 200 : 503);
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!hasStripe(env) || !env.STRIPE_SECRET_KEY) {

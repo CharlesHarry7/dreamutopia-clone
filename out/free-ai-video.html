@@ -18,7 +18,9 @@ a:hover{text-decoration:underline}
 header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff}
 .logo img{width:28px;height:28px;border-radius:7px}
+.header-right{display:flex;align-items:center;gap:12px}
 nav a{color:var(--text2);font-size:14px;margin-left:12px;font-weight:500}
+.lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer}
 main{max-width:760px;margin:48px auto 80px;padding:0 20px}
 h1{font-size:36px;font-weight:800;letter-spacing:-.6px;line-height:1.2;margin-bottom:14px}
 .lead{font-size:17px;color:var(--text2);margin-bottom:22px}
@@ -35,11 +37,19 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <body>
 <header>
 <a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
+<div class="header-right">
 <nav>
-<a href="/">Home</a>
-<a href="/workspace">Workspace</a>
-<a href="/auth?mode=register">Sign up</a>
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+<a href="/auth?mode=register" data-i18n="hdr.signup">Sign up</a>
 </nav>
+<select class="lang-select" aria-label="Language">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
+</div>
 </header>
 <main>
 <h1>Free AI video: two Lite clips, no signup</h1>
@@ -58,7 +68,9 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <p>The third guest try returns <code>guest_limit</code>. Guest jobs live in KV on this browser until you create an account — they are not a cloud library. There is no App Store listing; install the PWA from the browser if you want a home-screen icon.</p>
 <p><a href="/image-to-video">Image to video</a> · <a href="/photo-to-video">Photo to video</a> · <a href="/pricing">Pricing</a></p>
 </main>
-<footer>© 2026 DreamUtopia AI · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
+<footer>© 2026 DreamUtopia AI · <a href="/privacy" data-i18n="foot.privacy">Privacy</a> · <a href="/terms" data-i18n="foot.terms">Terms</a></footer>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 </body>
 </html>

@@ -49,9 +49,10 @@ export function structuredError(
   code: string,
   message: string,
   status = 400,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
 ): Response {
-  return json({ error: code, code, message, ...(extra || {}) }, status);
+  return json({ error: code, code, message, ...(extra || {}) }, status, extraHeaders);
 }
 
 export function hasKieKey(env: Env): env is Env & { KIE_API_KEY: string } {

@@ -1,4 +1,4 @@
-import { json, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../libs/utils";
+import { json, preflight, asHead, hasDb, hasSessions, bindingsUnavailable } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
   GUEST_LIMIT,
@@ -41,3 +41,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     guestHeaders(guestId, request)
   );
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));

@@ -3,6 +3,7 @@ import {
   error,
   structuredError,
   preflight,
+  asHead,
   hasDb,
   hasSessions,
   hasMedia,
@@ -59,6 +60,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   return json({ ok: true, demo: false, items });
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));
 
 /**
  * POST /api/gallery — opt-in publish of a finished account generation.

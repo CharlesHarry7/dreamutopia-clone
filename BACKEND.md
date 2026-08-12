@@ -251,6 +251,8 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | 3+ jobs already processing | `job_in_flight` 429 |
 | KIE wallet empty (key is set) | `provider_credits_insufficient` 503 (user-safe; not their credits) |
 | KIE key rejected | `kie_unauthorized` 503 |
+| POST `/api/gallery/like` `{ id }` | Increment `likes` once per IP (KV); 40/hour |
+| POST `/api/upload` (guest) | Returns `guestRemaining` + `guestUploads` (does not burn a trial) |
 
 ## Checklist
 

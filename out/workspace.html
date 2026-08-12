@@ -1079,7 +1079,12 @@ function bindUploadDrop() {
 }
 
 async function uploadImageFile(file) {
-  return DU.uploadImage(file);
+  const up = await DU.uploadImage(file);
+  if (!token && up && up.guestRemaining !== undefined) {
+    guestRemaining = up.guestRemaining;
+    updateAuthUI();
+  }
+  return up;
 }
 
 async function generate() {
@@ -1091,13 +1096,13 @@ async function generate() {
   lastUrl = String(lastUrl).trim();
 
   if (!token && currentMode === "video" && currentModel !== "lite") {
-    return toast("Free trial is Lite only — sign up for Medium and Pro.", true);
+    return toast(DU.t("err.guest_lite_only", "Free trial is Lite only — sign up for Medium and Pro."), true);
   }
   if (!token && currentMode === "image") {
-    return toast("Image generation needs a free account (10 credits).", true);
+    return toast(DU.t("err.guest_lite_only", "Image generation needs a free account (10 credits)."), true);
   }
   if (!token && currentMode === "video" && !uploadedImage && !imageUrl) {
-    return toast("Free trial needs a start image.", true);
+    return toast(DU.t("err.image_url_required", "Free trial needs a start image."), true);
   }
 
   const btn = document.getElementById("genBtn");
@@ -1184,31 +1189,13 @@ async function generate() {
   } catch (e) {
     spinner.style.display = "none";
     const code = e && e.code ? String(e.code) : "";
-    let msg = e.message || "Generation failed";
-    if (code === "kie_api_key_missing") {
-      msg = "KIE_API_KEY missing — set it as a Pages secret.";
-    } else if (code === "provider_credits_insufficient") {
-      msg = "Generation is temporarily unavailable. Please try again later.";
-    } else if (code === "kie_unauthorized") {
-      msg = "Generation provider rejected the API key.";
-    } else if (code === "kie_create_failed") {
-      msg = e.message || "Provider failed to start the job.";
-    } else if (code === "schema_migration_required") {
-      msg = "D1 migration needed — run migrations/001_generations_kie.sql";
-    } else if (code === "media_not_bound") {
-      msg = "File upload isn’t bound — paste a public https image URL instead.";
-    } else if (code === "image_url_required" || code === "image_url_invalid") {
-      msg = e.message || "Upload an image or paste a public https URL.";
-    } else if (code === "guest_limit") {
-      msg = e.message || "Sign up for 10 credits to keep creating.";
+    let msg = DU.errorMessage(e, e.message || "Generation failed");
+    if (code === "guest_limit") {
       guestRemaining = 0;
       updateAuthUI();
-    } else if (code === "guest_lite_only") {
-      msg = e.message || "Sign up for 10 credits to keep creating.";
-    } else if (code === "rate_limited" || code === "job_in_flight") {
-      msg = e.message || "Too many requests — wait a moment and try again.";
-    } else if (code === "unsupported_type" || code === "file_too_large") {
-      msg = e.message || "Use a JPG/PNG/WebP/GIF/TIFF under 20 MB.";
+    } else if (e && e.payload && e.payload.guestRemaining !== undefined && !token) {
+      guestRemaining = e.payload.guestRemaining;
+      updateAuthUI();
     }
     statusText.textContent = msg;
     toast(msg, true);
@@ -1333,8 +1320,12 @@ function escapeHtml(s) {
   updateAuthUI();
   showPackBanner();
   try {
-    const cap = await fetch("/api/upload").then((r) => r.json());
+    const cap = await fetch("/api/upload", { credentials: "same-origin" }).then((r) => r.json());
     uploadReady = !!(cap && cap.mediaBound);
+    if (!token && cap && cap.guestRemaining !== undefined) {
+      guestRemaining = cap.guestRemaining;
+      updateAuthUI();
+    }
   } catch (e) {
     uploadReady = false;
   }

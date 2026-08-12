@@ -50,6 +50,7 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <li>A guest-trial cookie (<code>du_guest</code>) plus an IP hash so each device gets 2 free Lite videos</li>
 <li>Uploaded start images in Cloudflare R2, served at unguessable <code>/api/media</code> URLs so the inference provider can fetch them</li>
 <li>If you tap <b>Share to gallery</b>, that finished result (prompt + media) is listed on the public homepage gallery</li>
+<li>Gallery likes store an IP hash in KV so each visitor can like an item once (30 days)</li>
 <li>Referral codes and a credit ledger (<code>credit_events</code>) when you buy a pack</li>
 <li>Password-reset tokens in KV (1 hour) if you request a reset</li>
 </ul>

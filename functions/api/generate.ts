@@ -73,12 +73,16 @@ function decodeInputImages(raw: string | null): InputImages {
   return { first: raw, last: null };
 }
 
-function kieMissingResponse(): Response {
+function kieMissingResponse(
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
+): Response {
   return structuredError(
     "kie_api_key_missing",
     "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
     503,
-    { kieConfigured: false, mediaRequired: false }
+    { kieConfigured: false, mediaRequired: false, ...(extra || {}) },
+    extraHeaders
   );
 }
 
@@ -216,15 +220,19 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 }
 
 function createFailedResponse(
-  created: { message: string; code?: number; status: number }
+  created: { message: string; code?: number; status: number },
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
 ): Response {
   const providerCode = created.code ?? null;
+  const more = extra || {};
   if (providerCode === 402 || /credits insufficient|balance isn.?t enough|top up/i.test(created.message || "")) {
     return structuredError(
       "provider_credits_insufficient",
       "Generation is temporarily unavailable. Please try again later.",
       503,
-      { providerCode, kieConfigured: true }
+      { providerCode, kieConfigured: true, ...more },
+      extraHeaders
     );
   }
   if (providerCode === 401 || created.status === 401) {
@@ -232,14 +240,16 @@ function createFailedResponse(
       "kie_unauthorized",
       "Generation provider rejected the API key. Check KIE_API_KEY.",
       503,
-      { providerCode, kieConfigured: true }
+      { providerCode, kieConfigured: true, ...more },
+      extraHeaders
     );
   }
   return structuredError(
     "kie_create_failed",
     created.message || "Failed to create KIE generation task",
     502,
-    { providerCode }
+    { providerCode, ...more },
+    extraHeaders
   );
 }
 
@@ -357,6 +367,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (!hasKieKey(env)) {
+    if (!session) {
+      const guestId = ensureGuestId(request);
+      const rec = await loadGuest(env, guestId);
+      const quota = await guestQuota(env, rec, clientIp(request));
+      return kieMissingResponse(
+        { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+        guestHeaders(guestId, request)
+      );
+    }
     return kieMissingResponse();
   }
 
@@ -684,7 +703,11 @@ async function handleGuestPost(
     callBackUrl: kieCallbackUrl(new URL(request.url).origin),
   });
   if (!created.ok) {
-    return createFailedResponse(created);
+    return createFailedResponse(
+      created,
+      { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+      headers
+    );
   }
 
   const job: GuestJob = {
@@ -890,7 +913,12 @@ async function handleGuestGet(
     if (!job) return json({ error: "not found", code: "not_found" }, 404, headers);
     let providerState: string | null = null;
     if (job.status === "processing" && job.providerJobId) {
-      if (!hasKieKey(env)) return kieMissingResponse();
+      if (!hasKieKey(env)) {
+        return kieMissingResponse(
+          { guest: true, guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+          headers
+        );
+      }
       const synced = await settleGuestJob(env, rec, job, origin, ip);
       job = synced.job;
       providerState = synced.providerState;

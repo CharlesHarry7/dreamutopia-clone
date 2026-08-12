@@ -113,7 +113,7 @@ nav{display:none}
 <label for="password" data-i18n="auth.password">Password</label>
 <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters">
 </div>
-<p class="forgot-link" id="forgotLinkWrap" hidden><a href="/auth?mode=forgot" id="forgotLink">Forgot password?</a></p>
+<p class="forgot-link" id="forgotLinkWrap" hidden><a href="/auth?mode=forgot" id="forgotLink" data-i18n="auth.forgot">Forgot password?</a></p>
 <button class="submit" id="submitBtn" type="submit" data-i18n="auth.submitSignup">Sign Up Free</button>
 <div class="form-error" id="formError" role="alert"></div>
 </form>
@@ -186,12 +186,12 @@ function setMode(next) {
   const passwordField = passwordInput.closest(".field");
   const forgotWrap = document.getElementById("forgotLinkWrap");
   title.textContent = isForgot
-    ? "Reset password"
+    ? DU.t("auth.forgot.h", "Reset password")
     : isLogin
       ? DU.t("auth.login.h", "Welcome back")
       : DU.t("auth.signup.h", "Create your account");
   if (isForgot) {
-    lead.textContent = "We’ll email a reset link if that address has an account. The link expires in one hour.";
+    lead.textContent = DU.t("auth.forgot.lead", "We’ll email a reset link if that address has an account. The link expires in one hour.");
   } else if (selectedPack) {
     lead.textContent = isLogin
       ? "Log in to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits)."
@@ -206,7 +206,7 @@ function setMode(next) {
   tabRegister.setAttribute("aria-selected", String(!isLogin && !isForgot));
   tabLogin.setAttribute("aria-selected", String(isLogin));
   submitBtn.textContent = isForgot
-    ? "Send reset link"
+    ? DU.t("auth.forgot.submit", "Send reset link")
     : isLogin
       ? DU.t("auth.submitLogin", "Log In")
       : DU.t("auth.submitSignup", "Sign Up Free");
@@ -222,7 +222,7 @@ function setMode(next) {
       + (ref ? " Invite code <b>" + ref + "</b> will be attached." : "");
   }
   switchLine.innerHTML = isForgot
-    ? 'Remembered it? <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
+    ? DU.t("auth.forgot.remember", "Remembered it?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
     : isLogin
       ? DU.t("auth.need", "Need an account?") + ' <a href="' + authUrl("register") + '" id="switchLink">' + DU.t("auth.submitSignup", "Sign Up Free") + "</a>"
       : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
@@ -240,7 +240,9 @@ function setMode(next) {
   if (location.pathname + location.search !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
-  document.title = (isForgot ? "Reset password" : isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
+  document.title = (isForgot ? DU.t("auth.forgot.h", "Reset password") : isLogin ? DU.t("auth.submitLogin", "Log In") : DU.t("hdr.signup", "Sign Up")) + " — DreamUtopia";
+  const forgotLinkEl = document.getElementById("forgotLink");
+  if (forgotLinkEl) forgotLinkEl.textContent = DU.t("auth.forgot", "Forgot password?");
 }
 
 tabRegister.onclick = () => setMode("register");
@@ -257,6 +259,7 @@ async function api(path, body) {
   const res = await fetch("/api" + path, {
     method: "POST",
     headers: { "content-type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -274,24 +277,28 @@ document.getElementById("authForm").onsubmit = async (e) => {
   const email = document.getElementById("email").value.trim();
   const password = passwordInput.value;
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    formError.textContent = "Please enter a valid email.";
+    formError.textContent = DU.t("auth.email.invalid", "Please enter a valid email.");
     formError.classList.add("show");
     return;
   }
   if (mode !== "forgot" && (!password || password.length < 6)) {
-    formError.textContent = "Password must be at least 6 characters.";
+    formError.textContent = DU.t("auth.pass.short", "Password must be at least 6 characters.");
     formError.classList.add("show");
     return;
   }
   submitBtn.disabled = true;
   const prev = submitBtn.textContent;
-  submitBtn.textContent = mode === "forgot" ? "Sending…" : mode === "login" ? "Logging in…" : "Creating account…";
+  submitBtn.textContent = mode === "forgot"
+    ? DU.t("auth.forgot.sending", "Sending…")
+    : mode === "login"
+      ? DU.t("auth.logging", "Logging in…")
+      : DU.t("auth.creating", "Creating account…");
   try {
     if (mode === "forgot") {
       const data = await api("/auth/forgot", { email });
       perk.style.display = "";
       perk.innerHTML = data && data.ok
-        ? "If that email has an account, a reset link is on the way. Check spam if you don’t see it."
+        ? DU.t("auth.forgot.sent", "If that email has an account, a reset link is on the way. Check spam if you don’t see it.")
         : "Request sent.";
       submitBtn.disabled = false;
       submitBtn.textContent = prev;
@@ -308,9 +315,9 @@ document.getElementById("authForm").onsubmit = async (e) => {
     location.href = workspaceUrl();
   } catch (err) {
     if (mode === "forgot" && err && err.code === "email_not_configured") {
-      formError.textContent = "Password reset email isn’t set up yet. You can still log in with your password.";
+      formError.textContent = DU.t("auth.forgot.unconfigured", "Password reset email isn’t set up yet. You can still log in with your password.");
     } else {
-      formError.textContent = err.message || "Something went wrong";
+      formError.textContent = DU.errorMessage ? DU.errorMessage(err, err.message || "Something went wrong") : (err.message || "Something went wrong");
     }
     formError.classList.add("show");
     submitBtn.disabled = false;
@@ -325,6 +332,7 @@ document.getElementById("authForm").onsubmit = async (e) => {
   try {
     const res = await fetch("/api/auth/me", {
       headers: { authorization: "Bearer " + existing },
+      credentials: "same-origin",
     });
     if (res.ok) {
       location.replace(workspaceUrl());
