@@ -29,6 +29,11 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .nav-menu a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--text2)}
 .nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
 .header-right{display:flex;gap:10px;align-items:center}
+.credits-pill{display:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2)}
+.credits-pill.show{display:inline-flex;align-items:center;gap:4px}
+.credits-pill #creditsBadge{display:inline-block;min-width:1.25ch;text-align:center;vertical-align:baseline}
+.credits-pill #creditsBadge.loading{min-width:2ch;opacity:.45}
+.credits-pill #creditsBadge.loading::after{content:"···"}
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
 .lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
@@ -136,14 +141,48 @@ nav{display:none}
 </details>
 </nav>
 <div class="header-right">
-<a href="/auth?mode=login" class="btn-login">Log In</a>
-<a href="/auth?mode=register" class="btn-signup">Sign Up</a>
+<span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits</span>
+<a href="/auth?mode=login" class="btn-login" id="loginBtn">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="signupBtn">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option>English</option>
 <option>中文</option>
 <option>日本語</option>
 <option>Español</option>
 </select>
+<script>
+/* Sync-hydrate header when a session token exists — avoid logged-out flash. */
+(function () {
+  try {
+    var token = localStorage.getItem("dreamutopia_token");
+    if (!token) return;
+    var pill = document.getElementById("creditsPill");
+    var badge = document.getElementById("creditsBadge");
+    var loginBtn = document.getElementById("loginBtn");
+    var signupBtn = document.getElementById("signupBtn");
+    if (pill) pill.classList.add("show");
+    if (loginBtn) {
+      loginBtn.textContent = "Log Out";
+      loginBtn.href = "#";
+    }
+    if (signupBtn) {
+      signupBtn.textContent = "Workspace";
+      signupBtn.href = "/workspace";
+    }
+    var raw = localStorage.getItem("dreamutopia_credits");
+    var n = raw === null || raw === "" ? NaN : Number(raw);
+    if (badge) {
+      if (Number.isFinite(n)) {
+        badge.textContent = String(n);
+        badge.classList.remove("loading");
+      } else {
+        badge.textContent = "";
+        badge.classList.add("loading");
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 </div>
 </header>
 
@@ -374,14 +413,79 @@ nav{display:none}
 <script>
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
+  const CREDITS_KEY = "dreamutopia_credits";
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) return;
+
+  const loginBtn = document.getElementById("loginBtn");
+  const signupBtn = document.getElementById("signupBtn");
+  const pill = document.getElementById("creditsPill");
+  const badge = document.getElementById("creditsBadge");
+
+  function clearAuthLocal() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(CREDITS_KEY);
+  }
+
+  function showLoggedIn(credits) {
+    if (pill) pill.classList.add("show");
+    if (badge) {
+      if (credits !== null && credits !== undefined && Number.isFinite(Number(credits))) {
+        badge.textContent = String(credits);
+        badge.classList.remove("loading");
+        localStorage.setItem(CREDITS_KEY, String(credits));
+      } else {
+        const raw = localStorage.getItem(CREDITS_KEY);
+        const n = raw === null || raw === "" ? NaN : Number(raw);
+        if (Number.isFinite(n)) {
+          badge.textContent = String(n);
+          badge.classList.remove("loading");
+        } else {
+          badge.textContent = "";
+          badge.classList.add("loading");
+        }
+      }
+    }
+    if (loginBtn) {
+      loginBtn.textContent = "Log Out";
+      loginBtn.href = "#";
+      loginBtn.onclick = async function (e) {
+        e.preventDefault();
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: { authorization: "Bearer " + token },
+          });
+        } catch (err) {}
+        clearAuthLocal();
+        location.reload();
+      };
+    }
+    if (signupBtn) {
+      signupBtn.textContent = "Workspace";
+      signupBtn.href = "/workspace";
+      signupBtn.onclick = null;
+    }
+  }
+
+  showLoggedIn();
+
   fetch("/api/auth/me", { headers: { authorization: "Bearer " + token } })
-    .then((res) => {
-      if (!res.ok) return;
-      document.querySelectorAll("a[data-pack]").forEach((a) => {
+    .then(function (res) {
+      if (res.status === 401) {
+        clearAuthLocal();
+        location.reload();
+        return null;
+      }
+      if (!res.ok) return null;
+      document.querySelectorAll("a[data-pack]").forEach(function (a) {
         a.href = "/workspace?pack=" + encodeURIComponent(a.getAttribute("data-pack"));
       });
+      return res.json().catch(function () { return {}; });
+    })
+    .then(function (data) {
+      if (!data || !data.user) return;
+      showLoggedIn(data.user.credits);
     })
     .catch(function () {});
 })();
