@@ -1521,7 +1521,11 @@ async function loadHistory() {
   try {
     let data;
     try {
+      // Canonical: GET /api/history. Fallback GET /api/generate if the alias is SPA HTML / missing.
       data = await api("/history");
+      if (!data || data.ok !== true || !Array.isArray(data.generations)) {
+        data = await api("/generate");
+      }
     } catch (e) {
       if (isUnauthorizedError(e)) {
         handleAuthExpired();

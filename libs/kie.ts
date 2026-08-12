@@ -304,12 +304,88 @@ export async function getTaskInfo(
   };
 }
 
-/** Never leak KIE wallet / “top up” copy to the browser. */
+const KIE_WALLET_RE =
+  /credits insufficient|insufficient (credits|balance)|balance isn.?t enough|top[- ]?up|please top up|\b402\b/i;
+const KIE_FILE_TYPE_RE =
+  /file type not supported|unsupported file|unsupported (image|format|type)|invalid (image|file) type|not a valid image|image format/i;
+const KIE_IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff"]);
+
+/** Reject URLs whose path extension is clearly not an image KIE can fetch. No extension → allow. */
+export function kieImageUrlIssue(url: string): "kie_file_type_unsupported" | null {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    const m = path.match(/\.([a-z0-9]{1,8})$/);
+    if (!m) return null;
+    if (KIE_IMAGE_EXTS.has(m[1])) return null;
+    return "kie_file_type_unsupported";
+  } catch {
+    return "kie_file_type_unsupported";
+  }
+}
+
+export type ClassifiedProviderFail = {
+  code:
+    | "kie_insufficient_balance"
+    | "kie_unauthorized"
+    | "kie_file_type_unsupported"
+    | "kie_create_failed";
+  status: number;
+  message: string;
+  providerCode: number | null;
+};
+
+/** Map KIE createTask failures to stable JSON codes — never raw “top up” / opaque 502 when avoidable. */
+export function classifyProviderCreateError(created: {
+  message: string;
+  code?: number | string;
+  status: number;
+}): ClassifiedProviderFail {
+  const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
+  const providerCode = Number.isFinite(codeNum) ? codeNum : null;
+  const raw = created.message || "";
+  if (providerCode === 402 || created.status === 402 || KIE_WALLET_RE.test(raw)) {
+    return {
+      code: "kie_insufficient_balance",
+      status: 503,
+      message: publicProviderFailMessage(raw),
+      providerCode,
+    };
+  }
+  if (providerCode === 401 || created.status === 401) {
+    return {
+      code: "kie_unauthorized",
+      status: 503,
+      message: "Generation provider rejected the API key. Check KIE_API_KEY.",
+      providerCode,
+    };
+  }
+  if (KIE_FILE_TYPE_RE.test(raw)) {
+    return {
+      code: "kie_file_type_unsupported",
+      status: 400,
+      message: publicProviderFailMessage(raw),
+      providerCode,
+    };
+  }
+  const http = created.status;
+  const client = http === 400 || http === 422 || providerCode === 400 || providerCode === 422;
+  return {
+    code: "kie_create_failed",
+    status: client ? 400 : 502,
+    message: publicProviderFailMessage(raw),
+    providerCode,
+  };
+}
+
+/** Never leak KIE wallet / “top up” / raw file-type copy to the browser. */
 export function publicProviderFailMessage(raw: string | null | undefined): string {
   const s = (raw || "").trim();
   if (!s) return "Generation failed";
-  if (/credits insufficient|balance isn.?t enough|top[- ]?up|please top up|\b402\b/i.test(s)) {
+  if (KIE_WALLET_RE.test(s)) {
     return "Generation is temporarily unavailable. Please try again later.";
   }
-  return s;
+  if (KIE_FILE_TYPE_RE.test(s)) {
+    return "That image type isn’t supported. Use JPG, PNG, or WebP.";
+  }
+  return "Provider failed to start the job.";
 }

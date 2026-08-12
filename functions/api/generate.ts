@@ -19,6 +19,8 @@ import {
   parseAspectRatio,
   parseImageResolution,
   publicProviderFailMessage,
+  classifyProviderCreateError,
+  kieImageUrlIssue,
   type AspectRatio,
   type ImageResolution,
 } from "../../libs/kie";
@@ -250,39 +252,49 @@ function createFailedResponse(
 ): Response {
   try {
     const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
-    const providerCode = Number.isFinite(codeNum) ? codeNum : null;
+    const classified = classifyProviderCreateError(created);
+    const providerCode = classified.providerCode ?? (Number.isFinite(codeNum) ? codeNum : null);
     const more = extra || {};
-    const raw = created.message || "";
-    const safe = publicProviderFailMessage(raw);
-  if (
-    providerCode === 402 ||
-    created.status === 402 ||
-    /credits insufficient|balance isn.?t enough|top[- ]?up|\b402\b/i.test(raw)
-  ) {
+    const safe = classified.message || publicProviderFailMessage(created.message || "");
+    if (classified.code === "kie_insufficient_balance") {
+      return structuredError(
+        "kie_insufficient_balance",
+        safe,
+        503,
+        {
+          providerCode,
+          kieConfigured: true,
+          provider_credits_insufficient: true,
+          ...more,
+        },
+        extraHeaders
+      );
+    }
+    if (classified.code === "kie_unauthorized") {
+      return structuredError(
+        "kie_unauthorized",
+        "Generation provider rejected the API key. Check KIE_API_KEY.",
+        503,
+        { providerCode, kieConfigured: true, ...more },
+        extraHeaders
+      );
+    }
+    if (classified.code === "kie_file_type_unsupported") {
+      return structuredError(
+        "kie_file_type_unsupported",
+        safe,
+        400,
+        { providerCode, ...more },
+        extraHeaders
+      );
+    }
     return structuredError(
-      "provider_credits_insufficient",
+      "kie_create_failed",
       safe,
-      503,
-      { providerCode, kieConfigured: true, ...more },
+      classified.status || 502,
+      { providerCode, ...more },
       extraHeaders
     );
-  }
-  if (providerCode === 401 || created.status === 401) {
-    return structuredError(
-      "kie_unauthorized",
-      "Generation provider rejected the API key. Check KIE_API_KEY.",
-      503,
-      { providerCode, kieConfigured: true, ...more },
-      extraHeaders
-    );
-  }
-  return structuredError(
-    "kie_create_failed",
-    safe,
-    502,
-    { providerCode, ...more },
-    extraHeaders
-  );
   } catch {
     return workerExceptionJson("Generation failed. Please try again.");
   }
@@ -345,6 +357,32 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
       "lastImageUrl must be a public https:// URL that KIE can fetch.",
       400
     );
+  }
+  if (imageUrl && kieImageUrlIssue(imageUrl)) {
+    return structuredError(
+      "kie_file_type_unsupported",
+      "That image type isn’t supported. Use JPG, PNG, or WebP.",
+      400,
+      { field: "imageUrl" }
+    );
+  }
+  if (lastImageUrl && kieImageUrlIssue(lastImageUrl)) {
+    return structuredError(
+      "kie_file_type_unsupported",
+      "That image type isn’t supported. Use JPG, PNG, or WebP.",
+      400,
+      { field: "lastImageUrl" }
+    );
+  }
+  for (const extra of extraUrls) {
+    if (kieImageUrlIssue(extra)) {
+      return structuredError(
+        "kie_file_type_unsupported",
+        "That image type isn’t supported. Use JPG, PNG, or WebP.",
+        400,
+        { field: "imageUrls" }
+      );
+    }
   }
 
   const requestedKey = asTrimmed(body.mediaKey) || asTrimmed(body.media_key);
@@ -415,6 +453,20 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
 
   // Guest 4xx (image_url_required / guest_limit / lite-only) must not touch rate-limit KV.
   // A KV expirationTtl < 60 throw is Cloudflare 1101.
+  // Guest no-image: never touch KV (live 1101 from RL TTL).
+  if (!session && kind === "video" && model === "lite" && !imageUrl && !lastImageUrl) {
+    return json(
+      {
+        error: "image_url_required",
+        code: "image_url_required",
+        message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+        mediaRequired: false,
+        guestRemaining: GUEST_LIMIT,
+        guestLimit: GUEST_LIMIT,
+      },
+      400
+    );
+  }
   if (!session) {
     const blocked = await guestRequestError(env, request, {
       kind,
@@ -1086,9 +1138,13 @@ async function handleGuestGet(
           headers
         );
       }
-      const synced = await settleGuestJob(env, rec, job, origin, ip);
-      job = synced.job;
-      providerState = synced.providerState;
+      try {
+        const synced = await settleGuestJob(env, rec, job, origin, ip);
+        job = synced.job;
+        providerState = synced.providerState;
+      } catch {
+        /* return the stored job even if KIE poll fails */
+      }
     }
     return json(
       {
@@ -1109,7 +1165,11 @@ async function handleGuestGet(
 
   if (hasKieKey(env)) {
     for (const j of rec.jobs.filter((x) => x.status === "processing" && x.providerJobId).slice(0, 3)) {
-      await settleGuestJob(env, rec, j, origin, ip);
+      try {
+        await settleGuestJob(env, rec, j, origin, ip);
+      } catch {
+        /* keep listing even if one poll fails */
+      }
     }
   }
   const fresh = await loadGuest(env, guestId);
@@ -1127,3 +1187,20 @@ async function handleGuestGet(
     headers
   );
 }
+
+/**
+ * Pages on some deploys does not invoke onRequestHead / onRequestPost —
+ * HEAD/POST then hit the SPA (HTML) or throw 1101. onRequest is the fallback.
+ */
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  try {
+    const method = ctx.request.method;
+    if (method === "HEAD") return onRequestHead(ctx);
+    if (method === "OPTIONS") return onRequestOptions();
+    if (method === "GET") return onRequestGet(ctx);
+    if (method === "POST") return onRequestPost(ctx);
+    return structuredError("method_not_allowed", "Method not allowed.", 405);
+  } catch {
+    return workerExceptionJson("Request failed. Please try again.");
+  }
+};

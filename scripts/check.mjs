@@ -84,6 +84,8 @@ function extractI18nKeys(src) {
     "err.auth_required",
     "err.insufficient_credits",
     "err.worker_exception",
+    "err.kie_insufficient_balance",
+    "err.kie_file_type_unsupported",
     "gallery.sample",
     "ws.quota.h",
     "price.cta.free",
@@ -156,6 +158,10 @@ function extractI18nKeys(src) {
 // --- generate provider mapping ---
 {
   mustContain("functions/api/generate.ts", "provider_credits_insufficient", "empty KIE wallet");
+  mustContain("functions/api/generate.ts", "kie_insufficient_balance", "empty KIE wallet code");
+  mustContain("functions/api/generate.ts", "kie_file_type_unsupported", "KIE file type mapped");
+  mustContain("libs/kie.ts", "classifyProviderCreateError", "classify KIE create errors");
+  mustContain("libs/kie.ts", "kieImageUrlIssue", "reject non-image URL extensions");
   mustContain("functions/api/generate.ts", "kie_unauthorized", "bad KIE key");
   mustContain("functions/api/generate.ts", "guestRemaining", "guest remaining on generate");
   mustContain("functions/api/generate.ts", "GUEST_LIMIT", "guest limit");
@@ -219,13 +225,21 @@ function extractI18nKeys(src) {
     if (guestAt < 0 || rlAt < 0 || guestAt > rlAt) {
       fail.push("handleGeneratePost must run guestRequestError before takeRateLimit (KV TTL 1101)");
     } else ok.push("guest 4xx runs before KV rate limit");
+    if (!fn.includes("Guest no-image: never touch KV") || fn.indexOf("image_url_required") > rlAt) {
+      fail.push("handleGeneratePost must return guest image_url_required before takeRateLimit (no KV)");
+    } else ok.push("guest no-image 400 runs before KV rate limit");
   }
   mustContain("functions/api/history.ts", "onRequestHead", "history alias HEAD");
   mustContain("functions/api/history.ts", "onRequestGet", "history alias GET");
+  mustContain("functions/api/history.ts", "export const onRequest", "history onRequest HEAD fallback");
   mustContain("functions/api/jobs.ts", "onRequestHead", "jobs alias HEAD");
   mustContain("functions/api/jobs.ts", "onRequestGet", "jobs alias GET");
+  mustContain("functions/api/jobs.ts", "export const onRequest", "jobs onRequest HEAD fallback");
   mustContain("functions/api/creations.ts", "onRequestHead", "creations alias HEAD");
   mustContain("functions/api/creations.ts", "onRequestGet", "creations alias GET");
+  mustContain("functions/api/creations.ts", "export const onRequest", "creations onRequest HEAD fallback");
+  mustContain("out/assets/js/du.js", "text/html", "API HTML SPA is not treated as empty JSON");
+  mustContain("out/workspace.html", 'api("/generate")', "history falls back to /generate");
 }
 
 // --- upload guest remaining ---
@@ -274,7 +288,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v20", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v21", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

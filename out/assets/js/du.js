@@ -64,6 +64,13 @@
     }
     if (token) headers.authorization = "Bearer " + token;
     const res = await fetch("/api" + path, Object.assign({}, options, { headers, credentials: "same-origin" }));
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("text/html")) {
+      const err = new Error("not found");
+      err.status = 404;
+      err.code = "not_found";
+      throw err;
+    }
     const data = await res.json().catch(function () { return {}; });
     if (!res.ok) {
       const err = new Error(data.message || data.error || "request failed");
@@ -149,7 +156,9 @@
     if (
       code === "kie_api_key_missing" ||
       code === "provider_credits_insufficient" ||
+      code === "kie_insufficient_balance" ||
       code === "kie_unauthorized" ||
+      code === "kie_file_type_unsupported" ||
       code === "guest_limit" ||
       code === "unauthorized" ||
       code === "not_found"
@@ -166,8 +175,13 @@
   function failedJobError(message) {
     const raw = String(message || "");
     if (/credits insufficient|balance isn.?t enough|top[- ]?up/i.test(raw)) {
-      const err = new Error(t("err.provider_credits_insufficient", "Generation is temporarily unavailable. Please try again later."));
-      err.code = "provider_credits_insufficient";
+      const err = new Error(t("err.kie_insufficient_balance", "Generation is temporarily unavailable. Please try again later."));
+      err.code = "kie_insufficient_balance";
+      return err;
+    }
+    if (/file type not supported|unsupported file|unsupported (image|format|type)/i.test(raw)) {
+      const err = new Error(t("err.kie_file_type_unsupported", "That image type isn’t supported. Use JPG, PNG, or WebP."));
+      err.code = "kie_file_type_unsupported";
       return err;
     }
     return new Error(raw || t("progress.failed", "Generation failed"));
