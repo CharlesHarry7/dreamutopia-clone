@@ -7,6 +7,7 @@ import {
   hasDb,
   hasSessions,
   hasKieKey,
+  workerExceptionJson,
 } from "../../libs/utils";
 import { expiredSessionResponse, getSession, tokenFromRequest } from "../../libs/auth";
 import {
@@ -247,11 +248,12 @@ function createFailedResponse(
   extra?: Record<string, unknown>,
   extraHeaders?: Record<string, string>
 ): Response {
-  const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
-  const providerCode = Number.isFinite(codeNum) ? codeNum : null;
-  const more = extra || {};
-  const raw = created.message || "";
-  const safe = publicProviderFailMessage(raw);
+  try {
+    const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
+    const providerCode = Number.isFinite(codeNum) ? codeNum : null;
+    const more = extra || {};
+    const raw = created.message || "";
+    const safe = publicProviderFailMessage(raw);
   if (
     providerCode === 402 ||
     created.status === 402 ||
@@ -281,6 +283,9 @@ function createFailedResponse(
     { providerCode, ...more },
     extraHeaders
   );
+  } catch {
+    return workerExceptionJson("Generation failed. Please try again.");
+  }
 }
 
 /**
@@ -293,12 +298,16 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   try {
     return await handleGeneratePost(ctx);
   } catch {
-    return structuredError(
-      "generate_failed",
-      "Generation failed. Please try again.",
-      500,
-      { mediaRequired: false }
-    );
+    try {
+      return structuredError(
+        "worker_exception",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    } catch {
+      return workerExceptionJson("Generation failed. Please try again.");
+    }
   }
 };
 
@@ -750,10 +759,11 @@ async function handleGuestPost(
     idempotencyKey: string | null;
   }
 ): Promise<Response> {
-  const guestId = ensureGuestId(request);
-  const headers = guestHeaders(guestId, request);
+  try {
+    const guestId = ensureGuestId(request);
+    const headers = guestHeaders(guestId, request);
 
-  if (opts.idempotencyKey) {
+    if (opts.idempotencyKey) {
     const existingId = await loadIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey);
     if (existingId) {
       const rec0 = await loadGuest(env, guestId);
@@ -858,6 +868,9 @@ async function handleGuestPost(
     200,
     headers
   );
+  } catch {
+    return workerExceptionJson("Generation failed. Please try again.");
+  }
 }
 
 function randomGuestJobId(): string {
@@ -874,11 +887,15 @@ export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   try {
     return await handleGenerateGet(ctx);
   } catch {
-    return structuredError(
-      "generate_failed",
-      "Could not load history. Please try again.",
-      500
-    );
+    try {
+      return structuredError(
+        "worker_exception",
+        "Could not load history. Please try again.",
+        500
+      );
+    } catch {
+      return workerExceptionJson("Could not load history. Please try again.");
+    }
   }
 };
 

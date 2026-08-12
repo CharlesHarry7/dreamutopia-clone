@@ -1,4 +1,5 @@
 import type { Env } from "../../libs/utils";
+import { workerExceptionJson } from "../../libs/utils";
 import {
   onRequestGet as generateGet,
   onRequestPost as generatePost,
@@ -6,8 +7,26 @@ import {
   onRequestOptions as generateOptions,
 } from "./generate";
 
-/** Template-compatible alias: /api/jobs → /api/generate (JSON, never SPA/404 HTML). */
+/** Real Pages Function: GET /api/jobs → generate history JSON (never SPA HTML). */
 export const onRequestOptions: PagesFunction<Env> = (ctx) => generateOptions(ctx);
-export const onRequestGet: PagesFunction<Env> = (ctx) => generateGet(ctx);
-export const onRequestHead: PagesFunction<Env> = (ctx) => generateHead(ctx);
-export const onRequestPost: PagesFunction<Env> = (ctx) => generatePost(ctx);
+export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await generateGet(ctx);
+  } catch {
+    return workerExceptionJson("Could not load history. Please try again.");
+  }
+};
+export const onRequestHead: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await generateHead(ctx);
+  } catch {
+    return workerExceptionJson("Could not load history. Please try again.");
+  }
+};
+export const onRequestPost: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await generatePost(ctx);
+  } catch {
+    return workerExceptionJson("Generation failed. Please try again.");
+  }
+};

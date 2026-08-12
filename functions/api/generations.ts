@@ -7,7 +7,7 @@ import {
   onRequestOptions as generateOptions,
 } from "./generate";
 
-/** Real Pages Function: GET /api/history → generate history JSON (never SPA HTML). */
+/** Real Pages Function: GET /api/generations → generate history JSON (never SPA HTML). */
 export const onRequestOptions: PagesFunction<Env> = (ctx) => generateOptions(ctx);
 export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   try {

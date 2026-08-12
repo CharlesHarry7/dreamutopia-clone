@@ -156,7 +156,27 @@ function extractI18nKeys(src) {
   mustContain("out/workspace.html", 'api("/history")', "history alias fetch");
   mustContain("out/workspace.html", "handleAuthExpired", "stale session clears token var");
   mustContain("out/workspace.html", "refreshCredits", "credits refresh after generate/history");
-  mustContain("functions/api/generate.ts", "generate_failed", "POST/GET generate never 1101");
+  mustContain("functions/api/generate.ts", "worker_exception", "POST catch is JSON worker_exception not 1101");
+  mustContain("libs/utils.ts", "function workerExceptionJson", "failsafe JSON 500 helper");
+  if (!exists("functions/api/history.ts")) fail.push("missing functions/api/history.ts (real file, not implicit route)");
+  if (!exists("functions/api/jobs.ts")) fail.push("missing functions/api/jobs.ts (real file, not implicit route)");
+  if (!exists("functions/api/creations.ts")) fail.push("missing functions/api/creations.ts (real file, not implicit route)");
+  if (!exists("functions/api/generations.ts")) fail.push("missing functions/api/generations.ts (real file, not implicit route)");
+  mustContain("functions/api/history.ts", "workerExceptionJson", "history alias catches throws");
+  mustContain("functions/api/jobs.ts", "workerExceptionJson", "jobs alias catches throws");
+  mustContain("functions/api/creations.ts", "workerExceptionJson", "creations alias catches throws");
+  mustContain("functions/api/generations.ts", "onRequestGet", "generations alias GET");
+  {
+    const post = read("functions/api/generate.ts");
+    const start = post.indexOf("export const onRequestPost");
+    const end = post.indexOf("async function handleGeneratePost");
+    const fn = start >= 0 && end > start ? post.slice(start, end) : "";
+    if (!fn.includes("try {") || !fn.includes("worker_exception")) {
+      fail.push("onRequestPost must wrap the whole handler in try/catch → worker_exception JSON");
+    } else ok.push("onRequestPost whole-handler try/catch → worker_exception");
+    if (fn.includes("throw ")) fail.push("onRequestPost catch must not rethrow (1101)");
+    else ok.push("onRequestPost catch does not rethrow");
+  }
   mustContain("functions/api/generate.ts", 'typeof parsed !== "object"', "generate body object guard");
   mustContain("functions/api/generate.ts", "handleGeneratePost", "generate POST try/catch wrapper");
   mustContain("functions/api/generate.ts", "function asTrimmed", "generate string fields never .trim() on non-strings");
