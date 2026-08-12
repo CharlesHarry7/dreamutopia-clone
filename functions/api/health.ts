@@ -1,4 +1,7 @@
 import { json, preflight, hasDb, hasSessions, hasMedia, hasKieKey } from "../../libs/utils";
+import { hasStripe } from "../../libs/stripe";
+import { hasMailer } from "../../libs/mail";
+import { hasKieWebhookHmac } from "../../libs/kieWebhook";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -12,8 +15,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   };
   const authReady = bindings.DB && bindings.SESSIONS;
   const kieConfigured = hasKieKey(env);
-  // Temp path: real generate needs auth + KIE key; MEDIA/R2 is optional
-  const generateReady = authReady && kieConfigured;
+  const checkoutConfigured = hasStripe(env);
+  const mailConfigured = hasMailer(env);
+  const kieWebhookHmac = hasKieWebhookHmac(env);
+  // Guest trials need SESSIONS + KIE; signed-in generate also needs DB
+  const generateReady = bindings.SESSIONS && kieConfigured;
+  const uploadReady = bindings.MEDIA;
 
   return json({
     ok: true,
@@ -23,13 +30,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     authReady,
     kieConfigured,
     generateReady,
+    uploadReady,
+    checkoutConfigured,
+    mailConfigured,
+    kieWebhookHmac,
+    guestTrials: true,
+    guestLimit: 2,
     mediaRequiredForGenerate: false,
     message: !authReady
       ? "Functions up; bind DB + SESSIONS for auth/credits (see BACKEND.md)"
       : !kieConfigured
-        ? "Auth ready — set Pages secret KIE_API_KEY for image-to-video (MEDIA/R2 not required)"
-        : bindings.MEDIA
-          ? "D1 + KV + KIE ready; MEDIA bound (R2 path optional later)"
-          : "D1 + KV + KIE ready — generate via public imageUrl (no R2)",
+        ? "Auth ready — set Pages secret KIE_API_KEY for generation"
+        : uploadReady
+          ? "D1 + KV + KIE + R2 ready — 2 free Lite I2V tries, then sign in"
+          : "D1 + KV + KIE ready — generate via public imageUrl (bind MEDIA for uploads)",
   });
 };

@@ -1,11 +1,17 @@
 /**
- * KIE Market API client (image-to-video).
- * Docs: https://docs.kie.ai/market/kling/image-to-video
- * No R2/MEDIA dependency — input/output are public HTTPS URLs.
+ * KIE Market API client.
+ * Docs:
+ *   https://docs.kie.ai/market/kling/image-to-video
+ *   https://docs.kie.ai/market/kling/text-to-video
+ *   https://docs.kie.ai/market/kling/kling-3-0
+ *   https://docs.kie.ai/market/google/nanobanana2
  */
 
 export const KIE_API_BASE = "https://api.kie.ai";
 export const KIE_I2V_MODEL = "kling-2.6/image-to-video";
+export const KIE_T2V_MODEL = "kling-2.6/text-to-video";
+export const KIE_FLF_MODEL = "kling-3.0/video";
+export const KIE_T2I_MODEL = "nano-banana-2";
 
 export type KieTaskState =
   | "waiting"
@@ -43,9 +49,27 @@ export interface KieTaskError {
   message: string;
 }
 
-/** Map UI duration (3–15) to KIE-supported "5" | "10". */
+export type AspectRatio = "1:1" | "16:9" | "9:16";
+export type ImageResolution = "1K" | "2K" | "4K";
+
+/** Map UI duration (3–15) to KIE 2.6-supported "5" | "10". */
 export function kieDuration(durationSec: number): "5" | "10" {
   return durationSec <= 5 ? "5" : "10";
+}
+
+export function kieDuration3(durationSec: number): string {
+  const n = Math.min(Math.max(Math.round(durationSec) || 5, 3), 15);
+  return String(n);
+}
+
+export function parseAspectRatio(value: unknown): AspectRatio {
+  if (value === "1:1" || value === "9:16" || value === "16:9") return value;
+  return "16:9";
+}
+
+export function parseImageResolution(value: unknown, fallback: ImageResolution): ImageResolution {
+  if (value === "1K" || value === "2K" || value === "4K") return value;
+  return fallback;
 }
 
 export function isPublicHttpsUrl(value: string): boolean {
@@ -82,30 +106,22 @@ function parseResultUrl(resultJson: unknown): string | null {
   return null;
 }
 
-/** Create a Kling 2.6 image-to-video task. */
-export async function createImageToVideoTask(
+async function createKieTask(
   apiKey: string,
-  opts: {
-    prompt: string;
-    imageUrl: string;
-    durationSec: number;
-    sound: boolean;
-  }
+  model: string,
+  input: Record<string, unknown>,
+  callBackUrl?: string
 ): Promise<KieCreateResult | KieCreateError> {
+  const payload: Record<string, unknown> = { model, input };
+  if (callBackUrl && /^https:\/\//i.test(callBackUrl)) {
+    payload.callBackUrl = callBackUrl;
+  }
   let res: Response;
   try {
     res = await fetch(`${KIE_API_BASE}/api/v1/jobs/createTask`, {
       method: "POST",
       headers: authHeaders(apiKey),
-      body: JSON.stringify({
-        model: KIE_I2V_MODEL,
-        input: {
-          prompt: opts.prompt.slice(0, 1000),
-          image_urls: [opts.imageUrl],
-          sound: opts.sound,
-          duration: kieDuration(opts.durationSec),
-        },
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (e) {
     return {
@@ -133,6 +149,103 @@ export async function createImageToVideoTask(
     code: body.code,
     message: body.msg || body.message || `KIE createTask failed (${res.status})`,
   };
+}
+
+/** Kling 2.6 image-to-video (one start frame). */
+export function createImageToVideoTask(
+  apiKey: string,
+  opts: {
+    prompt: string;
+    imageUrl: string;
+    durationSec: number;
+    sound: boolean;
+    callBackUrl?: string;
+  }
+): Promise<KieCreateResult | KieCreateError> {
+  return createKieTask(
+    apiKey,
+    KIE_I2V_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      image_urls: [opts.imageUrl],
+      sound: opts.sound,
+      duration: kieDuration(opts.durationSec),
+    },
+    opts.callBackUrl
+  );
+}
+
+/** Kling 2.6 text-to-video (no start image). */
+export function createTextToVideoTask(
+  apiKey: string,
+  opts: {
+    prompt: string;
+    durationSec: number;
+    sound: boolean;
+    aspectRatio: AspectRatio;
+    callBackUrl?: string;
+  }
+): Promise<KieCreateResult | KieCreateError> {
+  return createKieTask(
+    apiKey,
+    KIE_T2V_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      sound: opts.sound,
+      aspect_ratio: opts.aspectRatio,
+      duration: kieDuration(opts.durationSec),
+    },
+    opts.callBackUrl
+  );
+}
+
+/** Kling 3.0 first + last frame (Medium/Pro). */
+export function createFirstLastVideoTask(
+  apiKey: string,
+  opts: {
+    prompt: string;
+    firstUrl: string;
+    lastUrl: string;
+    durationSec: number;
+    sound: boolean;
+    mode: "std" | "pro";
+    callBackUrl?: string;
+  }
+): Promise<KieCreateResult | KieCreateError> {
+  return createKieTask(
+    apiKey,
+    KIE_FLF_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      image_urls: [opts.firstUrl, opts.lastUrl],
+      sound: opts.sound,
+      duration: kieDuration3(opts.durationSec),
+      mode: opts.mode,
+      multi_shots: false,
+    },
+    opts.callBackUrl
+  );
+}
+
+/** Nano Banana 2 text-to-image, image-to-image, or multi-image blend. */
+export function createImageTask(
+  apiKey: string,
+  opts: {
+    prompt: string;
+    imageUrls?: string[];
+    resolution: ImageResolution;
+    callBackUrl?: string;
+  }
+): Promise<KieCreateResult | KieCreateError> {
+  const input: Record<string, unknown> = {
+    prompt: opts.prompt.slice(0, 20000),
+    aspect_ratio: "auto",
+    resolution: opts.resolution,
+    output_format: opts.resolution === "1K" ? "jpg" : "png",
+  };
+  const urls = (opts.imageUrls || []).filter(Boolean).slice(0, 14);
+  if (urls.length) input.image_input = urls;
+  return createKieTask(apiKey, KIE_T2I_MODEL, input, opts.callBackUrl);
 }
 
 /** Poll KIE task status; parse first result URL when success. */

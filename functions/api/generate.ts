@@ -10,35 +10,73 @@ import {
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
   createImageToVideoTask,
-  getTaskInfo,
+  createTextToVideoTask,
+  createFirstLastVideoTask,
+  createImageTask,
   isPublicHttpsUrl,
+  parseAspectRatio,
+  parseImageResolution,
+  type AspectRatio,
+  type ImageResolution,
 } from "../../libs/kie";
+import { kieCallbackUrl } from "../../libs/kieWebhook";
+import { isSafeMediaKey, mediaKeyFromUrl } from "../../libs/media";
+import { mergeGuestJobs } from "../../libs/account";
+import { IMAGE_COST, VIDEO_COST, parseStoredModel, storeModel, type GenerationKind } from "../../libs/costs";
+import { rateLimitedResponse, takeRateLimit } from "../../libs/rateLimit";
+import {
+  loadGenerationById,
+  loadIdempotentGenerationId,
+  normalizeIdempotencyKey,
+  rememberKieTask,
+  saveIdempotentGenerationId,
+  settleAccountJob,
+  settleGuestJob,
+  type GenerationRow,
+} from "../../libs/settle";
+import {
+  GUEST_LIMIT,
+  ensureGuestId,
+  guestHeaders,
+  guestQuota,
+  isGuestJobId,
+  loadGuest,
+  saveGuest,
+  saveIpUsed,
+  clientIp,
+  remainingOf,
+  type GuestJob,
+} from "../../libs/guest";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
-// Credits per generation
-const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
+const MAX_IN_FLIGHT = 3;
 
-type GenerationRow = {
-  id: number;
-  user_id: number;
-  model: string;
-  prompt: string;
-  status: string;
-  media_key: string | null;
-  duration_sec: number | null;
-  input_image_url: string | null;
-  provider_job_id: string | null;
-  result_url: string | null;
-  error_message: string | null;
-  created_at: string;
-};
+type InputImages = { first: string | null; last: string | null };
+
+function encodeInputImages(first: string | null, last: string | null): string | null {
+  if (first && last) return JSON.stringify({ first, last });
+  return first || null;
+}
+
+function decodeInputImages(raw: string | null): InputImages {
+  if (!raw) return { first: null, last: null };
+  if (raw.startsWith("{")) {
+    try {
+      const o = JSON.parse(raw) as { first?: string; last?: string };
+      return { first: o.first || null, last: o.last || null };
+    } catch {
+      return { first: raw, last: null };
+    }
+  }
+  return { first: raw, last: null };
+}
 
 function kieMissingResponse(): Response {
   return structuredError(
     "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable image-to-video generation. MEDIA/R2 is not required for this path.",
+    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
     503,
     { kieConfigured: false, mediaRequired: false }
   );
@@ -50,70 +88,158 @@ async function refundCredits(env: Env & { DB: D1Database }, userId: number, cost
     .run();
 }
 
-async function syncProviderStatus(
-  env: Env & { DB: D1Database; KIE_API_KEY: string },
-  row: GenerationRow
-): Promise<GenerationRow> {
-  if (row.status !== "processing" || !row.provider_job_id) return row;
-
-  const info = await getTaskInfo(env.KIE_API_KEY, row.provider_job_id);
-  if (!info.ok) {
-    // Transient poll failure — leave row as processing
-    return row;
-  }
-
-  if (info.state === "success" && info.resultUrl) {
-    await env.DB.prepare(
-      "UPDATE generations SET status = 'done', result_url = ?, error_message = NULL WHERE id = ?"
-    )
-      .bind(info.resultUrl, row.id)
-      .run();
-    return { ...row, status: "done", result_url: info.resultUrl, error_message: null };
-  }
-
-  if (info.state === "fail") {
-    const msg = info.failMsg || info.failCode || "provider generation failed";
-    await env.DB.prepare(
-      "UPDATE generations SET status = 'failed', error_message = ? WHERE id = ?"
-    )
-      .bind(msg, row.id)
-      .run();
-    return { ...row, status: "failed", error_message: msg };
-  }
-
-  return row;
+function createdResponse(opts: {
+  generationId: string | number;
+  kind: GenerationKind;
+  model: string;
+  cost: number;
+  credits: number | null;
+  providerJobId: string;
+  imageUrl: string | null;
+  lastImageUrl: string | null;
+  videoMode: string;
+  mediaKey: string | null;
+  guest: boolean;
+  guestRemaining?: number;
+  replay?: boolean;
+}) {
+  return {
+    ok: true,
+    demo: false,
+    guest: opts.guest,
+    generationId: opts.generationId,
+    kind: opts.kind,
+    model: opts.model,
+    cost: opts.cost,
+    credits: opts.credits,
+    status: "processing",
+    providerJobId: opts.providerJobId,
+    imageUrl: opts.imageUrl,
+    lastImageUrl: opts.lastImageUrl,
+    videoMode: opts.videoMode,
+    mediaKey: opts.mediaKey,
+    resultUrl: null,
+    mediaRequired: false,
+    ...(opts.replay ? { idempotentReplay: true } : {}),
+    ...(opts.guestRemaining !== undefined
+      ? { guestRemaining: opts.guestRemaining, guestLimit: GUEST_LIMIT }
+      : {}),
+    message: "KIE job created — poll GET /api/generate?id=" + opts.generationId + " for status.",
+  };
 }
 
 function publicGeneration(row: GenerationRow) {
+  const parsed = parseStoredModel(row.model);
+  const images = decodeInputImages(row.input_image_url);
+  const videoMode = parsed.kind === "image" ? "image" : images.last ? "flf" : images.first ? "i2v" : "t2v";
   return {
     id: row.id,
-    model: row.model,
+    kind: parsed.kind,
+    model: parsed.model,
+    storedModel: row.model,
     prompt: row.prompt,
     status: row.status,
     media_key: row.media_key,
     duration_sec: row.duration_sec,
-    input_image_url: row.input_image_url,
+    input_image_url: images.first,
+    last_image_url: images.last,
+    videoMode,
     provider_job_id: row.provider_job_id,
     result_url: row.result_url,
     resultUrl: row.result_url,
     error_message: row.error_message,
     created_at: row.created_at,
+    guest: false,
   };
+}
+
+function publicGuestJob(job: GuestJob) {
+  return {
+    id: job.id,
+    kind: job.kind,
+    model: job.model,
+    storedModel: job.model,
+    prompt: job.prompt,
+    status: job.status,
+    media_key: null,
+    duration_sec: 5,
+    input_image_url: job.inputImageUrl,
+    last_image_url: null,
+    videoMode: "i2v",
+    provider_job_id: job.providerJobId,
+    result_url: job.resultUrl,
+    resultUrl: job.resultUrl,
+    error_message: job.errorMessage,
+    created_at: job.createdAt,
+    guest: true,
+  };
+}
+
+type GenerateBody = {
+  prompt?: string;
+  kind?: string;
+  model?: string;
+  durationSec?: number;
+  aspectRatio?: string;
+  resolution?: string;
+  imageUrl?: string;
+  image_url?: string;
+  lastImageUrl?: string;
+  last_image_url?: string;
+  imageUrls?: unknown;
+  image_urls?: unknown;
+  mediaKey?: string;
+  media_key?: string;
+  idempotencyKey?: string;
+  idempotency_key?: string;
+};
+
+function collectHttpsUrls(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  const out: string[] = [];
+  for (const v of values) {
+    if (typeof v !== "string") continue;
+    const s = v.trim();
+    if (s && isPublicHttpsUrl(s) && !out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
+function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
+  const out: string[] = [];
+  for (const list of lists) {
+    for (const v of list) {
+      if (v && !out.includes(v)) out.push(v);
+    }
+  }
+  return out;
+}
+
+function createFailedResponse(
+  created: { message: string; code?: number; status: number }
+): Response {
+  const status =
+    created.code === 401 || created.status === 401
+      ? 502
+      : created.code === 402
+        ? 502
+        : 502;
+  return structuredError(
+    "kie_create_failed",
+    created.message || "Failed to create KIE generation task",
+    status,
+    { providerCode: created.code ?? null }
+  );
 }
 
 /**
  * POST /api/generate
- * Body: { prompt, imageUrl, model?, durationSec? }
- * Temp path (no MEDIA/R2): public image URL → KIE → D1 status → provider result URL.
+ * Body: { prompt, kind?, imageUrl?, lastImageUrl?, imageUrls?, mediaKey?, model?, durationSec?, aspectRatio?, resolution? }
+ * Guests (no session): 2 Lite image-to-video tries per device/IP.
+ * Signed-in: T2V, I2V, first+last (Medium/Pro), image T2I/I2I/blend.
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let body: {
-    prompt?: string;
-    model?: string;
-    durationSec?: number;
-    imageUrl?: string;
-    image_url?: string;
-  };
+  let body: GenerateBody;
   try {
     body = await request.json();
   } catch {
@@ -124,46 +250,173 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
+  const kind: GenerationKind = body.kind === "image" ? "image" : "video";
   const imageUrl = (body.imageUrl || body.image_url || "").trim();
-  if (!imageUrl) {
-    return structuredError(
-      "image_url_required",
-      "imageUrl is required (public HTTPS image). R2/MEDIA upload is not available on this path — paste a publicly reachable image URL.",
-      400,
-      { mediaRequired: false }
-    );
-  }
-  if (!isPublicHttpsUrl(imageUrl)) {
+  const lastImageUrl = (body.lastImageUrl || body.last_image_url || "").trim();
+  const extraUrls = collectHttpsUrls(body.imageUrls || body.image_urls);
+
+  if (imageUrl && !isPublicHttpsUrl(imageUrl)) {
     return structuredError(
       "image_url_invalid",
       "imageUrl must be a public https:// URL that KIE can fetch.",
       400
     );
   }
+  if (lastImageUrl && !isPublicHttpsUrl(lastImageUrl)) {
+    return structuredError(
+      "last_image_url_invalid",
+      "lastImageUrl must be a public https:// URL that KIE can fetch.",
+      400
+    );
+  }
 
-  const model = body.model && MODEL_COST[body.model] ? body.model : "lite";
-  const cost = MODEL_COST[model];
-  const durationSec = Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
-  const sound = model === "pro";
+  const requestedKey = (body.mediaKey || body.media_key || "").trim();
+  if (requestedKey && !isSafeMediaKey(requestedKey)) {
+    return structuredError("media_key_invalid", "mediaKey is not a valid upload key.", 400);
+  }
+  const mediaKey = requestedKey || (imageUrl ? mediaKeyFromUrl(imageUrl) : null) || null;
 
-  if (!hasDb(env) || !hasSessions(env)) {
+  const model =
+    kind === "image"
+      ? IMAGE_COST[body.model || ""]
+        ? (body.model as string)
+        : "lite"
+      : VIDEO_COST[body.model || ""]
+        ? (body.model as string)
+        : "lite";
+  const cost = kind === "image" ? IMAGE_COST[model] : VIDEO_COST[model];
+  const durationSec = kind === "image" ? null : Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
+  const aspectRatio: AspectRatio = parseAspectRatio(body.aspectRatio);
+  const resolution: ImageResolution = parseImageResolution(
+    body.resolution,
+    model === "pro" ? "2K" : "1K"
+  );
+  const storedModel = storeModel(kind, model);
+  const sound = kind === "video" && model === "pro";
+
+  if (kind === "video" && lastImageUrl) {
+    if (!imageUrl) {
+      return structuredError(
+        "image_url_required",
+        "First-and-last-frame video needs both imageUrl and lastImageUrl.",
+        400
+      );
+    }
+    if (model === "lite") {
+      return structuredError(
+        "first_last_requires_medium",
+        "First + last frame is available on Medium and Pro.",
+        400
+      );
+    }
+  }
+
+  if (!hasSessions(env)) {
     return structuredError(
       "bindings_missing",
-      "backend not configured: missing DB and/or SESSIONS binding — see BACKEND.md. MEDIA/R2 is not required for generation.",
+      "backend not configured: missing SESSIONS binding — see BACKEND.md.",
       503,
       { mediaRequired: false }
     );
+  }
+
+  const token = tokenFromRequest(request);
+  const session = await getSession(env, token);
+  const ip = clientIp(request);
+  const rl = await takeRateLimit(
+    env.SESSIONS,
+    session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
+    session ? 30 : 10,
+    60
+  );
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
+
+  const idempotencyKey = normalizeIdempotencyKey(
+    body.idempotencyKey || body.idempotency_key || request.headers.get("idempotency-key")
+  );
+
+  if (!session) {
+    const blocked = await guestRequestError(env, request, {
+      kind,
+      model,
+      imageUrl,
+      lastImageUrl,
+    });
+    if (blocked) return blocked;
   }
 
   if (!hasKieKey(env)) {
     return kieMissingResponse();
   }
 
-  const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
-  if (!session) return error("unauthorized", 401);
+  if (!session) {
+    return handleGuestPost(env, request, {
+      prompt,
+      kind,
+      model,
+      imageUrl,
+      lastImageUrl,
+      durationSec: durationSec || 5,
+      idempotencyKey,
+    });
+  }
 
-  // Atomic deduct: only succeeds when balance >= cost
+  if (!hasDb(env)) {
+    return structuredError(
+      "bindings_missing",
+      "backend not configured: missing DB binding — see BACKEND.md.",
+      503,
+      { mediaRequired: false }
+    );
+  }
+
+  if (idempotencyKey) {
+    const existingId = await loadIdempotentGenerationId(env, `u:${session.userId}`, idempotencyKey);
+    const existingNum = existingId ? Number(existingId) : 0;
+    if (existingNum > 0) {
+      const existing = await loadGenerationById(env.DB, existingNum, session.userId);
+      if (existing) {
+        const parsed = parseStoredModel(existing.model);
+        const images = decodeInputImages(existing.input_image_url);
+        const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+          .bind(session.userId)
+          .first<{ credits: number }>();
+        return json({
+          ...createdResponse({
+            generationId: existing.id,
+            kind: parsed.kind,
+            model: parsed.model,
+            cost,
+            credits: bal ? Number(bal.credits) : 0,
+            providerJobId: existing.provider_job_id || "",
+            imageUrl: images.first,
+            lastImageUrl: images.last,
+            videoMode: parsed.kind === "image" ? "image" : images.last ? "flf" : images.first ? "i2v" : "t2v",
+            mediaKey: existing.media_key,
+            guest: false,
+            replay: true,
+          }),
+          status: existing.status,
+          resultUrl: existing.result_url,
+        });
+      }
+    }
+  }
+
+  const inFlight = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'processing'"
+  )
+    .bind(session.userId)
+    .first<{ n: number }>();
+  if (inFlight && Number(inFlight.n) >= MAX_IN_FLIGHT) {
+    return structuredError(
+      "job_in_flight",
+      "You already have jobs rendering. Wait for one to finish.",
+      429,
+      { retryAfter: 15 }
+    );
+  }
+
   const deduct = await env.DB.prepare(
     "UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?"
   )
@@ -178,45 +431,61 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "insufficient credits", credits }, 402);
   }
 
-  // Create KIE task before D1 insert so we can refund cleanly on provider failure
-  const created = await createImageToVideoTask(env.KIE_API_KEY, {
-    prompt,
-    imageUrl,
-    durationSec,
-    sound,
-  });
+  const callBackUrl = kieCallbackUrl(new URL(request.url).origin);
+  const blendUrls = uniqueUrls([imageUrl || null], extraUrls);
+  const created =
+    kind === "image"
+      ? await createImageTask(env.KIE_API_KEY, {
+          prompt,
+          imageUrls: blendUrls,
+          resolution,
+          callBackUrl,
+        })
+      : lastImageUrl
+        ? await createFirstLastVideoTask(env.KIE_API_KEY, {
+            prompt,
+            firstUrl: imageUrl,
+            lastUrl: lastImageUrl,
+            durationSec: durationSec || 5,
+            sound,
+            mode: model === "pro" ? "pro" : "std",
+            callBackUrl,
+          })
+        : imageUrl
+          ? await createImageToVideoTask(env.KIE_API_KEY, {
+              prompt,
+              imageUrl,
+              durationSec: durationSec || 5,
+              sound,
+              callBackUrl,
+            })
+          : await createTextToVideoTask(env.KIE_API_KEY, {
+              prompt,
+              durationSec: durationSec || 5,
+              sound,
+              aspectRatio,
+              callBackUrl,
+            });
 
   if (!created.ok) {
     await refundCredits(env, session.userId, cost);
-    const status =
-      created.code === 401 || created.status === 401
-        ? 502
-        : created.code === 402
-          ? 502
-          : created.status >= 400 && created.status < 600
-            ? 502
-            : 502;
-    return structuredError(
-      "kie_create_failed",
-      created.message || "Failed to create KIE generation task",
-      status,
-      { providerCode: created.code ?? null }
-    );
+    return createFailedResponse(created);
   }
+
+  const storedInput = encodeInputImages(imageUrl || null, lastImageUrl || null);
 
   let insert;
   try {
     insert = await env.DB.prepare(
       `INSERT INTO generations
         (user_id, model, prompt, status, media_key, duration_sec, input_image_url, provider_job_id, result_url, error_message)
-       VALUES (?, ?, ?, 'processing', NULL, ?, ?, ?, NULL, NULL)`
+       VALUES (?, ?, ?, 'processing', ?, ?, ?, ?, NULL, NULL)`
     )
-      .bind(session.userId, model, prompt, durationSec, imageUrl, created.taskId)
+      .bind(session.userId, storedModel, prompt, mediaKey, durationSec, storedInput, created.taskId)
       .run();
   } catch (e) {
     await refundCredits(env, session.userId, cost);
     const msg = e instanceof Error ? e.message : "failed to create generation";
-    // Common cause: migration 001 not applied yet
     if (/no such column/i.test(msg)) {
       return structuredError(
         "schema_migration_required",
@@ -233,51 +502,268 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const generationId = Number(insert.meta.last_row_id);
+  await rememberKieTask(env, created.taskId, {
+    kind: "user",
+    userId: session.userId,
+    generationId,
+  });
+  if (idempotencyKey) {
+    await saveIdempotentGenerationId(env, `u:${session.userId}`, idempotencyKey, generationId);
+  }
   const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
     .bind(session.userId)
     .first<{ credits: number }>();
   const credits = bal ? Number(bal.credits) : 0;
+  const videoMode = kind === "image" ? "image" : lastImageUrl ? "flf" : imageUrl ? "i2v" : "t2v";
 
-  return json({
-    ok: true,
-    demo: false,
-    generationId,
-    model,
-    cost,
-    credits,
-    status: "processing",
-    providerJobId: created.taskId,
-    imageUrl,
-    resultUrl: null,
-    mediaRequired: false,
-    message:
-      "KIE job created — poll GET /api/generate?id=" +
-      generationId +
-      " for status; resultUrl is the provider video URL (no R2).",
-  });
+  return json(
+    createdResponse({
+      generationId,
+      kind,
+      model,
+      cost,
+      credits,
+      providerJobId: created.taskId,
+      imageUrl: imageUrl || null,
+      lastImageUrl: lastImageUrl || null,
+      videoMode,
+      mediaKey,
+      guest: false,
+    })
+  );
 };
 
+async function guestRequestError(
+  env: Env & { SESSIONS: KVNamespace },
+  request: Request,
+  opts: { kind: GenerationKind; model: string; imageUrl: string; lastImageUrl: string }
+): Promise<Response | null> {
+  const guestId = ensureGuestId(request);
+  const headers = guestHeaders(guestId, request);
+  const rec = await loadGuest(env, guestId);
+  const quota = await guestQuota(env, rec, clientIp(request));
+  if (opts.kind !== "video" || opts.model !== "lite") {
+    return json(
+      {
+        error: "guest_lite_only",
+        code: "guest_lite_only",
+        message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
+      },
+      401,
+      headers
+    );
+  }
+  if (opts.lastImageUrl) {
+    return json(
+      {
+        error: "first_last_requires_medium",
+        code: "first_last_requires_medium",
+        message: "First + last frame needs a free account (Medium or Pro).",
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
+      },
+      401,
+      headers
+    );
+  }
+  if (!opts.imageUrl) {
+    return json(
+      {
+        error: "image_url_required",
+        code: "image_url_required",
+        message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+        mediaRequired: false,
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
+      },
+      400,
+      headers
+    );
+  }
+  if (quota.blocked) {
+    return json(
+      {
+        error: "guest_limit",
+        code: "guest_limit",
+        message: "You used both free Lite videos on this device. Sign up for 10 credits.",
+        guestRemaining: 0,
+        guestLimit: GUEST_LIMIT,
+      },
+      402,
+      headers
+    );
+  }
+  return null;
+}
+
+async function handleGuestPost(
+  env: Env & { SESSIONS: KVNamespace; KIE_API_KEY: string },
+  request: Request,
+  opts: {
+    prompt: string;
+    kind: GenerationKind;
+    model: string;
+    imageUrl: string;
+    lastImageUrl: string;
+    durationSec: number;
+    idempotencyKey: string | null;
+  }
+): Promise<Response> {
+  const guestId = ensureGuestId(request);
+  const headers = guestHeaders(guestId, request);
+
+  if (opts.idempotencyKey) {
+    const existingId = await loadIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey);
+    if (existingId) {
+      const rec0 = await loadGuest(env, guestId);
+      const job0 = rec0.jobs.find((j) => j.id === existingId);
+      if (job0) {
+        const quota0 = await guestQuota(env, rec0, clientIp(request));
+        return json(
+          {
+            ...createdResponse({
+              generationId: job0.id,
+              kind: "video",
+              model: "lite",
+              cost: 0,
+              credits: null,
+              providerJobId: job0.providerJobId,
+              imageUrl: job0.inputImageUrl,
+              lastImageUrl: null,
+              videoMode: "i2v",
+              mediaKey: mediaKeyFromUrl(job0.inputImageUrl || ""),
+              guest: true,
+              guestRemaining: quota0.remaining,
+              replay: true,
+            }),
+            status: job0.status,
+            resultUrl: job0.resultUrl,
+          },
+          200,
+          headers
+        );
+      }
+    }
+  }
+
+  const rec = await loadGuest(env, guestId);
+  const ip = clientIp(request);
+  const quota = await guestQuota(env, rec, ip);
+  if (quota.blocked) {
+    return json(
+      {
+        error: "guest_limit",
+        code: "guest_limit",
+        message: "You used both free Lite videos on this device. Sign up for 10 credits.",
+        guestRemaining: 0,
+        guestLimit: GUEST_LIMIT,
+      },
+      402,
+      headers
+    );
+  }
+
+  const created = await createImageToVideoTask(env.KIE_API_KEY, {
+    prompt: opts.prompt,
+    imageUrl: opts.imageUrl,
+    durationSec: 5,
+    sound: false,
+    callBackUrl: kieCallbackUrl(new URL(request.url).origin),
+  });
+  if (!created.ok) {
+    return createFailedResponse(created);
+  }
+
+  const job: GuestJob = {
+    id: randomGuestJobId(),
+    providerJobId: created.taskId,
+    prompt: opts.prompt,
+    kind: "video",
+    model: "lite",
+    status: "processing",
+    inputImageUrl: opts.imageUrl,
+    resultUrl: null,
+    errorMessage: null,
+    createdAt: new Date().toISOString(),
+  };
+  rec.used = quota.used + 1;
+  rec.jobs.unshift(job);
+  await saveGuest(env, rec);
+  await saveIpUsed(env, ip, rec.used);
+  await rememberKieTask(env, created.taskId, { kind: "guest", guestId, jobId: job.id });
+  if (opts.idempotencyKey) {
+    await saveIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey, job.id);
+  }
+
+  return json(
+    createdResponse({
+      generationId: job.id,
+      kind: "video",
+      model: "lite",
+      cost: 0,
+      credits: null,
+      providerJobId: created.taskId,
+      imageUrl: opts.imageUrl,
+      lastImageUrl: null,
+      videoMode: "i2v",
+      mediaKey: mediaKeyFromUrl(opts.imageUrl),
+      guest: true,
+      guestRemaining: remainingOf(rec.used),
+    }),
+    200,
+    headers
+  );
+}
+
+function randomGuestJobId(): string {
+  const rand = crypto.getRandomValues(new Uint8Array(8));
+  const hex = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `g_${hex}`;
+}
+
 /**
- * GET /api/generate — history
+ * GET /api/generate — history (account or this device's guest jobs)
  * GET /api/generate?id=N — single job; polls KIE when still processing
  */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
-  if (!hasDb(env) || !hasSessions(env)) {
+  if (!hasSessions(env)) {
     return structuredError(
       "bindings_missing",
-      "backend not configured: missing DB and/or SESSIONS binding — see BACKEND.md",
+      "backend not configured: missing SESSIONS binding — see BACKEND.md",
       503
     );
   }
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
-  if (!session) return error("unauthorized", 401);
-
   const url = new URL(request.url);
   const idParam = url.searchParams.get("id");
+  const origin = url.origin;
+
+  if (!session) {
+    return handleGuestGet(env, request, idParam, origin);
+  }
+
+  if (!hasDb(env)) {
+    return structuredError(
+      "bindings_missing",
+      "backend not configured: missing DB binding — see BACKEND.md",
+      503
+    );
+  }
+
+  try {
+    await mergeGuestJobs(env, request, session.userId);
+  } catch {
+    /* keep listing D1 history */
+  }
 
   if (idParam) {
+    if (isGuestJobId(idParam)) {
+      return handleGuestGet(env, request, idParam, origin);
+    }
     const id = Number(idParam);
     if (!Number.isFinite(id) || id <= 0) return error("invalid id");
 
@@ -304,11 +790,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!row) return error("not found", 404);
 
+    let providerState: string | null = null;
     if (row.status === "processing" && row.provider_job_id) {
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      row = await syncProviderStatus(env, row);
+      const synced = await settleAccountJob(env, row, origin);
+      row = synced.row;
+      providerState = synced.providerState;
     }
 
     return json({
@@ -317,6 +806,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       generation: publicGeneration(row),
       resultUrl: row.result_url,
       status: row.status,
+      providerState,
     });
   }
 
@@ -342,10 +832,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const list = rows.results || [];
-  // Best-effort sync a few in-flight jobs so history stays fresh
   if (hasKieKey(env)) {
     for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
-      await syncProviderStatus(env, g);
+      await settleAccountJob(env, g, origin);
     }
     const refreshed = await env.DB.prepare(
       `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
@@ -357,6 +846,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     return json({
       ok: true,
       demo: false,
+      guest: false,
       generations: (refreshed.results || []).map(publicGeneration),
     });
   }
@@ -364,6 +854,70 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return json({
     ok: true,
     demo: false,
+    guest: false,
     generations: list.map(publicGeneration),
   });
 };
+
+async function handleGuestGet(
+  env: Env & { SESSIONS: KVNamespace },
+  request: Request,
+  idParam: string | null,
+  origin: string
+): Promise<Response> {
+  const guestId = ensureGuestId(request);
+  const headers = guestHeaders(guestId, request);
+  const rec = await loadGuest(env, guestId);
+  const ip = clientIp(request);
+  const quota = await guestQuota(env, rec, ip);
+
+  if (idParam) {
+    if (!isGuestJobId(idParam)) {
+      return json({ error: "unauthorized", code: "unauthorized" }, 401, headers);
+    }
+    let job = rec.jobs.find((j) => j.id === idParam) || null;
+    if (!job) return json({ error: "not found", code: "not_found" }, 404, headers);
+    let providerState: string | null = null;
+    if (job.status === "processing" && job.providerJobId) {
+      if (!hasKieKey(env)) return kieMissingResponse();
+      const synced = await settleGuestJob(env, rec, job, origin, ip);
+      job = synced.job;
+      providerState = synced.providerState;
+    }
+    return json(
+      {
+        ok: true,
+        demo: false,
+        guest: true,
+        generation: publicGuestJob(job),
+        resultUrl: job.resultUrl,
+        status: job.status,
+        providerState,
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
+      },
+      200,
+      headers
+    );
+  }
+
+  if (hasKieKey(env)) {
+    for (const j of rec.jobs.filter((x) => x.status === "processing" && x.providerJobId).slice(0, 3)) {
+      await settleGuestJob(env, rec, j, origin, ip);
+    }
+  }
+  const fresh = await loadGuest(env, guestId);
+  const q2 = await guestQuota(env, fresh, ip);
+  return json(
+    {
+      ok: true,
+      demo: false,
+      guest: true,
+      guestRemaining: q2.remaining,
+      guestLimit: GUEST_LIMIT,
+      generations: fresh.jobs.map(publicGuestJob),
+    },
+    200,
+    headers
+  );
+}

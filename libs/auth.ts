@@ -48,3 +48,11 @@ export function tokenFromRequest(req: Request): string | null {
   const m = auth.match(/^Bearer\s+(.+)$/i);
   return m ? m[1].trim() : null;
 }
+
+export async function getSessionUser(
+  env: { SESSIONS?: KVNamespace },
+  request: Request
+): Promise<Session | null> {
+  if (!env.SESSIONS) return null;
+  return getSession(env as { SESSIONS: KVNamespace }, tokenFromRequest(request));
+}

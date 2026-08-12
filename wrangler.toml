@@ -1,3 +1,4 @@
+# Cursor DreamUtopia clone (NOT pikbo, NOT magicremover-clone).
 name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
@@ -12,9 +13,13 @@ database_id = "148c47fa-55da-4423-b031-1a74e4216014"
 binding = "SESSIONS"
 id = "6b2dbe20ae95452f8f22b98f0ce6196e"
 
-# Optional for current generate path (public imageUrl + KIE). Keep for future R2 uploads.
+# Optional for public imageUrl generate; required for POST /api/upload (workspace file picker).
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "dreamutopia-media"
 
-# Secret (set in Pages dashboard / wrangler pages secret): KIE_API_KEY
+# Secrets (Pages dashboard / wrangler pages secret):
+#   KIE_API_KEY
+#   KIE_WEBHOOK_HMAC_KEY                   (optional; kie.ai Settings → webhookHmacKey)
+#   STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET  (paid credits)
+#   RESEND_API_KEY + MAIL_FROM                 (password reset + welcome email)

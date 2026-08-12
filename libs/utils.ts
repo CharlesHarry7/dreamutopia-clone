@@ -4,24 +4,38 @@
 export interface Env {
   DB?: D1Database;
   SESSIONS?: KVNamespace;
-  /** R2 media bucket — optional; generate can use public image URLs without MEDIA */
+  /** R2 media bucket — file uploads (POST /api/upload). Generate can still use a public imageUrl without MEDIA. */
   MEDIA?: R2Bucket;
   /** Pages secret — required for real KIE image-to-video */
   KIE_API_KEY?: string;
+  KIE_API_BASE?: string;
+  /** Stripe Checkout (optional). Without it, GET /api/checkout returns configured:false. */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  /** Resend (optional). Without it, POST /api/auth/forgot returns email_not_configured. */
+  RESEND_API_KEY?: string;
+  MAIL_FROM?: string;
+  /** Optional KIE callback HMAC (kie.ai Settings → webhookHmacKey). */
+  KIE_WEBHOOK_HMAC_KEY?: string;
 }
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
-  "access-control-allow-headers": "Content-Type, Authorization",
+  "access-control-allow-headers": "Content-Type, Authorization, Idempotency-Key",
 };
 
-export function json(data: unknown, status = 200): Response {
+export function json(
+  data: unknown,
+  status = 200,
+  extraHeaders?: Record<string, string>
+): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       ...CORS_HEADERS,
+      ...(extraHeaders || {}),
     },
   });
 }

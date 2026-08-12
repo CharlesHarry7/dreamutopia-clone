@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pricing Plans | DreamUtopia AI</title>
 <meta name="description" content="Buy credits for DreamUtopia AI. One-time credit packs for video and image generation. No subscriptions, no limits.">
+<meta name="theme-color" content="#0d0d12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DreamUtopia">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -32,6 +38,15 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
 .lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.pwa-install{position:fixed;left:16px;right:16px;bottom:16px;z-index:90;display:none;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px 14px;box-shadow:0 16px 48px rgba(0,0,0,.5);max-width:560px;margin:0 auto}
+.pwa-install.show{display:flex}
+.pwa-install img{width:40px;height:40px;border-radius:10px;flex-shrink:0}
+.pwa-install .copy{flex:1;min-width:0}
+.pwa-install .copy strong{display:block;font-size:14px}
+.pwa-install .copy p{font-size:12px;color:var(--text2);margin:2px 0 0}
+.pwa-install .hint{margin-top:6px;font-size:12px;color:var(--primary2)}
+.pwa-install .go{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0}
+.pwa-install .x{color:var(--text3);font-size:18px;padding:0 4px}
 .container{max-width:1100px;margin:0 auto;padding:0 20px}
 
 .page-head{text-align:center;padding:70px 20px 36px}
@@ -39,6 +54,11 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .page-head p{font-size:15.5px;color:var(--text2);max-width:560px;margin:0 auto 18px;line-height:1.55}
 .cost-legend{display:inline-flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-size:13px;color:var(--text2);background:var(--card);border:1px solid var(--border);padding:10px 18px;border-radius:30px}
 .cost-legend b{color:#fff;font-weight:600}
+.checkout-note{display:none;max-width:640px;margin:18px auto 0;padding:12px 16px;border-radius:12px;border:1px solid rgba(251,146,60,.4);background:rgba(251,146,60,.08);color:var(--text2);font-size:13.5px;line-height:1.5;text-align:center}
+.checkout-note.show{display:block}
+.checkout-note b{color:var(--orange);font-weight:700}
+.checkout-note a{color:var(--primary2);font-weight:600}
+.checkout-note a:hover{text-decoration:underline}
 
 .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-bottom:72px}
 .plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px 24px;position:relative;display:flex;flex-direction:column;transition:transform .3s,border-color .3s}
@@ -62,6 +82,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .plan .btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
 .plan .btn.outline{background:var(--bg2);border:1px solid var(--border2);color:var(--text)}
 .plan .btn:hover{opacity:.88}
+.plan .btn-caption{display:block;margin-top:8px;font-size:11.5px;color:var(--text3);text-align:center;line-height:1.4;min-height:2.6em}
 .best-value{display:inline-block;font-size:11px;font-weight:700;color:#000;background:var(--orange);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle}
 
 .section{padding:0 0 72px}
@@ -122,38 +143,39 @@ nav{display:none}
 <span>DreamUtopia AI</span>
 </a>
 <nav>
-<a href="/">Home</a>
-<a href="/pricing" class="active">Pricing</a>
-<a href="/#faq">FAQ</a>
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/pricing" class="active" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
 <details class="nav-drop">
-<summary>Features</summary>
+<summary data-i18n="nav.features">Features</summary>
 <div class="nav-menu">
-<a href="/#features">AI Models</a>
-<a href="/#gallery">Gallery</a>
-<a href="/#get-started">How it works</a>
-<a href="/workspace">Workspace</a>
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
 </div>
 </details>
 </nav>
 <div class="header-right">
-<a href="/auth?mode=login" class="btn-login" id="hdrLogin">Log In</a>
-<a href="/auth?mode=register" class="btn-signup" id="hdrSignup">Sign Up</a>
+<a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
 <select class="lang-select" aria-label="Language">
-<option>English</option>
-<option>中文</option>
-<option>日本語</option>
-<option>Español</option>
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
 </select>
 </div>
 </header>
 
 <section class="page-head">
-<h1>Buy Credits</h1>
-<p>Purchase credits and use them across all AI models — video and image generation. No subscriptions, no limits.</p>
+<h1 data-i18n="price.h">Buy Credits</h1>
+<p data-i18n="price.p">Purchase credits and use them across all AI models — video and image generation. No subscriptions, no limits.</p>
 <div class="cost-legend">
 <span><b>Video:</b> Lite 3 · Med 5 · Pro 16</span>
 <span><b>Image:</b> Lite 1 · Pro 2</span>
 </div>
+<p class="checkout-note" id="checkoutNote" role="status" aria-live="polite"></p>
 </section>
 
 <div class="container">
@@ -173,7 +195,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter">Select</a>
+<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="starter"></span>
 </div>
 
 <div class="plan">
@@ -191,7 +214,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus">Select</a>
+<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="plus"></span>
 </div>
 
 <div class="plan popular">
@@ -210,7 +234,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro">Select</a>
+<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="pro"></span>
 </div>
 
 <div class="plan">
@@ -228,7 +253,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium">Select</a>
+<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="premium"></span>
 </div>
 
 </div>
@@ -317,7 +343,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">We accept cryptocurrency and Telegram Stars. If you pay with Telegram Stars you can buy them during checkout with Apple Pay, Google Pay, or a card.</div>
+<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -343,14 +369,11 @@ nav{display:none}
 <div class="footer-col">
 <h4>Features</h4>
 <ul>
-<li><a href="/#features">Free AI Video Generator</a></li>
-<li><a href="/#features">Photo to Video AI Free</a></li>
-<li><a href="/#features">AI Video Enhancer</a></li>
-<li><a href="/#gallery">Image to Video AI</a></li>
-<li><a href="/#get-started">AI Image Animator</a></li>
-<li><a href="/workspace">Free Fast AI Video Generator</a></li>
-<li><a href="/#features">Anime AI Generator</a></li>
-<li><a href="/#gallery">Picture to Dance</a></li>
+<li><a href="/free-ai-video">Free AI Video Generator</a></li>
+<li><a href="/photo-to-video">Photo to Video AI</a></li>
+<li><a href="/image-to-video">Image to Video AI</a></li>
+<li><a href="/workspace">Workspace</a></li>
+<li><a href="/#gallery">Gallery</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -365,49 +388,201 @@ nav{display:none}
 <div class="footer-col">
 <h4>Legal</h4>
 <ul>
-<li><a href="#">Privacy Policy</a></li>
-<li><a href="#">Terms of Service</a></li>
+<li><a href="/privacy">Privacy Policy</a></li>
+<li><a href="/terms">Terms of Service</a></li>
 </ul>
 </div>
 </div>
 </footer>
+<div class="pwa-install" id="pwaBanner" hidden>
+<img src="/assets/icons/icon-192.png" alt="" width="40" height="40">
+<div class="copy">
+<strong data-i18n="pwa.title">Get the DreamUtopia App</strong>
+<p data-i18n="pwa.sub">Install to your home screen for one-tap creating.</p>
+<p class="hint" id="pwaHint" hidden></p>
+</div>
+<button type="button" class="go" id="pwaInstall" data-i18n="pwa.install">Install</button>
+<button type="button" class="x" id="pwaDismiss" aria-label="Dismiss">✕</button>
+</div>
+<script src="/assets/js/du.js"></script>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
 <script>
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
   const CREDITS_KEY = "dreamutopia_credits";
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) return;
+  const note = document.getElementById("checkoutNote");
+  const ctas = Array.prototype.slice.call(document.querySelectorAll("[data-checkout-cta]"));
 
-  // Mirror workspace header when a session token is present.
-  const loginBtn = document.getElementById("hdrLogin");
-  const signupBtn = document.getElementById("hdrSignup");
-  if (loginBtn) {
-    loginBtn.textContent = "Log Out";
-    loginBtn.href = "#";
-    loginBtn.addEventListener("click", function (e) {
-      e.preventDefault();
-      fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { authorization: "Bearer " + token, "content-type": "application/json" },
-      }).catch(function () {});
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(CREDITS_KEY);
-      location.reload();
+  function packAuthHref(pack) {
+    return "/auth?mode=register&pack=" + encodeURIComponent(pack);
+  }
+  function packWorkspaceHref(pack) {
+    return "/workspace?pack=" + encodeURIComponent(pack);
+  }
+
+  function hydrateHeader(signedIn) {
+    const loginBtn = document.getElementById("hdrLogin");
+    const signupBtn = document.getElementById("hdrSignup");
+    if (!loginBtn || !signupBtn) return;
+    if (!signedIn) {
+      loginBtn.textContent = (window.DU && DU.t("hdr.login", "Log In")) || "Log In";
+      loginBtn.href = "/auth?mode=login";
+      loginBtn.onclick = null;
+      signupBtn.textContent = (window.DU && DU.t("hdr.signup", "Sign Up")) || "Sign Up";
+      signupBtn.href = "/auth?mode=register";
+      return;
+    }
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return hydrateHeader(false);
+    if (loginBtn) {
+      loginBtn.textContent = (window.DU && DU.t("hdr.logout", "Log Out")) || "Log Out";
+      loginBtn.href = "#";
+      loginBtn.onclick = function (e) {
+        e.preventDefault();
+        fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+        }).catch(function () {});
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(CREDITS_KEY);
+        location.reload();
+      };
+    }
+    if (signupBtn) {
+      signupBtn.textContent = (window.DU && DU.t("nav.workspace", "Workspace")) || "Workspace";
+      signupBtn.href = "/workspace";
+    }
+  }
+
+  function applyUnavailableCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
+        : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Continue" : "Continue free";
+      a.setAttribute("title", "Paid checkout not configured — continues without charging");
+      a.setAttribute(
+        "aria-label",
+        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (checkout not live)"
+      );
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn
+          ? "Checkout coming soon · no charge"
+          : "Free account · pack saved · no charge";
+      }
     });
   }
-  if (signupBtn) {
-    signupBtn.textContent = "Workspace";
-    signupBtn.href = "/workspace";
+
+  function wireFallbackHrefs(signedIn) {
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.href = signedIn ? packWorkspaceHref(pack) : packAuthHref(pack);
+      a.onclick = null;
+    });
   }
 
-  fetch("/api/auth/me", { headers: { authorization: "Bearer " + token } })
-    .then((res) => {
-      if (!res.ok) return;
-      document.querySelectorAll("a[data-pack]").forEach((a) => {
-        a.href = "/workspace?pack=" + encodeURIComponent(a.getAttribute("data-pack"));
+  function applyLiveCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Checkout is live.</b> Select opens Stripe. First purchase adds <b>31 bonus credits</b> (5 Lite + 1 Pro)."
+        : "<b>Checkout is live.</b> Sign in, then Select opens Stripe. First purchase adds <b>31 bonus credits</b>.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Buy with Stripe" : "Sign in to buy";
+      a.removeAttribute("title");
+      a.setAttribute("aria-label", (signedIn ? "Buy " : "Sign in to buy ") + pack + " pack");
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn ? "Secure Stripe checkout" : "Account required · then Stripe";
+      }
+      if (!signedIn) {
+        a.href = packAuthHref(pack);
+        a.onclick = null;
+        return;
+      }
+      a.href = "#";
+      a.onclick = async function (e) {
+        e.preventDefault();
+        const token = localStorage.getItem(TOKEN_KEY);
+        const prev = a.textContent;
+        a.textContent = "Redirecting…";
+        try {
+          const res = await fetch("/api/checkout", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ packId: pack }),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (data && data.url) {
+            location.href = data.url;
+            return;
+          }
+          throw new Error(data.message || data.error || "checkout failed");
+        } catch (err) {
+          a.textContent = prev;
+          if (note) {
+            note.innerHTML = "<b>Checkout failed.</b> " + (err.message || "Try again.");
+          }
+        }
+      };
+    });
+  }
+
+  async function checkoutAvailable() {
+    try {
+      const res = await fetch("/api/checkout", { method: "GET" });
+      const data = await res.json().catch(function () { return {}; });
+      return !!(data && data.ok === true && data.configured === true);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function isSignedIn() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return false;
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { authorization: "Bearer " + token },
       });
-    })
-    .catch(function () {});
+      if (res.status === 401) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(CREDITS_KEY);
+        return false;
+      }
+      return res.ok;
+    } catch (e) {
+      return !!token;
+    }
+  }
+
+  (async function init() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) hydrateHeader(true);
+    const signedIn = await isSignedIn();
+    if (!signedIn) hydrateHeader(false);
+    else hydrateHeader(true);
+    document.addEventListener("du:i18n", function () { hydrateHeader(signedIn); });
+    const live = await checkoutAvailable();
+    if (live) {
+      applyLiveCopy(signedIn);
+      return;
+    }
+    applyUnavailableCopy(signedIn);
+    wireFallbackHrefs(signedIn);
+  })();
 })();
 </script>
 </body>

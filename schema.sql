@@ -6,18 +6,36 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   credits INTEGER NOT NULL DEFAULT 10,
+  referral_code TEXT,
+  referred_by INTEGER,
+  first_purchase_at TEXT,
+  stripe_customer_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+
+CREATE TABLE IF NOT EXISTS credit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  delta INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  stripe_session_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_events_stripe ON credit_events(stripe_session_id)
+  WHERE stripe_session_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS generations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  model TEXT NOT NULL DEFAULT 'lite',
+  model TEXT NOT NULL DEFAULT 'lite',       -- lite|medium|pro or image-lite|image-pro
   prompt TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',  -- pending | processing | done | failed
-  media_key TEXT,                          -- R2 object key (optional; unused on URL path)
+  media_key TEXT,                          -- R2 object key (optional)
   duration_sec INTEGER DEFAULT 5,
-  input_image_url TEXT,                    -- public HTTPS source image (temp path without R2)
+  input_image_url TEXT,                    -- start URL, or JSON {"first","last"}
   provider_job_id TEXT,                    -- KIE taskId
   result_url TEXT,                         -- provider result video URL (direct to client)
   error_message TEXT,
@@ -36,4 +54,9 @@ CREATE TABLE IF NOT EXISTS gallery (
 );
 
 CREATE INDEX IF NOT EXISTS idx_generations_user ON generations(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_generations_provider_job ON generations(provider_job_id);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gallery_generation ON gallery(generation_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_events_refund_gen ON credit_events(reason)
+  WHERE reason LIKE 'refund:gen:%';
