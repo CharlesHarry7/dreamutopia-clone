@@ -144,6 +144,23 @@ function extractI18nKeys(src) {
   mustContain("out/pricing.html", "Continue free", "honest CTA when checkout is off");
   mustContain("out/pricing.html", 'class="checkout-note show"', "paused checkout note visible before JS");
   mustContain("out/pricing.html", "Paid checkout not configured", "CTA title says no charge");
+  mustContain("out/pricing.html", "function packWorkspaceHref", "logged-in paused CTA helper");
+  mustContain(
+    "out/pricing.html",
+    "signedIn ? packWorkspaceHref(pack) : packAuthHref(pack)",
+    "signed-in Continue → workspace, guest → register"
+  );
+  mustContain("out/pricing.html", "Continue opens your workspace", "signed-in paused banner");
+  {
+    const featCards = (pricing.match(/<div class="feat">/g) || []).length;
+    if (featCards !== 8) fail.push(`feat-grid should have 8 cards (even 4-col), got ${featCards}`);
+    else ok.push("feat-grid has 8 cards");
+  }
+  mustContain(
+    "out/pricing.html",
+    ".feat-grid{display:grid;grid-template-columns:repeat(4,1fr)",
+    "feat-grid 4 columns so 8 cards fill evenly"
+  );
   mustContain("out/index.html", "gallery-item sample", "gallery sample placeholders");
   mustContain("out/index.html", "gallery.note", "gallery honest sample note");
   mustContain("out/index.html", 'class="feat-card" href="/workspace"', "features card is a real link");
@@ -306,7 +323,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v22", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v23", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");
