@@ -46,6 +46,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
 .header-right{display:flex;gap:10px;align-items:center}
 .credits-pill{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2)}
+.credits-pill[hidden]{display:none!important}
 .credits-pill a{color:inherit;margin-left:6px;opacity:.85;font-weight:500}
 .credits-pill a:hover{opacity:1;text-decoration:underline}
 .credits-pill #creditsBadge{display:inline-block;min-width:1.25ch;text-align:center;vertical-align:baseline}
@@ -198,7 +199,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .history-empty{text-align:center;padding:56px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:18px}
 .history-empty h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .history-empty p{font-size:14px;color:var(--text2);margin-bottom:18px}
+.history-empty-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .history-empty .btn-primary{display:inline-block;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600}
+.history-empty .btn-outline{display:inline-block;border:1px solid var(--border2);padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600;color:var(--text)}
+.history-empty .btn-outline:hover{border-color:var(--primary)}
 .history-list{display:grid;gap:12px}
 .history-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px}
 .history-item .h-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:center}
@@ -252,6 +256,8 @@ nav{display:none}
 .gen-sticky .gen-btn{width:100%;margin:0}
 .gen-sticky .gen-foot{margin-top:8px}
 #createView{padding-bottom:120px}
+.save-card.show{display:none}
+body.ws-on-history .welcome.show{display:none}
 }
 </style>
 </head>
@@ -501,9 +507,13 @@ Image
 <!-- HISTORY VIEW -->
 <section class="history-panel" id="historyView">
 <div class="history-empty" id="historyEmpty">
-<h3 id="historyEmptyTitle" data-i18n="ws.history.signin.h">Sign in to view your history</h3>
-<p id="historyEmptyDesc" data-i18n="ws.history.signin.p">Your creations will appear here after you log in.</p>
-<button class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
+<h3 id="historyEmptyTitle" data-i18n="ws.history.empty.h">No creations yet</h3>
+<p id="historyEmptyDesc" data-i18n="ws.history.guest.p">Guest tries stay on this browser until you sign up. They are not saved to an account.</p>
+<div class="history-empty-actions" id="historyEmptyActions">
+<button type="button" class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
+<a href="/auth?mode=login&amp;next=/workspace" class="btn-outline" id="historyEmptyLogin" data-i18n="hdr.login">Log In</a>
+<a href="/auth?mode=signup&amp;next=/workspace" class="btn-primary" id="historyEmptySignup" data-i18n="hdr.signup">Sign Up</a>
+</div>
 </div>
 <div class="history-list" id="historyList" hidden></div>
 </section>
@@ -813,6 +823,10 @@ function bindAuthTriggers() {
   const saveSignup = document.getElementById("saveSignup");
   if (saveLogin) saveLogin.href = authHref("login");
   if (saveSignup) saveSignup.href = authHref("signup");
+  const emptyLogin = document.getElementById("historyEmptyLogin");
+  const emptySignup = document.getElementById("historyEmptySignup");
+  if (emptyLogin) emptyLogin.href = authHref("login");
+  if (emptySignup) emptySignup.href = authHref("signup");
 }
 
 function updateAuthUI(credits) {
@@ -884,6 +898,7 @@ function switchPrimaryTab(tab) {
   document.getElementById("tabHistory").classList.toggle("active", !create);
   document.getElementById("createView").style.display = create ? "" : "none";
   document.getElementById("historyView").classList.toggle("show", !create);
+  document.body.classList.toggle("ws-on-history", !create);
   if (!create) loadHistory();
 }
 
@@ -1246,16 +1261,30 @@ function refreshHistoryEmpty() {
   const title = document.getElementById("historyEmptyTitle");
   const desc = document.getElementById("historyEmptyDesc");
   const cta = document.getElementById("historyEmptyCta");
+  const login = document.getElementById("historyEmptyLogin");
+  const signup = document.getElementById("historyEmptySignup");
   if (token) {
     title.textContent = DU.t("ws.history.empty.h", "No creations yet");
     desc.textContent = DU.t("ws.history.empty.p", "Start creating to see your work here.");
     cta.textContent = DU.t("ws.history.start", "Start Creating");
+    cta.className = "btn-primary";
     cta.onclick = () => switchPrimaryTab("create");
+    if (login) login.hidden = true;
+    if (signup) signup.hidden = true;
   } else {
-    title.textContent = DU.t("ws.history.guest.h", "This device");
+    title.textContent = DU.t("ws.history.empty.h", "No creations yet");
     desc.textContent = DU.t("ws.history.guest.p", "Guest tries stay on this browser until you sign up. They are not saved to an account.");
     cta.textContent = DU.t("ws.history.start", "Start Creating");
+    cta.className = "btn-outline";
     cta.onclick = () => switchPrimaryTab("create");
+    if (login) {
+      login.hidden = false;
+      login.href = authHref("login");
+    }
+    if (signup) {
+      signup.hidden = false;
+      signup.href = authHref("signup");
+    }
   }
 }
 
