@@ -148,14 +148,13 @@ function setMode(next) {
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
     setMode(isLogin ? "register" : "login");
-    history.replaceState(null, "", "/auth?mode=" + (isLogin ? "register" : "login"));
   };
   passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
   hdrLogin.classList.toggle("active", isLogin);
   formError.classList.remove("show");
   formError.textContent = "";
   const nextUrl = "/auth?mode=" + mode;
-  if (location.search !== "?" + nextUrl.split("?")[1]) {
+  if (location.pathname + location.search !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
   document.title = (isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
