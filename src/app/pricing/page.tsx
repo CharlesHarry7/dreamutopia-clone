@@ -195,13 +195,13 @@ export default function PricingPage() {
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
           Prefer the free path?{" "}
-          <Link href="/auth?mode=register" className="text-[var(--primary2)] hover:underline">
-            Sign up for 10 credits
-          </Link>{" "}
+          <Button asChild variant="link" className="h-auto px-0 text-sm">
+            <Link href="/auth?mode=register">Sign up for 10 credits</Link>
+          </Button>{" "}
           or{" "}
-          <Link href="/workspace" className="text-[var(--primary2)] hover:underline">
-            try 2 guest Lite videos
-          </Link>
+          <Button asChild variant="link" className="h-auto px-0 text-sm">
+            <Link href="/workspace">try 2 guest Lite videos</Link>
+          </Button>
           .
         </p>
       </main>

@@ -13,11 +13,11 @@ export default function NotFound() {
         <p className="mb-8 text-sm text-muted-foreground">
           That URL isn’t here. Try the home page or jump into the workspace to create.
         </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Button asChild>
+        <div className="flex w-full max-w-xs flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/">Home</Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/workspace">Workspace</Link>
           </Button>
         </div>

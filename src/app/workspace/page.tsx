@@ -485,14 +485,10 @@ function WorkspaceInner() {
         )}
 
         {kieReady === false && (
-          <div
-            className="relative mb-5 rounded-2xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
-            role="status"
-          >
-            <b>Generate offline.</b>{" "}
-            KIE or guest-trial bindings are not ready on this Worker — jobs return an honest error
-            (no fake demo video).
-          </div>
+          <InlineAlert variant="info" className="mb-5 px-4">
+            <b>Generate offline.</b> KIE or guest-trial bindings are not ready on this Worker — jobs
+            return an honest error (no fake demo video).
+          </InlineAlert>
         )}
 
         {user && inviteUrl && (
@@ -536,17 +532,28 @@ function WorkspaceInner() {
           onValueChange={(v) => setTab(v as "create" | "history")}
           className="relative"
         >
-          <TabsList aria-label="Workspace sections">
-            <TabsTrigger value="create">Create</TabsTrigger>
-            <TabsTrigger value="history">My Creations</TabsTrigger>
+          <TabsList aria-label="Workspace sections" className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="create" className="w-full">
+              Create
+            </TabsTrigger>
+            <TabsTrigger value="history" className="w-full">
+              My Creations
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="create" className="mt-5">
             <div className="mb-4 flex justify-center">
               <Tabs value={mode} onValueChange={(v) => switchMode(v as Mode)}>
-                <TabsList aria-label="Generation mode">
-                  <TabsTrigger value="video">{t("tab.video", "Video")}</TabsTrigger>
-                  <TabsTrigger value="image" disabled={!user} title={!user ? "Sign up for image models" : undefined}>
+                <TabsList aria-label="Generation mode" className="grid w-full max-w-xs grid-cols-2 sm:inline-flex sm:w-auto">
+                  <TabsTrigger value="video" className="w-full">
+                    {t("tab.video", "Video")}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="image"
+                    className="w-full"
+                    disabled={!user}
+                    title={!user ? "Sign up for image models" : undefined}
+                  >
                     {t("tab.image", "Image")}
                   </TabsTrigger>
                 </TabsList>
@@ -555,9 +562,9 @@ function WorkspaceInner() {
             {!user && (
               <p className="mb-4 text-center text-xs text-muted-foreground">
                 Guests: Lite image-to-video only ·{" "}
-                <Link href="/auth?mode=register" className="text-[var(--primary2)] hover:underline">
-                  Sign up
-                </Link>{" "}
+                <Button asChild variant="link" className="h-auto px-0 text-xs">
+                  <Link href="/auth?mode=register">Sign up</Link>
+                </Button>{" "}
                 for Image mode, Medium/Pro, text-to-video, and first/last frame.
               </p>
             )}
