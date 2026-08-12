@@ -777,7 +777,12 @@ async function homeGenerate() {
     result.classList.add("show");
     text.innerHTML = '<span style="color:#22c55e">Done</span>';
   } catch (e) {
-    text.textContent = e.message || "Generation failed";
+    const code = e && e.code ? String(e.code) : "";
+    if (code === "provider_credits_insufficient") {
+      text.textContent = "Generation is temporarily unavailable. Please try again later.";
+    } else {
+      text.textContent = e.message || "Generation failed";
+    }
   }
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));

@@ -695,29 +695,51 @@ function showPackBanner() {
   banner.hidden = false;
   banner.classList.add("show");
   document.getElementById("packBannerTitle").textContent = selectedPack.name + " selected";
+  const base = selectedPack.price + " · " + selectedPack.credits + " credits. First purchase also adds <b>31 bonus credits</b> (5 Lite + 1 Pro).";
   document.getElementById("packBannerText").innerHTML = token
-    ? selectedPack.price + " · " + selectedPack.credits + " credits. First purchase also adds <b>31 bonus credits</b> (5 Lite + 1 Pro). If Stripe is configured, use Buy with Stripe — otherwise keep creating with your current credits."
+    ? base + " Checking checkout…"
     : selectedPack.price + " · " + selectedPack.credits + " credits. <a href=\"" + authHref("register") + "\">Sign up</a> or <a href=\"" + authHref("login") + "\">log in</a> to continue with this pack.";
   if (buyBtn) {
-    buyBtn.hidden = !token;
-    buyBtn.onclick = async function () {
-      if (!token) return goAuth("login");
-      buyBtn.disabled = true;
-      buyBtn.textContent = "Redirecting…";
-      try {
-        const data = await api("/checkout", { method: "POST", body: JSON.stringify({ packId: packId }) });
-        if (data.url) {
-          location.href = data.url;
-          return;
-        }
-        throw new Error(data.message || data.error || "checkout failed");
-      } catch (e) {
-        buyBtn.disabled = false;
-        buyBtn.textContent = "Buy with Stripe";
-        toast(e.message || "Checkout is not configured yet", true);
-      }
-    };
+    buyBtn.hidden = true;
+    buyBtn.onclick = null;
   }
+  fetch("/api/checkout")
+    .then(function (res) { return res.json().catch(function () { return {}; }); })
+    .then(function (data) {
+      const live = !!(data && data.ok === true && data.configured === true);
+      const text = document.getElementById("packBannerText");
+      if (text && token) {
+        text.innerHTML = live
+          ? base + " Select Buy with Stripe to pay."
+          : base + " Stripe is not configured yet — no charge. Keep creating with your current credits.";
+      }
+      if (!buyBtn) return;
+      buyBtn.hidden = !token || !live;
+      if (!token || !live) return;
+      buyBtn.onclick = async function () {
+        if (!token) return goAuth("login");
+        buyBtn.disabled = true;
+        buyBtn.textContent = "Redirecting…";
+        try {
+          const paid = await api("/checkout", { method: "POST", body: JSON.stringify({ packId: packId }) });
+          if (paid.url) {
+            location.href = paid.url;
+            return;
+          }
+          throw new Error(paid.message || paid.error || "checkout failed");
+        } catch (e) {
+          buyBtn.disabled = false;
+          buyBtn.textContent = "Buy with Stripe";
+          toast(e.message || "Checkout is not configured yet", true);
+        }
+      };
+    })
+    .catch(function () {
+      const text = document.getElementById("packBannerText");
+      if (text && token) {
+        text.innerHTML = base + " Stripe is not configured yet — no charge. Keep creating with your current credits.";
+      }
+    });
 }
 
 function showInviteCard(user) {
@@ -1165,6 +1187,12 @@ async function generate() {
     let msg = e.message || "Generation failed";
     if (code === "kie_api_key_missing") {
       msg = "KIE_API_KEY missing — set it as a Pages secret.";
+    } else if (code === "provider_credits_insufficient") {
+      msg = "Generation is temporarily unavailable. Please try again later.";
+    } else if (code === "kie_unauthorized") {
+      msg = "Generation provider rejected the API key.";
+    } else if (code === "kie_create_failed") {
+      msg = e.message || "Provider failed to start the job.";
     } else if (code === "schema_migration_required") {
       msg = "D1 migration needed — run migrations/001_generations_kie.sql";
     } else if (code === "media_not_bound") {

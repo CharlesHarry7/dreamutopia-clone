@@ -1,4 +1,5 @@
 import type { Env } from "../libs/utils";
+import { asHead } from "../libs/utils";
 
 const PATHS = [
   "/",
@@ -26,3 +27,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
     },
   });
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));

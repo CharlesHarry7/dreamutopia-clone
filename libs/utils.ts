@@ -63,6 +63,11 @@ export function preflight(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
+/** HEAD with the same status/headers as a GET, no body (crawlers / uptime checks). */
+export function asHead(res: Response): Response {
+  return new Response(null, { status: res.status, headers: res.headers });
+}
+
 export function randomId(prefix = "gen"): string {
   const rand = crypto.getRandomValues(new Uint8Array(8));
   const hex = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");

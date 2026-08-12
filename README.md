@@ -21,9 +21,9 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 |---|---|
 | dreamutopia.net | 原站（抄的对象，不是我们的） |
 | dreamutopia-clone | GitHub 仓库 + Cloudflare Pages 项目 |
-| https://dreamutopia-clone.pages.dev | **生产**（`main`，合 PR 前仍是旧版） |
-| https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev | **PR #12 预览**（最新功能） |
-| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | 游客试用 / 文生视频 / 首尾帧，待合并 |
+| https://dreamutopia-clone.pages.dev | **生产**（`main`，PR #12 已合并） |
+| https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev | 旧 PR #12 预览别名（可忽略） |
+| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | **已合并** — 游客试用 / Stripe 接线 / KIE 回调 |
 | dreamutopia-db | D1 数据库 |
 | dreamutopia-media | R2 媒体桶 |
 | SESSIONS | KV（登录 + 游客次数） |
@@ -97,7 +97,8 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 
 See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, optional Stripe + Resend + KIE webhook HMAC), and D1 migrations `001`–`004`.
 
-**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
+**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials) **and a funded KIE wallet**. Signed-in generate also needs `DB`.  
+If the key is set but KIE’s own balance is empty, generate returns `provider_credits_insufficient` (503) — that is not the user’s credit pack.  
 **Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.
 
 ## Deploy

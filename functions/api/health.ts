@@ -1,4 +1,4 @@
-import { json, preflight, hasDb, hasSessions, hasMedia, hasKieKey } from "../../libs/utils";
+import { json, preflight, asHead, hasDb, hasSessions, hasMedia, hasKieKey } from "../../libs/utils";
 import { hasStripe } from "../../libs/stripe";
 import { hasMailer } from "../../libs/mail";
 import { hasKieWebhookHmac } from "../../libs/kieWebhook";
@@ -46,3 +46,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
           : "D1 + KV + KIE ready — generate via public imageUrl (bind MEDIA for uploads)",
   });
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));

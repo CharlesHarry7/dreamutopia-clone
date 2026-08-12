@@ -218,17 +218,28 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 function createFailedResponse(
   created: { message: string; code?: number; status: number }
 ): Response {
-  const status =
-    created.code === 401 || created.status === 401
-      ? 502
-      : created.code === 402
-        ? 502
-        : 502;
+  const providerCode = created.code ?? null;
+  if (providerCode === 402 || /credits insufficient|balance isn.?t enough|top up/i.test(created.message || "")) {
+    return structuredError(
+      "provider_credits_insufficient",
+      "Generation is temporarily unavailable. Please try again later.",
+      503,
+      { providerCode, kieConfigured: true }
+    );
+  }
+  if (providerCode === 401 || created.status === 401) {
+    return structuredError(
+      "kie_unauthorized",
+      "Generation provider rejected the API key. Check KIE_API_KEY.",
+      503,
+      { providerCode, kieConfigured: true }
+    );
+  }
   return structuredError(
     "kie_create_failed",
     created.message || "Failed to create KIE generation task",
-    status,
-    { providerCode: created.code ?? null }
+    502,
+    { providerCode }
   );
 }
 

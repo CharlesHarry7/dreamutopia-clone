@@ -260,7 +260,11 @@ async function api(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || "request failed");
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || "request failed");
+    err.code = data.code || data.error || null;
+    throw err;
+  }
   return data;
 }
 
@@ -303,7 +307,11 @@ document.getElementById("authForm").onsubmit = async (e) => {
     }
     location.href = workspaceUrl();
   } catch (err) {
-    formError.textContent = err.message || "Something went wrong";
+    if (mode === "forgot" && err && err.code === "email_not_configured") {
+      formError.textContent = "Password reset email isn’t set up yet. You can still log in with your password.";
+    } else {
+      formError.textContent = err.message || "Something went wrong";
+    }
     formError.classList.add("show");
     submitBtn.disabled = false;
     submitBtn.textContent = prev;

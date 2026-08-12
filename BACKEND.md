@@ -162,6 +162,8 @@ bucket_name = "dreamutopia-media"
 
 Do **not** commit the key.
 
+If `/api/generate` returns `provider_credits_insufficient` (503), the secret is set but the **KIE account wallet is empty**. Top up at [kie.ai](https://kie.ai). That is not the user’s DreamUtopia credit balance.
+
 ## 3b. Optional Stripe + Resend secrets
 
 **Stripe (paid credit packs)**
@@ -247,13 +249,15 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | Forgot password without Resend | `email_not_configured` 503 |
 | Too many generate/auth requests | `rate_limited` 429 |
 | 3+ jobs already processing | `job_in_flight` 429 |
+| KIE wallet empty (key is set) | `provider_credits_insufficient` 503 (user-safe; not their credits) |
+| KIE key rejected | `kie_unauthorized` 503 |
 
 ## Checklist
 
 - [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
 - [ ] `schema.sql` (+ `001`–`004` migrations if the DB already existed)
 - [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
-- [ ] Pages secret: `KIE_API_KEY`
+- [ ] Pages secret: `KIE_API_KEY` **and** a funded kie.ai wallet
 - [ ] Optional: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/webhooks/stripe`)
 - [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset + welcome)
 - [ ] Optional: `KIE_WEBHOOK_HMAC_KEY` after enabling HMAC on kie.ai Settings
