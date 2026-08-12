@@ -547,7 +547,7 @@ const btn=document.getElementById('genBtn');
 if(ta.value.trim().length>0){
 btn.classList.add('ready');
 btn.disabled=false;
-btn.onclick=()=>alert('Demo only — signup required to generate');
+btn.onclick=()=>{ location.href='/auth?mode=register'; };
 }else{
 btn.classList.remove('ready');
 btn.disabled=true;

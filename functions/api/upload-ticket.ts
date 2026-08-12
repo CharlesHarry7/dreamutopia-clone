@@ -15,6 +15,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
     mediaBound: hasMedia(env),
     note: hasMedia(env)
       ? "MEDIA R2 bound — serve/upload via Functions when implemented"
-      : "demo — MEDIA R2 not bound; see BACKEND.md",
+      : "MEDIA R2 not bound — /api/generate accepts public imageUrl + KIE (no R2 required); see BACKEND.md",
+    generateUsesMedia: false,
   });
 };

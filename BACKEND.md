@@ -1,16 +1,49 @@
-# Backend wiring — D1 + KV + R2
+# Backend wiring — D1 + KV + KIE (R2 optional)
 
-Auth, credits, and generation history need Cloudflare bindings. **This repo is code-ready**; production still needs a human (or an agent with `CLOUDFLARE_API_TOKEN`) to create resources and attach them to the Pages project.
+Auth, credits, and generation history need Cloudflare bindings. **Image-to-video does not require R2/MEDIA** right now: the client sends a public `imageUrl`, the Function calls KIE, D1 stores job status, and the client receives the provider `resultUrl`.
 
-Payment/Stripe and real AI inference are out of scope.
+Payment/Stripe is out of scope.
 
 ## Binding names (must match code)
 
-| Binding | Type | Used by |
-|--------|------|---------|
-| `DB` | D1 | users, credits, generations, gallery |
-| `SESSIONS` | KV | login/register/logout/me session tokens |
-| `MEDIA` | R2 | future media storage (upload-ticket reports status) |
+| Binding / secret | Type | Required for | Used by |
+|------------------|------|--------------|---------|
+| `DB` | D1 | auth + generate | users, credits, generations, gallery |
+| `SESSIONS` | KV | auth + generate | login/register/logout/me session tokens |
+| `KIE_API_KEY` | Pages **secret** | real generate | `/api/generate` → KIE Market API |
+| `MEDIA` | R2 | **optional** | future upload path (`/api/upload-ticket` status only) |
+
+## Temporary generate path (no R2)
+
+```
+POST /api/generate
+  Authorization: Bearer <session>
+  { "prompt", "imageUrl": "https://…", "model", "durationSec" }
+
+→ deduct credits
+→ KIE createTask (kling-2.6/image-to-video)
+→ INSERT generations (status=processing, provider_job_id, input_image_url)
+→ { generationId, status, providerJobId, credits }
+
+GET /api/generate?id=<generationId>
+→ poll KIE recordInfo when still processing
+→ update D1 to done/failed
+→ { status, resultUrl }   // provider video URL, not an R2 key
+```
+
+If `KIE_API_KEY` is missing:
+
+```json
+{
+  "error": "kie_api_key_missing",
+  "code": "kie_api_key_missing",
+  "message": "KIE_API_KEY is not configured. …",
+  "kieConfigured": false,
+  "mediaRequired": false
+}
+```
+
+HTTP **503**. No homepage demo alert — workspace shows this message.
 
 ## 1. Create resources (CLI)
 
@@ -22,20 +55,23 @@ npx wrangler login
 
 npx wrangler d1 create dreamutopia-db
 npx wrangler kv namespace create SESSIONS
-npx wrangler r2 bucket create dreamutopia-media
+# Optional later:
+# npx wrangler r2 bucket create dreamutopia-media
 ```
 
-Each create command prints an **id**. Copy them.
-
-Apply schema to the **remote** D1 database:
+Apply schema (new DBs):
 
 ```bash
 npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
 ```
 
-## 2. Paste IDs into `wrangler.toml`
+**Existing DBs** (created before KIE columns) also need:
 
-Uncomment the binding blocks and replace placeholders:
+```bash
+npx wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql
+```
+
+## 2. Paste IDs into `wrangler.toml`
 
 ```toml
 [[d1_databases]]
@@ -47,74 +83,86 @@ database_id = "<paste from d1 create>"
 binding = "SESSIONS"
 id = "<paste from kv namespace create>"
 
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "dreamutopia-media"
+# Optional — generate works without this:
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "dreamutopia-media"
 ```
 
-> **Do not commit fake `REPLACE_ME` IDs uncommented** — invalid IDs break Cloudflare Pages deploys. Keep bindings commented until real IDs exist (current default).
+## 3. Set `KIE_API_KEY` (Pages secret)
 
-## 3. Cloudflare Pages dashboard bindings (required for production)
+1. Create a key at [kie.ai API keys](https://kie.ai/api-key)
+2. Cloudflare Dashboard → **Workers & Pages** → project → **Settings** → **Variables and Secrets**
+3. Add secret **`KIE_API_KEY`** (Production; Preview if needed)
+4. Redeploy so Functions see the secret
 
-`wrangler.toml` bindings apply to Wrangler/local deploys. **Pages projects often need bindings set in the dashboard as well:**
+Do **not** commit the key.
 
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → project `dreamutopia-clone` (or your project name)
+## 4. Cloudflare Pages dashboard bindings
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → project
 2. **Settings** → **Bindings**
-3. Add:
-   - **D1 database** → variable name `DB` → `dreamutopia-db`
-   - **KV namespace** → variable name `SESSIONS` → the `SESSIONS` namespace
-   - **R2 bucket** → variable name `MEDIA` → `dreamutopia-media`
-4. Apply to **Production** (and Preview if you use preview deploys)
-5. **Redeploy** the latest deployment so Functions pick up bindings
+3. Add **D1** `DB` and **KV** `SESSIONS`
+4. `MEDIA` / R2 is optional for this path
+5. Redeploy
 
-## 4. Verify
+## 5. Verify
 
 ```bash
 curl -s https://dreamutopia-clone.pages.dev/api/health | jq
 ```
 
-Expect `authReady: true` and `bindings.DB` / `bindings.SESSIONS` true.
+Expect:
+
+- `authReady: true`
+- `kieConfigured: true` (after secret is set)
+- `generateReady: true`
+- `mediaRequiredForGenerate: false`
+- `bindings.MEDIA` may still be `false` — that is OK
 
 Then:
 
 ```bash
 # Register → 10 credits
-curl -s -X POST https://dreamutopia-clone.pages.dev/api/auth/register \
+TOKEN=$(curl -s -X POST https://dreamutopia-clone.pages.dev/api/auth/register \
   -H 'content-type: application/json' \
-  -d '{"email":"you@example.com","password":"secret1"}' | jq
+  -d '{"email":"you@example.com","password":"secret1"}' | jq -r .token)
 
-# Me
-curl -s https://dreamutopia-clone.pages.dev/api/auth/me \
-  -H "authorization: Bearer <token>" | jq
-
-# Credits
-curl -s https://dreamutopia-clone.pages.dev/api/credits \
-  -H "authorization: Bearer <token>" | jq
-
-# Generate (deducts lite=3)
+# Generate (public image URL — no R2)
 curl -s -X POST https://dreamutopia-clone.pages.dev/api/generate \
   -H 'content-type: application/json' \
-  -H "authorization: Bearer <token>" \
-  -d '{"prompt":"a cat walking","model":"lite"}' | jq
+  -H "authorization: Bearer $TOKEN" \
+  -d '{
+    "prompt":"gentle camera push-in, soft wind",
+    "model":"lite",
+    "durationSec":5,
+    "imageUrl":"https://static.aiquickdraw.com/tools/example/1764851002741_i0lEiI8I.png"
+  }' | jq
+
+# Poll until done
+curl -s "https://dreamutopia-clone.pages.dev/api/generate?id=<generationId>" \
+  -H "authorization: Bearer $TOKEN" | jq
 ```
 
-## Behavior without bindings
+Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 
-| Endpoint | Without DB/KV |
-|----------|----------------|
-| `GET /api/health` | `ok: true`, `authReady: false` |
-| `POST /api/auth/*`, `GET /api/credits` | `503` with clear message |
-| `POST /api/generate` | Demo JSON (`demo: true`), **no credit deduct** |
-| `GET /api/gallery` | Empty list (`demo: true`) |
+## Behavior matrix
+
+| Situation | `/api/generate` |
+|-----------|-----------------|
+| Missing DB/SESSIONS | `bindings_missing` 503 |
+| Auth OK, no `KIE_API_KEY` | `kie_api_key_missing` 503 |
+| Auth + KIE, no MEDIA | **Works** with public `imageUrl` |
+| Missing `imageUrl` | `image_url_required` 400 |
+| D1 missing new columns | `schema_migration_required` 503 |
 
 ## Checklist
 
-- [ ] `wrangler d1 create dreamutopia-db`
-- [ ] `wrangler kv namespace create SESSIONS`
-- [ ] `wrangler r2 bucket create dreamutopia-media`
-- [ ] `wrangler d1 execute dreamutopia-db --remote --file=schema.sql`
-- [ ] Uncomment + paste real IDs in `wrangler.toml` (or rely on dashboard only)
-- [ ] Pages → Settings → Bindings: `DB`, `SESSIONS`, `MEDIA`
-- [ ] Redeploy Pages
-- [ ] `/api/health` shows `authReady: true`
-- [ ] Register returns `credits: 10`; generate deducts and returns remaining `credits`
+- [ ] `wrangler d1 create` + `kv namespace create`
+- [ ] `schema.sql` (+ `migrations/001_generations_kie.sql` if DB already existed)
+- [ ] Pages bindings: `DB`, `SESSIONS`
+- [ ] Pages secret: `KIE_API_KEY`
+- [ ] Redeploy
+- [ ] `/api/health` → `generateReady: true`
+- [ ] Logged-in POST with public `imageUrl` queues a KIE job; GET returns `resultUrl`
+- [ ] (Later) bind `MEDIA` and switch uploads to R2 without changing the KIE client

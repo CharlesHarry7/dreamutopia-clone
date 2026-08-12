@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS generations (
   model TEXT NOT NULL DEFAULT 'lite',
   prompt TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',  -- pending | processing | done | failed
-  media_key TEXT,                          -- R2 object key
+  media_key TEXT,                          -- R2 object key (optional; unused on URL path)
   duration_sec INTEGER DEFAULT 5,
+  input_image_url TEXT,                    -- public HTTPS source image (temp path without R2)
+  provider_job_id TEXT,                    -- KIE taskId
+  result_url TEXT,                         -- provider result video URL (direct to client)
+  error_message TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

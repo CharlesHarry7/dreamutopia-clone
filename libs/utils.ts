@@ -4,7 +4,10 @@
 export interface Env {
   DB?: D1Database;
   SESSIONS?: KVNamespace;
+  /** R2 media bucket — optional; generate can use public image URLs without MEDIA */
   MEDIA?: R2Bucket;
+  /** Pages secret — required for real KIE image-to-video */
+  KIE_API_KEY?: string;
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -25,6 +28,20 @@ export function json(data: unknown, status = 200): Response {
 
 export function error(msg: string, status = 400): Response {
   return json({ error: msg }, status);
+}
+
+/** Structured API error: { error, code, message, ... } */
+export function structuredError(
+  code: string,
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+): Response {
+  return json({ error: code, code, message, ...(extra || {}) }, status);
+}
+
+export function hasKieKey(env: Env): env is Env & { KIE_API_KEY: string } {
+  return typeof env.KIE_API_KEY === "string" && env.KIE_API_KEY.trim().length > 0;
 }
 
 /** OPTIONS preflight with CORS headers (required for browser Authorization) */

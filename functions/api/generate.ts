@@ -1,12 +1,18 @@
 import {
   json,
   error,
+  structuredError,
   preflight,
-  randomId,
   hasDb,
   hasSessions,
+  hasKieKey,
 } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
+import {
+  createImageToVideoTask,
+  getTaskInfo,
+  isPublicHttpsUrl,
+} from "../../libs/kie";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -14,28 +20,100 @@ export const onRequestOptions = (): Response => preflight();
 // Credits per generation
 const MODEL_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
 
-/** Demo response when D1/KV are not bound — no credit deduction */
-function demoGenerate(prompt: string, model: string, durationSec: number, cost: number) {
-  const generationId = Date.now();
-  const mediaKey = randomId("media");
-  return json({
-    ok: true,
-    demo: true,
-    generationId,
-    model,
-    cost,
-    credits: null,
-    mediaKey,
-    status: "processing",
-    message: "demo mode — DB/KV not bound; credits not deducted (see BACKEND.md)",
-    prompt: prompt.slice(0, 200),
-    durationSec,
-  });
+type GenerationRow = {
+  id: number;
+  user_id: number;
+  model: string;
+  prompt: string;
+  status: string;
+  media_key: string | null;
+  duration_sec: number | null;
+  input_image_url: string | null;
+  provider_job_id: string | null;
+  result_url: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+function kieMissingResponse(): Response {
+  return structuredError(
+    "kie_api_key_missing",
+    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable image-to-video generation. MEDIA/R2 is not required for this path.",
+    503,
+    { kieConfigured: false, mediaRequired: false }
+  );
 }
 
-// POST /api/generate  { prompt, model, durationSec? }
+async function refundCredits(env: Env & { DB: D1Database }, userId: number, cost: number) {
+  await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?")
+    .bind(cost, userId)
+    .run();
+}
+
+async function syncProviderStatus(
+  env: Env & { DB: D1Database; KIE_API_KEY: string },
+  row: GenerationRow
+): Promise<GenerationRow> {
+  if (row.status !== "processing" || !row.provider_job_id) return row;
+
+  const info = await getTaskInfo(env.KIE_API_KEY, row.provider_job_id);
+  if (!info.ok) {
+    // Transient poll failure — leave row as processing
+    return row;
+  }
+
+  if (info.state === "success" && info.resultUrl) {
+    await env.DB.prepare(
+      "UPDATE generations SET status = 'done', result_url = ?, error_message = NULL WHERE id = ?"
+    )
+      .bind(info.resultUrl, row.id)
+      .run();
+    return { ...row, status: "done", result_url: info.resultUrl, error_message: null };
+  }
+
+  if (info.state === "fail") {
+    const msg = info.failMsg || info.failCode || "provider generation failed";
+    await env.DB.prepare(
+      "UPDATE generations SET status = 'failed', error_message = ? WHERE id = ?"
+    )
+      .bind(msg, row.id)
+      .run();
+    return { ...row, status: "failed", error_message: msg };
+  }
+
+  return row;
+}
+
+function publicGeneration(row: GenerationRow) {
+  return {
+    id: row.id,
+    model: row.model,
+    prompt: row.prompt,
+    status: row.status,
+    media_key: row.media_key,
+    duration_sec: row.duration_sec,
+    input_image_url: row.input_image_url,
+    provider_job_id: row.provider_job_id,
+    result_url: row.result_url,
+    resultUrl: row.result_url,
+    error_message: row.error_message,
+    created_at: row.created_at,
+  };
+}
+
+/**
+ * POST /api/generate
+ * Body: { prompt, imageUrl, model?, durationSec? }
+ * Temp path (no MEDIA/R2): public image URL → KIE → D1 status → provider result URL.
+ */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let body: { prompt?: string; model?: string; durationSec?: number };
+  let body: {
+    prompt?: string;
+    model?: string;
+    durationSec?: number;
+    imageUrl?: string;
+    image_url?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -46,13 +124,39 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
+  const imageUrl = (body.imageUrl || body.image_url || "").trim();
+  if (!imageUrl) {
+    return structuredError(
+      "image_url_required",
+      "imageUrl is required (public HTTPS image). R2/MEDIA upload is not available on this path — paste a publicly reachable image URL.",
+      400,
+      { mediaRequired: false }
+    );
+  }
+  if (!isPublicHttpsUrl(imageUrl)) {
+    return structuredError(
+      "image_url_invalid",
+      "imageUrl must be a public https:// URL that KIE can fetch.",
+      400
+    );
+  }
+
   const model = body.model && MODEL_COST[body.model] ? body.model : "lite";
   const cost = MODEL_COST[model];
   const durationSec = Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
+  const sound = model === "pro";
 
-  // Graceful demo when bindings missing
   if (!hasDb(env) || !hasSessions(env)) {
-    return demoGenerate(prompt, model, durationSec, cost);
+    return structuredError(
+      "bindings_missing",
+      "backend not configured: missing DB and/or SESSIONS binding — see BACKEND.md. MEDIA/R2 is not required for generation.",
+      503,
+      { mediaRequired: false }
+    );
+  }
+
+  if (!hasKieKey(env)) {
+    return kieMissingResponse();
   }
 
   const token = tokenFromRequest(request);
@@ -74,26 +178,57 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "insufficient credits", credits }, 402);
   }
 
-  const mediaKey = randomId("media");
+  // Create KIE task before D1 insert so we can refund cleanly on provider failure
+  const created = await createImageToVideoTask(env.KIE_API_KEY, {
+    prompt,
+    imageUrl,
+    durationSec,
+    sound,
+  });
+
+  if (!created.ok) {
+    await refundCredits(env, session.userId, cost);
+    const status =
+      created.code === 401 || created.status === 401
+        ? 502
+        : created.code === 402
+          ? 502
+          : created.status >= 400 && created.status < 600
+            ? 502
+            : 502;
+    return structuredError(
+      "kie_create_failed",
+      created.message || "Failed to create KIE generation task",
+      status,
+      { providerCode: created.code ?? null }
+    );
+  }
+
   let insert;
   try {
     insert = await env.DB.prepare(
-      "INSERT INTO generations (user_id, model, prompt, status, media_key, duration_sec) VALUES (?, ?, ?, 'processing', ?, ?)"
+      `INSERT INTO generations
+        (user_id, model, prompt, status, media_key, duration_sec, input_image_url, provider_job_id, result_url, error_message)
+       VALUES (?, ?, ?, 'processing', NULL, ?, ?, ?, NULL, NULL)`
     )
-      .bind(session.userId, model, prompt, mediaKey, durationSec)
+      .bind(session.userId, model, prompt, durationSec, imageUrl, created.taskId)
       .run();
-  } catch {
-    // Best-effort refund if generation row insert fails after deduct
-    await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?")
-      .bind(cost, session.userId)
-      .run();
-    return error("failed to create generation", 500);
+  } catch (e) {
+    await refundCredits(env, session.userId, cost);
+    const msg = e instanceof Error ? e.message : "failed to create generation";
+    // Common cause: migration 001 not applied yet
+    if (/no such column/i.test(msg)) {
+      return structuredError(
+        "schema_migration_required",
+        "D1 generations table is missing KIE columns. Run migrations/001_generations_kie.sql (see BACKEND.md).",
+        503
+      );
+    }
+    return structuredError("generation_insert_failed", msg, 500);
   }
 
   if (!insert.success) {
-    await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?")
-      .bind(cost, session.userId)
-      .run();
+    await refundCredits(env, session.userId, cost);
     return error("failed to create generation", 500);
   }
 
@@ -110,27 +245,125 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     model,
     cost,
     credits,
-    mediaKey,
     status: "processing",
-    message: "generation queued — demo inference, media simulated",
+    providerJobId: created.taskId,
+    imageUrl,
+    resultUrl: null,
+    mediaRequired: false,
+    message:
+      "KIE job created — poll GET /api/generate?id=" +
+      generationId +
+      " for status; resultUrl is the provider video URL (no R2).",
   });
 };
 
-// GET /api/generate — current user history
+/**
+ * GET /api/generate — history
+ * GET /api/generate?id=N — single job; polls KIE when still processing
+ */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!hasDb(env) || !hasSessions(env)) {
-    return json({ ok: true, demo: true, generations: [] });
+    return structuredError(
+      "bindings_missing",
+      "backend not configured: missing DB and/or SESSIONS binding — see BACKEND.md",
+      503
+    );
   }
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
   if (!session) return error("unauthorized", 401);
 
-  const rows = await env.DB.prepare(
-    "SELECT id, model, prompt, status, media_key, duration_sec, created_at FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50"
-  )
-    .bind(session.userId)
-    .all();
+  const url = new URL(request.url);
+  const idParam = url.searchParams.get("id");
 
-  return json({ ok: true, demo: false, generations: rows.results || [] });
+  if (idParam) {
+    const id = Number(idParam);
+    if (!Number.isFinite(id) || id <= 0) return error("invalid id");
+
+    let row: GenerationRow | null;
+    try {
+      row = await env.DB.prepare(
+        `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
+                input_image_url, provider_job_id, result_url, error_message, created_at
+         FROM generations WHERE id = ? AND user_id = ?`
+      )
+        .bind(id, session.userId)
+        .first<GenerationRow>();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (/no such column/i.test(msg)) {
+        return structuredError(
+          "schema_migration_required",
+          "D1 generations table is missing KIE columns. Run migrations/001_generations_kie.sql (see BACKEND.md).",
+          503
+        );
+      }
+      throw e;
+    }
+
+    if (!row) return error("not found", 404);
+
+    if (row.status === "processing" && row.provider_job_id) {
+      if (!hasKieKey(env)) {
+        return kieMissingResponse();
+      }
+      row = await syncProviderStatus(env, row);
+    }
+
+    return json({
+      ok: true,
+      demo: false,
+      generation: publicGeneration(row),
+      resultUrl: row.result_url,
+      status: row.status,
+    });
+  }
+
+  let rows;
+  try {
+    rows = await env.DB.prepare(
+      `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
+              input_image_url, provider_job_id, result_url, error_message, created_at
+       FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
+    )
+      .bind(session.userId)
+      .all<GenerationRow>();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (/no such column/i.test(msg)) {
+      return structuredError(
+        "schema_migration_required",
+        "D1 generations table is missing KIE columns. Run migrations/001_generations_kie.sql (see BACKEND.md).",
+        503
+      );
+    }
+    throw e;
+  }
+
+  const list = rows.results || [];
+  // Best-effort sync a few in-flight jobs so history stays fresh
+  if (hasKieKey(env)) {
+    for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
+      await syncProviderStatus(env, g);
+    }
+    const refreshed = await env.DB.prepare(
+      `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
+              input_image_url, provider_job_id, result_url, error_message, created_at
+       FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
+    )
+      .bind(session.userId)
+      .all<GenerationRow>();
+    return json({
+      ok: true,
+      demo: false,
+      generations: (refreshed.results || []).map(publicGeneration),
+    });
+  }
+
+  return json({
+    ok: true,
+    demo: false,
+    generations: list.map(publicGeneration),
+  });
 };

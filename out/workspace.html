@@ -90,6 +90,14 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .upload-area.has-img img{max-height:220px;width:auto;margin:0 auto;border-radius:10px}
 .upload-area .remove-btn{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:14px;display:none}
 .upload-area.has-img .remove-btn{display:flex;align-items:center;justify-content:center}
+.url-hint{max-width:420px;margin:-6px auto 10px;font-size:12px;color:rgba(255,255,255,.45);text-align:center;line-height:1.4}
+.url-input{width:100%;max-width:420px;margin:0 auto 18px;display:block;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit}
+.url-input:focus{outline:none;border-color:rgba(168,85,247,.5);box-shadow:0 0 0 1px rgba(168,85,247,.35)}
+.url-input::placeholder{color:rgba(255,255,255,.3)}
+.gen-result{margin-top:16px;display:none;text-align:center}
+.gen-result.show{display:block}
+.gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;border:1px solid rgba(255,255,255,.1)}
+.gen-result a{display:inline-block;margin-top:10px;font-size:13px;color:var(--primary2);text-decoration:underline}
 
 .label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .label-row label{font-size:14px;font-weight:600;color:rgba(255,255,255,.8)}
@@ -277,9 +285,11 @@ Image
 <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1" id="uploadLabel">Upload Start Image</div>
-<div class="p2">Click to browse</div>
+<div class="p2">Preview only — R2 upload optional later</div>
 <button type="button" class="remove-btn" id="removeImgBtn" onclick="event.stopPropagation(); clearUpload()" aria-label="Remove image">✕</button>
 </div>
+<p class="url-hint">Until MEDIA/R2 is available, paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> below (KIE must be able to fetch it).</p>
+<input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/your-image.png" autocomplete="off">
 
 <div class="label-row">
 <label id="promptLabel" for="promptInput">Describe Your Video</label>
@@ -313,8 +323,12 @@ Image
 <p class="gen-foot" id="genFoot">Free trial. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for more.</p>
 
 <div class="gen-status" id="genStatus">
-<div class="spinner"></div>
+<div class="spinner" id="genSpinner"></div>
 <div class="cap" id="genStatusText">Generating…</div>
+</div>
+<div class="gen-result" id="genResult">
+<video id="genResultVideo" controls playsinline></video>
+<a id="genResultLink" href="#" target="_blank" rel="noopener">Open result URL</a>
 </div>
 </div>
 
@@ -428,8 +442,48 @@ async function api(path, options = {}) {
   if (token) headers.authorization = "Bearer " + token;
   const res = await fetch("/api" + path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "request failed");
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || "request failed");
+    err.code = data.code || data.error || null;
+    err.payload = data;
+    throw err;
+  }
   return data;
+}
+
+function showResultVideo(url) {
+  const box = document.getElementById("genResult");
+  const video = document.getElementById("genResultVideo");
+  const link = document.getElementById("genResultLink");
+  if (!url) {
+    box.classList.remove("show");
+    video.removeAttribute("src");
+    video.load();
+    return;
+  }
+  video.src = url;
+  link.href = url;
+  box.classList.add("show");
+}
+
+async function pollGeneration(generationId, statusText) {
+  const maxAttempts = 60;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, i < 5 ? 2500 : 4000));
+    const data = await api("/generate?id=" + encodeURIComponent(generationId));
+    const g = data.generation || {};
+    const status = data.status || g.status;
+    const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
+    if (status === "done" && resultUrl) {
+      return { status, resultUrl, generation: g };
+    }
+    if (status === "failed") {
+      const msg = g.error_message || "Generation failed";
+      throw new Error(msg);
+    }
+    statusText.textContent = "Generating… (" + status + ")";
+  }
+  throw new Error("Timed out waiting for provider result — check History later");
 }
 
 function goAuth(mode) {
@@ -587,42 +641,63 @@ async function generate() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return toast("Please enter a prompt.", true);
 
+  const imageUrl = document.getElementById("imageUrlInput").value.trim();
+  if (token && !imageUrl) {
+    return toast("Paste a public https image URL (R2 upload not required).", true);
+  }
+
   const btn = document.getElementById("genBtn");
   const status = document.getElementById("genStatus");
   const statusText = document.getElementById("genStatusText");
+  const spinner = document.getElementById("genSpinner");
   btn.disabled = true;
   btn.classList.remove("ready");
   document.getElementById("genBtnLabel").textContent = "Generating...";
   status.classList.add("show");
-  statusText.textContent = currentMode === "video" ? "Generating your video…" : "Generating your image…";
+  spinner.style.display = "";
+  showResultVideo(null);
+  statusText.textContent = currentMode === "video" ? "Starting KIE job…" : "Generating your image…";
 
   try {
     if (!token) {
-      // Guest free-trial path: soft prompt to sign up after a short simulated wait
-      await new Promise((r) => setTimeout(r, 1800));
-      statusText.innerHTML = 'Free trial ready — <a href="/auth?mode=register" id="statusSignup" style="color:var(--primary2)">sign up</a> to save & unlock all models.';
-      toast("Sign up to keep generating with full models");
+      // Guest path: send to auth — no fake demo alert
+      statusText.innerHTML = 'Sign in required — <a href="/auth?mode=register" style="color:var(--primary2)">create an account</a> to generate.';
+      toast("Sign up to generate with KIE");
       resetGenBtn();
       return;
     }
 
     const data = await api("/generate", {
       method: "POST",
-      body: JSON.stringify({ prompt, model: currentModel, durationSec: 10 }),
+      body: JSON.stringify({
+        prompt,
+        model: currentModel,
+        durationSec: currentModel === "lite" ? 5 : 10,
+        imageUrl,
+      }),
     });
     if (data.credits !== undefined) updateAuthUI(data.credits);
-    else {
-      try {
-        const me = await api("/auth/me");
-        updateAuthUI(me.user.credits);
-      } catch (e) {}
-    }
-    statusText.innerHTML = `<span style="color:var(--green)">Ready</span> · ${currentModel} model · "${escapeHtml(prompt.length > 48 ? prompt.slice(0, 48) + "…" : prompt)}"`;
-    toast("Generation queued");
+
+    statusText.textContent = "Queued · waiting for provider…";
+    const done = await pollGeneration(data.generationId, statusText);
+    spinner.style.display = "none";
+    statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(currentModel)} · provider URL ready`;
+    showResultVideo(done.resultUrl);
+    toast("Video ready");
     loadHistory();
   } catch (e) {
-    statusText.textContent = e.message || "Generation failed";
-    toast(e.message, true);
+    spinner.style.display = "none";
+    const code = e && e.code ? String(e.code) : "";
+    let msg = e.message || "Generation failed";
+    if (code === "kie_api_key_missing") {
+      msg = "KIE_API_KEY missing — set it as a Pages secret (MEDIA/R2 not required).";
+    } else if (code === "schema_migration_required") {
+      msg = "D1 migration needed — run migrations/001_generations_kie.sql";
+    } else if (code === "image_url_required" || code === "image_url_invalid") {
+      msg = e.message || "Valid public https imageUrl required";
+    }
+    statusText.textContent = msg;
+    toast(msg, true);
   }
   resetGenBtn();
 }
@@ -672,14 +747,21 @@ async function loadHistory() {
     }
     empty.hidden = true;
     list.hidden = false;
-    list.innerHTML = gens.map((g) => `
+    list.innerHTML = gens.map((g) => {
+      const url = g.result_url || g.resultUrl || "";
+      const link = url
+        ? `<div class="h-prompt" style="margin-top:6px"><a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color:var(--primary2)">Open result</a></div>`
+        : "";
+      return `
       <div class="history-item">
         <div class="h-top">
           <span class="h-meta">#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s</span>
           <span class="h-status ${escapeHtml(String(g.status))}">${escapeHtml(String(g.status))}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
-      </div>`).join("");
+        ${link}
+      </div>`;
+    }).join("");
   } catch (e) {
     empty.hidden = false;
     list.hidden = true;
