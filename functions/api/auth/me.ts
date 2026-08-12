@@ -1,9 +1,18 @@
-import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
+import { json, error, preflight, asHead, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
 import { getSession, tokenFromRequest } from "../../../libs/auth";
 import { ensureReferralCode, isSchemaError, mergeGuestJobs } from "../../../libs/account";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
+
+/** HEAD /api/auth/me — session liveness only (does not merge guest jobs). */
+export const onRequestHead: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hasDb(env) || !hasSessions(env)) return asHead(bindingsUnavailable("DB+SESSIONS"));
+  const token = tokenFromRequest(request);
+  const session = await getSession(env, token);
+  if (!session) return asHead(error("unauthorized", 401));
+  return asHead(json({ ok: true }));
+};
 
 // GET /api/auth/me — current user
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {

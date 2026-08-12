@@ -221,6 +221,10 @@
       "offline.h": "You’re offline",
       "offline.p": "DreamUtopia needs a connection to generate. Reconnect and try again.",
       "offline.home": "Back to home",
+      "notfound.h": "Page not found",
+      "notfound.p": "That URL isn’t on this site. Head home or open the workspace to generate.",
+      "notfound.home": "Back to home",
+      "notfound.workspace": "Open workspace",
     },
     zh: {
       "nav.home": "首页",
@@ -436,6 +440,10 @@
       "offline.h": "你已离线",
       "offline.p": "DreamUtopia 需要网络才能生成。请连网后再试。",
       "offline.home": "返回首页",
+      "notfound.h": "页面不存在",
+      "notfound.p": "这个地址不在本站。回首页，或打开工作台开始生成。",
+      "notfound.home": "返回首页",
+      "notfound.workspace": "打开工作台",
     },
     ja: {
       "nav.home": "ホーム",
@@ -651,6 +659,10 @@
       "offline.h": "オフラインです",
       "offline.p": "生成には接続が必要です。再接続してからお試しください。",
       "offline.home": "ホームに戻る",
+      "notfound.h": "ページが見つかりません",
+      "notfound.p": "このURLはこのサイトにありません。ホームかワークスペースへどうぞ。",
+      "notfound.home": "ホームに戻る",
+      "notfound.workspace": "ワークスペースを開く",
     },
     es: {
       "nav.home": "Inicio",
@@ -866,6 +878,10 @@
       "offline.h": "Estás sin conexión",
       "offline.p": "DreamUtopia necesita conexión para generar. Vuelve a conectarte e inténtalo.",
       "offline.home": "Volver al inicio",
+      "notfound.h": "Página no encontrada",
+      "notfound.p": "Esa URL no está en este sitio. Vuelve al inicio o abre el espacio de trabajo.",
+      "notfound.home": "Volver al inicio",
+      "notfound.workspace": "Abrir espacio de trabajo",
     },
   };
 

@@ -67,6 +67,7 @@ function extractI18nKeys(src) {
     "guest.left.none",
     "offline.h",
     "a11y.menu",
+    "notfound.h",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -95,6 +96,7 @@ function extractI18nKeys(src) {
   if (!checkout.includes("503")) fail.push("checkout.ts missing 503");
   if (!checkout.includes("hasStripe")) fail.push("checkout.ts missing hasStripe gate");
   if (!checkout.includes("onRequestHead")) fail.push("checkout.ts missing HEAD (honest 503)");
+  mustContain("functions/api/stripe/checkout.ts", "onRequestHead", "stripe checkout alias HEAD");
   if (/sk_live_|sk_test_[a-zA-Z0-9]{10,}/.test(checkout)) fail.push("checkout.ts looks like it embeds a Stripe secret");
   const pricing = read("out/pricing.html");
   if (!pricing.includes("data.configured === true") && !pricing.includes("data.ok === true && data.configured === true")) {
@@ -140,7 +142,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v8", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v9", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
@@ -160,6 +162,17 @@ function extractI18nKeys(src) {
   mustContain("out/assets/js/du.js", "poll_cancelled", "poll cancel");
   mustContain("out/assets/js/seo.js", "og:locale", "SEO locale");
   mustContain("out/assets/js/seo.js", "application/ld+json", "JSON-LD");
+  mustContain("out/assets/js/seo.js", '"@type": "WebPage"', "interior JSON-LD WebPage");
+  mustContain("functions/robots.txt.ts", "Disallow: /reset", "robots hide reset tokens");
+  if (!exists("out/404.html")) fail.push("missing out/404.html");
+  else {
+    mustContain("out/404.html", "notfound.h", "Pages 404 copy");
+    mustContain("out/404.html", 'name="robots" content="noindex"', "404 noindex");
+  }
+  mustContain("functions/api/auth/forgot.ts", "onRequestGet", "forgot GET probe");
+  mustContain("functions/api/auth/forgot.ts", "configured: false", "forgot GET honest unconfigured");
+  mustContain("out/auth.html", 'method: "GET"', "auth probes forgot GET");
+  mustContain("out/auth.html", 'isForgot ? "login"', "forgot switch goes to login");
   mustContain("functions/sitemap.xml.ts", "lastmod", "sitemap lastmod");
   mustContain("libs/kie.ts", "publicProviderFailMessage", "sanitize provider fail copy");
   mustContain("out/sw.js", '"/offline"', "SW precaches pretty /offline");

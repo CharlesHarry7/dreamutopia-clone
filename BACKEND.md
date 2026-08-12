@@ -27,7 +27,7 @@ Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/we
 
 ## Password reset (optional Resend)
 
-`POST /api/auth/forgot` `{ email }` sends a 1-hour KV token via Resend. If `RESEND_API_KEY` is missing it returns `email_not_configured` (503) and never returns a reset URL to the client. `POST /api/auth/reset` `{ token, password }` sets the new hash. Register also sends a welcome email when Resend is configured (failure does not block signup).
+`POST /api/auth/forgot` `{ email }` sends a 1-hour KV token via Resend. `GET`/`HEAD /api/auth/forgot` is a probe only. If `RESEND_API_KEY` is missing both return `email_not_configured` (503) and never return a reset URL to the client. `POST /api/auth/reset` `{ token, password }` sets the new hash. Register also sends a welcome email when Resend is configured (failure does not block signup).
 
 Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register accepts optional `referralCode` (`?ref=` on `/auth`).
 
@@ -246,7 +246,7 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | First+last on Lite | `first_last_requires_medium` 400 |
 | D1 missing new columns | `schema_migration_required` 503 |
 | Checkout without Stripe secret | GET `{ configured: false }`; POST `checkout_not_configured` 503 |
-| Forgot password without Resend | `email_not_configured` 503 |
+| Forgot password without Resend | GET/HEAD/POST `email_not_configured` 503 (GET does not send mail) |
 | Too many generate/auth requests | `rate_limited` 429 |
 | 3+ jobs already processing | `job_in_flight` 429 |
 | KIE wallet empty (key is set) | `provider_credits_insufficient` 503 (user-safe; not their credits) |

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Offline — DreamUtopia</title>
+<title>Page not found — DreamUtopia</title>
+<meta name="description" content="That URL is not on this DreamUtopia clone.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0d0d12">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -14,16 +15,22 @@
 body{font-family:Inter,system-ui,sans-serif;background:#0d0d12;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
 h1{font-size:28px;font-weight:800;margin-bottom:10px}
 p{color:#a8a8b8;font-size:15px;max-width:420px;margin:0 auto 22px;line-height:1.6}
+.actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 a{display:inline-block;background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700}
+a.alt{background:transparent;border:1px solid #3a3a4a}
 </style>
 <link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
 <main>
-<h1 data-i18n="offline.h">You’re offline</h1>
-<p data-i18n="offline.p">DreamUtopia needs a connection to generate. Reconnect and try again.</p>
-<a href="/" data-i18n="offline.home">Back to home</a>
+<h1 data-i18n="notfound.h">Page not found</h1>
+<p data-i18n="notfound.p">That URL isn’t on this site. Head home or open the workspace to generate.</p>
+<div class="actions">
+<a href="/" data-i18n="notfound.home">Back to home</a>
+<a class="alt" href="/workspace" data-i18n="notfound.workspace">Open workspace</a>
+</div>
 </main>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/seo.js"></script>
 </body>
 </html>

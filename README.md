@@ -57,6 +57,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   image-to-video.html / photo-to-video.html / free-ai-video.html
   privacy.html     # Privacy
   terms.html       # Terms
+  404.html         # Cloudflare Pages custom 404
   assets/js/du.js  # Shared fetch / upload / poll / download
   assets/js/i18n.js # EN / 中文 / 日本語 / Español
   assets/js/nav.js  # Mobile header drawer

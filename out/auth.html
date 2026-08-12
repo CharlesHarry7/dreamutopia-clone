@@ -235,7 +235,7 @@ function setMode(next) {
       : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
-    setMode(isForgot || isLogin ? "register" : "login");
+    setMode(isForgot ? "login" : isLogin ? "register" : "login");
   };
   passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
   hdrLogin.classList.toggle("active", isLogin);
@@ -250,6 +250,21 @@ function setMode(next) {
   document.title = (isForgot ? DU.t("auth.forgot.h", "Reset password") : isLogin ? DU.t("auth.submitLogin", "Log In") : DU.t("hdr.signup", "Sign Up")) + " — DreamUtopia";
   const forgotLinkEl = document.getElementById("forgotLink");
   if (forgotLinkEl) forgotLinkEl.textContent = DU.t("auth.forgot", "Forgot password?");
+  if (isForgot) {
+    fetch("/api/auth/forgot", { method: "GET", credentials: "same-origin" })
+      .then(function (res) {
+        return res.json().then(function (data) { return { data: data }; });
+      })
+      .then(function (out) {
+        if (mode !== "forgot") return;
+        const code = out.data && (out.data.code || out.data.error);
+        if (code === "email_not_configured" || (out.data && out.data.configured === false)) {
+          formError.textContent = DU.t("auth.forgot.unconfigured", "Password reset email isn’t set up yet. You can still log in with your password.");
+          formError.classList.add("show");
+        }
+      })
+      .catch(function () {});
+  }
 }
 
 tabRegister.onclick = () => setMode("register");

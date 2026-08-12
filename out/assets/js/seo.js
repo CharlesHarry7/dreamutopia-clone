@@ -61,25 +61,34 @@
 
   apply();
 
-  if (path === "/") {
-    var existing = document.getElementById("du-jsonld");
-    if (!existing) {
-      var s = document.createElement("script");
-      s.id = "du-jsonld";
-      s.type = "application/ld+json";
-      s.textContent = JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        name: "DreamUtopia",
-        applicationCategory: "MultimediaApplication",
-        operatingSystem: "Web",
-        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-        url: location.origin + "/",
-        description: desc,
-        image: image,
-      });
-      document.head.appendChild(s);
-    }
+  var existing = document.getElementById("du-jsonld");
+  if (!existing) {
+    var s = document.createElement("script");
+    s.id = "du-jsonld";
+    s.type = "application/ld+json";
+    s.textContent = JSON.stringify(
+      path === "/"
+        ? {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "DreamUtopia",
+            applicationCategory: "MultimediaApplication",
+            operatingSystem: "Web",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            url: location.origin + "/",
+            description: desc,
+            image: image,
+          }
+        : {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            name: title,
+            description: desc,
+            url: url,
+            isPartOf: { "@type": "WebSite", name: "DreamUtopia", url: location.origin + "/" },
+          }
+    );
+    document.head.appendChild(s);
   }
 
   document.addEventListener("du:i18n", apply);

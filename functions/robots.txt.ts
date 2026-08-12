@@ -7,6 +7,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
     "User-agent: *",
     "Allow: /",
     "Disallow: /api/",
+    "Disallow: /reset",
+    "Disallow: /offline",
     `Sitemap: ${origin}/sitemap.xml`,
     "",
   ].join("\n");
