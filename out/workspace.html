@@ -218,8 +218,10 @@ nav{display:none}
 </nav>
 <div class="header-right">
 <span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
+<a href="/auth?mode=login" class="btn-login" id="loginBtn">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="signupBtn">Sign Up</a>
 <script>
-/* Sync-hydrate credits badge before paint continues — avoid "— credits" flash when a session exists. */
+/* Sync-hydrate session chrome before paint continues — avoid guest "— credits" / Log In flash when a token exists. */
 (function () {
   try {
     var token = localStorage.getItem("dreamutopia_token");
@@ -236,11 +238,19 @@ nav{display:none}
       badge.textContent = "";
       badge.classList.add("loading");
     }
+    var loginBtn = document.getElementById("loginBtn");
+    var signupBtn = document.getElementById("signupBtn");
+    if (loginBtn) {
+      loginBtn.textContent = "Log Out";
+      loginBtn.href = "#";
+    }
+    if (signupBtn) {
+      signupBtn.textContent = "Buy Credits";
+      signupBtn.href = "/pricing";
+    }
   } catch (e) {}
 })();
 </script>
-<a href="/auth?mode=login" class="btn-login" id="loginBtn">Log In</a>
-<a href="/auth?mode=register" class="btn-signup" id="signupBtn">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option>English</option>
 <option>中文</option>
@@ -469,11 +479,27 @@ async function api(path, options = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.message || data.error || "request failed");
+    err.status = res.status;
     err.code = data.code || data.error || null;
     err.payload = data;
     throw err;
   }
   return data;
+}
+
+function isUnauthorizedError(err) {
+  // Real auth rejection only. Network/timeout/5xx errors have no 401 status.
+  return !!(err && err.status === 401);
+}
+
+async function fetchAuthMe(retriesLeft) {
+  try {
+    return await api("/auth/me");
+  } catch (err) {
+    if (isUnauthorizedError(err) || retriesLeft <= 0) throw err;
+    await new Promise((r) => setTimeout(r, 350));
+    return fetchAuthMe(retriesLeft - 1);
+  }
 }
 
 function showResultVideo(url) {
@@ -833,14 +859,19 @@ function escapeHtml(s) {
   showPackBanner();
   if (token) {
     try {
-      const me = await api("/auth/me");
+      // Only a real unauthorized response may wipe the session. Transient
+      // network/timeout/5xx failures keep token + cached credits + logged-in UI.
+      const me = await fetchAuthMe(1);
       updateAuthUI(me.user.credits);
       showPackBanner();
       loadHistory();
     } catch (e) {
-      clearAuthLocal();
-      updateAuthUI();
-      showPackBanner();
+      if (isUnauthorizedError(e)) {
+        clearAuthLocal();
+        updateAuthUI();
+        showPackBanner();
+      }
+      // else: keep sync-hydrated / cached logged-in UI
     }
   }
 })();
