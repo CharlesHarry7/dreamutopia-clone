@@ -190,10 +190,24 @@ Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settin
 3. Add **D1** `DB`, **KV** `SESSIONS`, **R2** `MEDIA`
 4. Redeploy
 
-## 5. Verify
+## 5. Deploy runtime (Workers)
+
+After the Next.js migration, APIs run on the **Worker** (`npm run cf:deploy` — see **DEPLOY.md**), not Pages Functions.
 
 ```bash
-curl -s https://dreamutopia-clone.pages.dev/api/health | jq
+npm run cf:secret:kie
+npm run cf:deploy
+npm run check:health -- https://<worker-host>
+```
+
+Pages dashboard secrets are not used by OpenNext. Re-put secrets with `wrangler secret put` (or Worker → Settings → Variables and Secrets).
+
+## 6. Verify
+
+```bash
+curl -s https://<worker-host>/api/health | jq
+# legacy Pages URL may still exist until cutover:
+# curl -s https://dreamutopia-clone.pages.dev/api/health | jq
 ```
 
 Expect:
@@ -239,6 +253,7 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 |-----------|--------|
 | Missing DB/SESSIONS | `bindings_missing` 503 |
 | Auth OK, no `KIE_API_KEY` | `kie_api_key_missing` 503 |
+| KIE key set, wallet empty / 402 | `kie_insufficient_balance` 502 (honest — no fake result; site credits refunded) |
 | Auth + KIE, no MEDIA | Generate works with public `imageUrl`; upload returns `media_not_bound` |
 | Auth + KIE + MEDIA | Upload file **or** paste URL |
 | Missing `imageUrl` on **guest** video | `image_url_required` 400 |
@@ -254,14 +269,15 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 
 ## Checklist
 
-- [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
-- [ ] `schema.sql` (+ `001`–`004` migrations if the DB already existed)
-- [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
-- [ ] Pages secret: `KIE_API_KEY`
+- [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create` (or reuse existing IDs in `wrangler.toml`)
+- [ ] `npm run db:schema` (+ `npm run db:migrate` if the DB already existed)
+- [ ] `wrangler.toml` bindings: `DB`, `SESSIONS`, `MEDIA`
+- [ ] Workers secret: `KIE_API_KEY` (`npm run cf:secret:kie`)
 - [ ] Optional: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/webhooks/stripe`)
 - [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset + welcome)
 - [ ] Optional: `KIE_WEBHOOK_HMAC_KEY` after enabling HMAC on kie.ai Settings
-- [ ] Redeploy
+- [ ] `npm run cf:deploy` (OpenNext Worker — not Pages `out/`)
 - [ ] `/api/health` → `generateReady: true`, `uploadReady: true`
 - [ ] Logged-in POST `/api/upload` then `/api/generate` queues a KIE job; GET returns `resultUrl`
 - [ ] Logged-out POST `/api/generate` with `imageUrl` consumes one of two guest Lite tries
+- [ ] Guest **My Creations** lists KV jobs from `GET /api/generate` on this device

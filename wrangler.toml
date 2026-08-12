@@ -1,5 +1,6 @@
 # DreamUtopia clone — Next.js on Cloudflare Workers (OpenNext)
-# Keeps existing D1 / KV / R2 bindings from the Pages deployment.
+# Deploy: npm run cf:deploy   Preview: npm run cf:preview   Docs: DEPLOY.md
+# Reuses D1 / KV / R2 from the previous Pages project (same resource IDs).
 name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]

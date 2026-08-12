@@ -7,10 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "pages:legacy": "echo \"Legacy static site is in legacy/out (Pages Functions in legacy/functions)\""
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview": "npm run cf:preview",
+    "deploy": "npm run cf:deploy",
+    "cf:secret:kie": "wrangler secret put KIE_API_KEY",
+    "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "cf-typegen": "npm run cf:typegen",
+    "db:schema": "wrangler d1 execute dreamutopia-db --remote --file=schema.sql",
+    "db:migrate": "wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/002_gallery_unique.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/003_referrals_credits.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/004_template_hardening.sql",
+    "check:health": "node scripts/check-health.mjs",
+    "pages:legacy": "echo \"Legacy static site is in legacy/out (Pages Functions in legacy/functions). Deploy path is Workers — see DEPLOY.md\""
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.2",

@@ -21,7 +21,7 @@ export function formatGenerateError(err: unknown, fallback = "Generation failed"
     case "kie_insufficient_balance":
       return (
         message ||
-        "KIE wallet has insufficient balance. Top up at kie.ai — this app will not fake a successful generate."
+        "KIE wallet has insufficient balance. Top up at kie.ai — this app will not fake a successful generate. Site credits were not kept for the failed provider call."
       );
     case "kie_create_failed":
       return message || "KIE rejected the job. No demo output was invented.";

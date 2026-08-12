@@ -225,14 +225,16 @@ function createFailedResponse(
     created.status === 402 ||
     /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg);
 
-  // Honest provider failure — never pretend generate succeeded when KIE rejects the job.
+  // Honest provider failure — never pretend generate succeeded when KIE rejects the job
+  // (empty wallet / quota). Site credits are refunded by the caller before this returns.
   if (looksLikeEmptyWallet) {
     return structuredError(
       "kie_insufficient_balance",
-      msg ||
-        "KIE wallet has insufficient balance. Top up at kie.ai — credits on this site were not kept for a failed provider call.",
+      /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg)
+        ? msg
+        : "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate.",
       502,
-      { providerCode, kieConfigured: true }
+      { providerCode, kieConfigured: true, fakeResult: false }
     );
   }
 

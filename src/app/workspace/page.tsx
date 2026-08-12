@@ -98,12 +98,15 @@ function WorkspaceInner() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    // Account history (D1) or this device's guest jobs (KV) — same GET /api/generate.
+    if (authLoading) return;
     let cancelled = false;
     void (async () => {
       try {
         const data = await api<{
-          generations?: Array<HistoryItem & { result_url?: string | null }>;
+          generations?: Array<HistoryItem & { result_url?: string | null; guest?: boolean }>;
+          guest?: boolean;
+          guestRemaining?: number;
         }>("/generate");
         if (cancelled) return;
         const list = Array.isArray(data.generations) ? data.generations : [];
@@ -120,9 +123,7 @@ function WorkspaceInner() {
     return () => {
       cancelled = true;
     };
-  }, [user, resultUrl]);
-
-  const visibleHistory = user ? history : [];
+  }, [user, authLoading, resultUrl]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -622,16 +623,21 @@ function WorkspaceInner() {
                   <p className="text-sm text-muted-foreground">
                     {t(
                       "ws.history.guest.p",
-                      "Guest trials stay in this browser until you sign up."
+                      "Guest tries stay on this browser until you sign up. They are not saved to an account."
                     )}
+                    {guestRemaining != null
+                      ? ` ${guestRemaining} free Lite ${guestRemaining === 1 ? "try" : "tries"} left.`
+                      : ""}
                   </p>
                 )}
-                {user && visibleHistory.length === 0 && (
+                {history.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    {t("ws.history.empty.p", "Start creating to see your work here.")}
+                    {user
+                      ? t("ws.history.empty.p", "Start creating to see your work here.")
+                      : "No guest jobs on this device yet — generate a free Lite video to see it here."}
                   </p>
                 )}
-                {visibleHistory.map((item) => (
+                {history.map((item) => (
                   <div
                     key={String(item.id)}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
@@ -640,17 +646,31 @@ function WorkspaceInner() {
                       <div className="truncate text-sm text-muted-foreground">{item.prompt}</div>
                       <div className="mt-1 text-xs text-[var(--text3)]">
                         {item.status} · {item.model || "lite"}
+                        {!user ? " · guest" : ""}
                       </div>
                     </div>
-                    {item.resultUrl && (
-                      <Button asChild size="sm" variant="outline">
-                        <a href={item.resultUrl} target="_blank" rel="noreferrer">
-                          Open
-                        </a>
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {item.status === "processing" && (
+                        <Badge variant="secondary">rendering</Badge>
+                      )}
+                      {item.status === "failed" && <Badge variant="warning">failed</Badge>}
+                      {item.resultUrl && (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={item.resultUrl} target="_blank" rel="noreferrer">
+                            Open
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
+                {!user && history.length > 0 && (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/auth?mode=register">
+                      Sign up to keep these jobs in your account
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
