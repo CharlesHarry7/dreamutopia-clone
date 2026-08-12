@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "Image to Video",
-  description: "Turn any photo into an AI video with DreamUtopia.",
+  description:
+    "Turn any photo into an AI video with DreamUtopia. 2 free Lite tries per device — no signup.",
+  openGraph: {
+    title: "Image to Video · DreamUtopia",
+    description: "Animate a start frame into a short AI video. Start free in the workspace.",
+  },
 };
 
 export default function ImageToVideoPage() {
@@ -20,9 +25,14 @@ export default function ImageToVideoPage() {
           Upload a start frame, describe the motion, and generate with Lite / Medium / Pro models.
           Guests get 2 free Lite tries.
         </p>
-        <Button asChild size="lg">
-          <Link href="/workspace">Open workspace</Link>
-        </Button>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button asChild size="lg">
+            <Link href="/workspace">Open workspace</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/auth?mode=register">Sign up for 10 credits</Link>
+          </Button>
+        </div>
       </main>
       <SiteFooter />
     </>

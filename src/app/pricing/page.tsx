@@ -143,10 +143,13 @@ export default function PricingPage() {
                     className="w-full"
                     variant={featured ? "default" : "outline"}
                     disabled={busy === pack.id}
+                    aria-busy={busy === pack.id}
                     onClick={() => void onSelect(pack.id)}
                   >
                     {busy === pack.id
-                      ? "…"
+                      ? configured
+                        ? "Opening checkout…"
+                        : "Continuing…"
                       : configured
                         ? user
                           ? "Select"

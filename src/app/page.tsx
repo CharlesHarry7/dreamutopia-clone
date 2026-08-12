@@ -77,22 +77,23 @@ export default function HomePage() {
             <span className="text-[var(--green)]">★</span>
             {t("hero.free", "2 FREE generations for everyone — no login needed")}
           </div>
-          <p
-            className="mb-7 text-[13.5px] text-muted-foreground"
-            dangerouslySetInnerHTML={{
-              __html: t(
-                "hero.credits",
-                "Sign up to get <b>10 free credits</b> — unlock more advanced models with full controls"
-              ),
-            }}
-          />
+          <p className="mb-7 text-[13.5px] text-muted-foreground">
+            <Link
+              href="/auth?mode=register"
+              className="font-semibold text-[var(--primary2)] hover:underline"
+            >
+              Sign up
+            </Link>{" "}
+            to get <b className="text-foreground">10 free credits</b> — unlock more advanced models
+            with full controls.
+          </p>
 
           <div className="mb-12 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="animate-pulse-glow">
               <Link href="/workspace">{t("hero.cta", "Start Creating Free →")}</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/#how">{t("hero.how", "See how it works")}</Link>
+              <Link href="/#gallery">{t("hero.how", "See examples")}</Link>
             </Button>
           </div>
 

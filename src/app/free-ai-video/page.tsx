@@ -3,7 +3,15 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 
-export const metadata = { title: "Free AI Video" };
+export const metadata = {
+  title: "Free AI Video",
+  description:
+    "Generate free AI videos from images — 2 Lite tries per device, no signup or credit card.",
+  openGraph: {
+    title: "Free AI Video · DreamUtopia",
+    description: "2 free Lite image-to-video generations per device. Sign up for 10 credits.",
+  },
+};
 
 export default function FreeAiVideoPage() {
   return (
@@ -15,7 +23,7 @@ export default function FreeAiVideoPage() {
           2 free Lite image-to-video generations per device — no signup. Create an account for 10
           credits.
         </p>
-        <div className="flex justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
             <Link href="/workspace">Try free</Link>
           </Button>
