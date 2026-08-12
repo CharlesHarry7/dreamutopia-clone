@@ -6,13 +6,16 @@ Cursor’s [dreamutopia.net](https://dreamutopia.net) image-to-video clone, migr
 
 > Not pikbo, not magicremover-clone.
 
-## Live site vs this branch
+## Live site vs this branch (B-line)
 
 | | |
 |---|---|
-| **Production today** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) (`legacy/out` + Pages Functions) |
-| **This codebase** | Next + shadcn Worker path (`npm run cf:deploy`) — staging/cutover only until DNS/dashboard is switched |
-| **Merging `main`** | Does **not** auto-cut over production. See **[DEPLOY.md](./DEPLOY.md)**. Blind merge while Pages still expects `out/` can break Pages. |
+| **Production today (A-line)** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) (`legacy/out` + Pages Functions) |
+| **This codebase (B-line)** | Next + shadcn Worker path (`npm run cf:deploy`) — **staging / experiment only** |
+| **Merging `main`** | Does **not** auto-cut over production. Blind merge while Pages still expects `out/` can break Pages. |
+| **B-line status** | **[B-LINE.md](./B-LINE.md)** — CI meaning, A vs B auth/credits/generate gaps, no cutover |
+
+Do **not** cut over live Pages from the B-line workstream. Worker health must keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false`.
 
 ## Why Cloudflare (not Vercel)
 
@@ -75,11 +78,11 @@ Without bindings/secrets, UI still loads; `/api/health` reports readiness, and g
 
 ## Build & deploy (Cloudflare Workers)
 
-Staging Worker + **manual** Pages → Workers cutover: **[DEPLOY.md](./DEPLOY.md)** (section **CUTOVER — when Daniel says go**).  
-Live production remains [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) until that checklist is done.  
-`productionSurface` stays `pages-until-cutover` until then.  
-Use `npm run check:health -- <url> --expect-worker` (or `--expect-pages`) to tell the surfaces apart.
-`cf:deploy` does **not** replace [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).
+Staging Worker: **[DEPLOY.md](./DEPLOY.md)**. B-line verification / gaps: **[B-LINE.md](./B-LINE.md)**.  
+Live production remains [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).  
+`productionSurface` stays `pages-until-cutover`; `cutoverComplete` stays `false`.  
+Use `npm run check:health -- <url> --expect-worker` (or `--expect-pages`) to tell the surfaces apart.  
+`cf:deploy` does **not** replace Pages. Pages CI red on this PR is expected (see B-LINE.md).
 
 ```bash
 npm run cf:preview   # OpenNext build + local Workers runtime
@@ -110,10 +113,11 @@ Empty KIE wallet → `kie_insufficient_balance` (honest 502, no fake video). Che
 | Script | Purpose |
 |---|---|
 | `npm run dev` | Next.js dev server |
+| `npm run verify` | `lint && build` (B-line CI gate) |
 | `npm run build` / `lint` | Next production build / ESLint |
 | `npm run cf:build` | OpenNext Workers build only |
 | `npm run cf:preview` / `preview` | Build + local Workers runtime |
-| `npm run cf:deploy` / `deploy` | Build + deploy Worker |
+| `npm run cf:deploy` / `deploy` | Build + deploy Worker (staging; not Pages) |
 | `npm run cf:secret:kie` | `wrangler secret put KIE_API_KEY` |
 | `npm run db:schema` / `db:migrate` | Remote D1 schema / migrations |
 | `npm run check:health` | Smoke `/api/health` + checkout honesty |

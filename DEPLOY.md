@@ -1,16 +1,20 @@
-# Deploy DreamUtopia Clone — Workers cutover (OpenNext)
+# Deploy DreamUtopia Clone — Workers staging (OpenNext)
 
-**Stack in this branch:** Next.js App Router + Tailwind + shadcn/ui → OpenNext → **Cloudflare Workers**.
+**Stack in this branch:** Next.js App Router + Tailwind + shadcn/ui → OpenNext → **Cloudflare Workers** (B-line experiment).
+
+B-line status, CI meaning, and A vs B API gaps: **[B-LINE.md](./B-LINE.md)**.  
+**B-line agents: do not merge this PR and do not recommend cutting over live Pages.**
 
 ## Current production (do not assume cutover)
 
 | Surface | What runs today |
 |---|---|
-| **Live site** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) — static `out/` + Pages Functions (see `legacy/`) |
-| **This PR / branch** | Next.js Worker path — preview/staging via `npm run cf:deploy` |
+| **Live site (A-line)** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) — static `out/` + Pages Functions (see `legacy/`) |
+| **This PR / branch (B-line)** | Next.js Worker path — preview/staging via `npm run cf:deploy` |
 | **Merging to `main`** | Does **not** by itself flip production. Pages keeps serving until dashboard / DNS / deploy target is changed on purpose. |
+| **Cloudflare Pages check on this PR** | Expected **FAILURE** (no root `out/`). Not a B-line build failure — see B-LINE.md. |
 
-Do **not** treat `npm run cf:deploy` as “replace production.” Deploy the Worker for smoke tests; keep Pages live until an intentional cutover.
+Do **not** treat `npm run cf:deploy` as “replace production.” Deploy the Worker for smoke tests; keep Pages live.
 
 Shared data: D1 `dreamutopia-db`, KV `SESSIONS`, R2 `dreamutopia-media` (same IDs in `wrangler.toml`). Prefer one writer at a time on D1 once both stacks are live.
 
@@ -80,9 +84,9 @@ Next Worker health includes `"runtime": "next-opennext-workers"`, `"productionSu
 
 Set Worker secrets in the dashboard (`wrangler secret` / Variables and Secrets). Build env vars do not replace secrets.
 
-## CUTOVER — when Daniel says go
+## CUTOVER — out of B-line scope (reference only)
 
-Do **not** start this until Daniel explicitly green-lights Pages → Workers. Until then keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` on the Worker.
+**Not part of the B-line experiment.** Do not run this from PR #14 / B-line agents. Kept here only so a future explicit go decision has a checklist. Until then keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` on the Worker.
 
 1. **Preflight (staging Worker still OK)**  
    - `npm run verify` (`lint && build`)  

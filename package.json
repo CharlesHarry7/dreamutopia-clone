@@ -19,7 +19,7 @@
     "db:schema": "wrangler d1 execute dreamutopia-db --remote --file=schema.sql",
     "db:migrate": "wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/002_gallery_unique.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/003_referrals_credits.sql && wrangler d1 execute dreamutopia-db --remote --file=migrations/004_template_hardening.sql",
     "check:health": "node scripts/check-health.mjs",
-    "pages:legacy": "echo \"Legacy static site is in legacy/out (Pages Functions in legacy/functions). Deploy path is Workers — see DEPLOY.md\""
+    "pages:legacy": "echo \"A-line snapshot: legacy/out + legacy/functions. B-line is Workers (see B-LINE.md). Do not cut over Pages from this script.\""
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.2",
