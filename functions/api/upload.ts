@@ -16,10 +16,12 @@ import {
 } from "../../libs/media";
 import {
   GUEST_USER_ID,
+  GUEST_UPLOAD_LIMIT,
   ensureGuestId,
   guestHeaders,
   guestQuota,
   loadGuest,
+  saveGuest,
   clientIp,
 } from "../../libs/guest";
 import type { Env } from "../../libs/utils";
@@ -58,10 +60,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const session = await getSession(env, token);
   const guestId = ensureGuestId(request);
   const extra = session ? undefined : guestHeaders(guestId, request);
+  let guestRec = session ? null : await loadGuest(env, guestId);
 
-  if (!session) {
-    const rec = await loadGuest(env, guestId);
-    const quota = await guestQuota(env, rec, clientIp(request));
+  if (!session && guestRec) {
+    const quota = await guestQuota(env, guestRec, clientIp(request));
     if (quota.blocked) {
       return json(
         {
@@ -71,6 +73,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           guestRemaining: 0,
         },
         401,
+        extra
+      );
+    }
+    if (guestRec.uploads >= GUEST_UPLOAD_LIMIT) {
+      return json(
+        {
+          error: "guest_upload_limit",
+          code: "guest_upload_limit",
+          message: "Too many guest uploads on this device. Sign up to continue.",
+          guestRemaining: quota.remaining,
+        },
+        429,
         extra
       );
     }
@@ -131,6 +145,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "R2 put failed";
     return structuredError("media_put_failed", msg, 502);
+  }
+
+  if (guestRec) {
+    guestRec.uploads += 1;
+    await saveGuest(env, guestRec);
   }
 
   const imageUrl = publicMediaUrl(new URL(request.url).origin, key);

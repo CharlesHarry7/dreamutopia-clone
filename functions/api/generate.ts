@@ -533,13 +533,16 @@ async function guestRequestError(
 ): Promise<Response | null> {
   const guestId = ensureGuestId(request);
   const headers = guestHeaders(guestId, request);
+  const rec = await loadGuest(env, guestId);
+  const quota = await guestQuota(env, rec, clientIp(request));
   if (opts.kind !== "video" || opts.model !== "lite") {
     return json(
       {
         error: "guest_lite_only",
         code: "guest_lite_only",
         message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
-        guestRemaining: 0,
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
       },
       401,
       headers
@@ -551,6 +554,8 @@ async function guestRequestError(
         error: "first_last_requires_medium",
         code: "first_last_requires_medium",
         message: "First + last frame needs a free account (Medium or Pro).",
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
       },
       401,
       headers
@@ -563,13 +568,13 @@ async function guestRequestError(
         code: "image_url_required",
         message: "Free trial needs a start image. Upload a file or paste a public https URL.",
         mediaRequired: false,
+        guestRemaining: quota.remaining,
+        guestLimit: GUEST_LIMIT,
       },
       400,
       headers
     );
   }
-  const rec = await loadGuest(env, guestId);
-  const quota = await guestQuota(env, rec, clientIp(request));
   if (quota.blocked) {
     return json(
       {

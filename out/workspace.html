@@ -1037,9 +1037,12 @@ async function generate() {
       msg = "File upload isn’t bound — paste a public https image URL instead.";
     } else if (code === "image_url_required" || code === "image_url_invalid") {
       msg = e.message || "Upload an image or paste a public https URL.";
-    } else if (code === "guest_limit" || code === "guest_lite_only") {
+    } else if (code === "guest_limit") {
       msg = e.message || "Sign up for 10 credits to keep creating.";
-      if (e.payload && e.payload.guestRemaining !== undefined) guestRemaining = e.payload.guestRemaining;
+      guestRemaining = 0;
+      updateAuthUI();
+    } else if (code === "guest_lite_only") {
+      msg = e.message || "Sign up for 10 credits to keep creating.";
     } else if (code === "unsupported_type" || code === "file_too_large") {
       msg = e.message || "Use a JPG/PNG/WebP/GIF under 10 MB.";
     }

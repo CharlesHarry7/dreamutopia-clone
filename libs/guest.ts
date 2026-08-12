@@ -7,6 +7,7 @@ import { randomId } from "./utils";
 
 export const GUEST_COOKIE = "du_guest";
 export const GUEST_LIMIT = 2;
+export const GUEST_UPLOAD_LIMIT = 8;
 /** R2 object prefix for guest uploads / results (matches media key regex). */
 export const GUEST_USER_ID = 0;
 const GUEST_TTL = 60 * 60 * 24 * 365;
@@ -28,6 +29,7 @@ export type GuestJob = {
 export type GuestRecord = {
   id: string;
   used: number;
+  uploads: number;
   jobs: GuestJob[];
 };
 
@@ -86,17 +88,18 @@ export async function loadGuest(
   id: string
 ): Promise<GuestRecord> {
   const raw = await env.SESSIONS.get(guestKey(id));
-  if (!raw) return { id, used: 0, jobs: [] };
+  if (!raw) return { id, used: 0, uploads: 0, jobs: [] };
   try {
     const parsed = JSON.parse(raw) as GuestRecord;
-    if (!parsed || parsed.id !== id) return { id, used: 0, jobs: [] };
+    if (!parsed || parsed.id !== id) return { id, used: 0, uploads: 0, jobs: [] };
     return {
       id,
       used: Number(parsed.used) || 0,
+      uploads: Number(parsed.uploads) || 0,
       jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
     };
   } catch {
-    return { id, used: 0, jobs: [] };
+    return { id, used: 0, uploads: 0, jobs: [] };
   }
 }
 
