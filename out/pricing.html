@@ -136,8 +136,8 @@ nav{display:none}
 </details>
 </nav>
 <div class="header-right">
-<a href="/auth?mode=login" class="btn-login">Log In</a>
-<a href="/auth?mode=register" class="btn-signup">Sign Up</a>
+<a href="/auth?mode=login" class="btn-login" id="hdrLogin">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="hdrSignup">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option>English</option>
 <option>中文</option>
@@ -374,8 +374,32 @@ nav{display:none}
 <script>
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
+  const CREDITS_KEY = "dreamutopia_credits";
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) return;
+
+  // Mirror workspace header when a session token is present.
+  const loginBtn = document.getElementById("hdrLogin");
+  const signupBtn = document.getElementById("hdrSignup");
+  if (loginBtn) {
+    loginBtn.textContent = "Log Out";
+    loginBtn.href = "#";
+    loginBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+      }).catch(function () {});
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(CREDITS_KEY);
+      location.reload();
+    });
+  }
+  if (signupBtn) {
+    signupBtn.textContent = "Workspace";
+    signupBtn.href = "/workspace";
+  }
+
   fetch("/api/auth/me", { headers: { authorization: "Bearer " + token } })
     .then((res) => {
       if (!res.ok) return;
