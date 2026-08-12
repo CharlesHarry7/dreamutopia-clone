@@ -67,7 +67,7 @@ curl -s https://<worker>.workers.dev/api/health | jq '{service,runtime,productio
 npm run check:health -- https://<worker>.workers.dev --expect-worker
 ```
 
-Next Worker health includes `"runtime": "next-opennext-workers"`, `"productionSurface": "pages-until-cutover"`, soft `probes` / `degraded`, and `guestTrialsReady`. Legacy Pages health has no `runtime` field (or not that value). **Live traffic stays on Pages until the manual cutover below.**
+Next Worker health includes `"runtime": "next-opennext-workers"`, `"productionSurface": "pages-until-cutover"`, soft `probes` / `degraded`, and `guestTrialsReady`. Legacy Pages health has no `runtime` field (or not that value). **`productionSurface` must stay `pages-until-cutover` while [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) is live** — do not flip it on deploy alone. Live traffic stays on Pages until the manual cutover below.
 
 ### Workers Builds (CI) — optional staging
 

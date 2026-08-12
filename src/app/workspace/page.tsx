@@ -23,7 +23,7 @@ import {
   type ApiError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatGenerateError } from "@/lib/generate-errors";
+import { formatGenerateError, guestRemainingFromError } from "@/lib/generate-errors";
 import { useI18n } from "@/lib/i18n";
 
 type Mode = "video" | "image";
@@ -112,14 +112,15 @@ function WorkspaceInner() {
     !prompt.trim() ||
     (guestNeedsImage && !imageUrl.trim()) ||
     (user != null && !canAfford) ||
-    (!user && guestRemaining === 0);
+    (!user && (guestRemaining === null || guestRemaining === 0));
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const health = await api<{ kieConfigured?: boolean; generateReady?: boolean }>("/health");
-        if (!cancelled) setKieReady(!!health.kieConfigured);
+        // generateReady covers KIE key + SESSIONS probe (guest trials path).
+        if (!cancelled) setKieReady(health.generateReady ?? !!health.kieConfigured);
       } catch {
         if (!cancelled) setKieReady(null);
       }
@@ -133,7 +134,8 @@ function WorkspaceInner() {
     // Account history (D1) or this device's guest jobs (KV) — same GET /api/generate.
     if (authLoading) return;
     let cancelled = false;
-    void (async () => {
+
+    async function loadHistory() {
       try {
         const data = await api<{
           generations?: unknown[];
@@ -150,11 +152,44 @@ function WorkspaceInner() {
       } catch {
         // Keep last good history on transient failures (corrupt-row / settle blips).
       }
-    })();
+    }
+
+    void loadHistory();
     return () => {
       cancelled = true;
     };
   }, [user, authLoading, resultUrl, noteGuestRemaining]);
+
+  // Poll My Creations while any row is still processing (guest settle / account settle).
+  useEffect(() => {
+    if (authLoading) return;
+    const inflight = history.some((h) => h.status === "processing" || h.status === "pending");
+    if (!inflight) return;
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      if (cancelled) return;
+      void (async () => {
+        try {
+          const data = await api<{
+            generations?: unknown[];
+            guestRemaining?: number;
+          }>("/generate");
+          if (cancelled) return;
+          if (typeof data.guestRemaining === "number") {
+            noteGuestRemaining(data.guestRemaining);
+          }
+          const list = Array.isArray(data.generations) ? data.generations : [];
+          setHistory(list.map(asHistoryItem).filter((g): g is HistoryItem => Boolean(g)));
+        } catch {
+          /* keep last good */
+        }
+      })();
+    }, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [history, authLoading, noteGuestRemaining]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -183,6 +218,8 @@ function WorkspaceInner() {
     } catch (err) {
       setErrorCode((err as ApiError).code || null);
       setError(formatGenerateError(err, "Upload failed"));
+      const remaining = guestRemainingFromError(err);
+      if (remaining !== null) noteGuestRemaining(remaining);
     }
   }
 
@@ -252,11 +289,9 @@ function WorkspaceInner() {
             settled.error ||
             t("progress.failed", "Generation failed")
         );
-        throw Object.assign(new Error(failMsg), {
-          code: /balance|credit|wallet|insufficient/i.test(failMsg)
-            ? "kie_insufficient_balance"
-            : "generation_failed",
-        });
+        // Settle failures are provider job outcomes — do not re-tag as wallet-empty
+        // from loose client regex (create path already returns kie_insufficient_balance).
+        throw Object.assign(new Error(failMsg), { code: "generation_failed" });
       }
 
       const url = String(settled.resultUrl || "");
@@ -270,6 +305,8 @@ function WorkspaceInner() {
     } catch (err) {
       setErrorCode((err as ApiError).code || null);
       setError(formatGenerateError(err, t("progress.failed", "Generation failed")));
+      const remaining = guestRemainingFromError(err);
+      if (remaining !== null) noteGuestRemaining(remaining);
       setStatus("");
       await refresh();
     } finally {
@@ -343,7 +380,8 @@ function WorkspaceInner() {
         {kieReady === false && (
           <div className="relative mb-5 rounded-2xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]">
             <b>Generate offline.</b>{" "}
-            KIE_API_KEY is not set on this Worker — jobs return an honest error (no fake demo video).
+            KIE or guest-trial bindings are not ready on this Worker — jobs return an honest error
+            (no fake demo video). Live Pages may still be separate until cutover.
           </div>
         )}
 

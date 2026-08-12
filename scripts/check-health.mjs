@@ -6,16 +6,46 @@
  *   node scripts/check-health.mjs [baseUrl]
  *   node scripts/check-health.mjs https://xxx.workers.dev --expect-worker
  *   node scripts/check-health.mjs https://dreamutopia-clone.pages.dev --expect-pages
+ *
+ * While live traffic is still Pages, Worker health must keep
+ * productionSurface=pages-until-cutover (see DEPLOY.md).
  */
 const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const flags = new Set(process.argv.slice(2).filter((a) => a.startsWith("--")));
 const base = (args[0] || "http://127.0.0.1:3000").replace(/\/$/, "");
 const expectWorker = flags.has("--expect-worker");
 const expectPages = flags.has("--expect-pages");
+const FETCH_MS = 12_000;
+
+async function fetchJson(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    const body = await res.json().catch(() => ({}));
+    return { res, body };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function probeOk(probe, name, problems) {
+  if (!probe || typeof probe !== "object") {
+    problems.push(`probes.${name} missing`);
+    return;
+  }
+  if (typeof probe.ok !== "boolean") {
+    problems.push(`probes.${name}.ok not boolean`);
+  }
+}
 
 async function main() {
-  const healthRes = await fetch(`${base}/api/health`);
-  const health = await healthRes.json().catch(() => ({}));
+  if (expectWorker && expectPages) {
+    console.error("check-health FAILED: use only one of --expect-worker / --expect-pages");
+    process.exit(1);
+  }
+
+  const { res: healthRes, body: health } = await fetchJson(`${base}/api/health`);
   console.log("GET /api/health", healthRes.status);
   console.log("host:", base);
 
@@ -31,8 +61,7 @@ async function main() {
   }
   console.log(JSON.stringify(health, null, 2));
 
-  const checkoutRes = await fetch(`${base}/api/checkout`);
-  const checkout = await checkoutRes.json().catch(() => ({}));
+  const { res: checkoutRes, body: checkout } = await fetchJson(`${base}/api/checkout`);
   console.log("\nGET /api/checkout", checkoutRes.status);
   console.log(
     JSON.stringify(
@@ -78,18 +107,31 @@ async function main() {
     if (typeof health.degraded !== "boolean") {
       problems.push("missing boolean degraded");
     }
+    // Live production remains Pages until DEPLOY.md cutover — Worker must not claim cutover.
     if (health.productionSurface !== "pages-until-cutover") {
       problems.push(
         `expected productionSurface=pages-until-cutover, got ${JSON.stringify(health.productionSurface)}`
       );
     }
+    if (health.livePagesHint !== "https://dreamutopia-clone.pages.dev") {
+      problems.push(
+        `expected livePagesHint=https://dreamutopia-clone.pages.dev, got ${JSON.stringify(health.livePagesHint)}`
+      );
+    }
     if (!health.probes || typeof health.probes !== "object") {
       problems.push("missing health.probes");
+    } else {
+      probeOk(health.probes.DB, "DB", problems);
+      probeOk(health.probes.SESSIONS, "SESSIONS", problems);
     }
   }
   if (expectPages) {
     if (health.runtime === "next-opennext-workers") {
       problems.push("--expect-pages but got next-opennext-workers runtime");
+    }
+    if (health.productionSurface === "pages-until-cutover") {
+      // Pages Functions do not emit this field; if they start to, it is fine —
+      // but Worker-only fields on Pages would be surprising.
     }
   }
 
@@ -113,7 +155,7 @@ async function main() {
   }
   console.log("\ncheck-health OK");
   if (!expectWorker && health.runtime === "next-opennext-workers") {
-    console.log("tip: use --expect-worker to assert Next Worker runtime in CI");
+    console.log("tip: use --expect-worker to assert Next Worker runtime + pages-until-cutover");
   }
   if (health.livePagesHint) {
     console.log(
@@ -125,6 +167,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  const name = err && err.name === "AbortError" ? `fetch timed out after ${FETCH_MS}ms` : err;
+  console.error(name);
   process.exit(1);
 });

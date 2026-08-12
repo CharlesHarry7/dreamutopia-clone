@@ -279,18 +279,33 @@ export async function settleGuestJob(
   } else if (info.state === "fail") {
     const msg = info.failMsg || info.failCode || "provider generation failed";
     next = { ...current, status: "failed", errorMessage: msg };
-    fresh.used = Math.max(0, fresh.used - 1);
-    const ipUsed = await loadIpUsed(env, ip);
-    await saveIpUsed(env, ip, Math.max(0, ipUsed - 1));
   } else {
     return { job: current, rec: fresh, providerState: info.state || "generating" };
   }
 
-  fresh.jobs = fresh.jobs.map((j) => (j.id === job.id ? next : j));
-  await saveGuest(env, fresh);
+  // Re-load immediately before write to shrink double-settle / double-refund races
+  // (webhook + poll, or overlapping list settles).
+  const latest = await loadGuest(env, rec.id);
+  const still = latest.jobs.find((j) => j.id === job.id);
+  if (!still || still.status !== "processing") {
+    return {
+      job: still || next,
+      rec: latest,
+      providerState:
+        still?.status === "done" ? "success" : still?.status === "failed" ? "fail" : info.state || null,
+    };
+  }
+
+  if (next.status === "failed") {
+    latest.used = Math.max(0, latest.used - 1);
+    const ipUsed = await loadIpUsed(env, ip);
+    await saveIpUsed(env, ip, Math.max(0, ipUsed - 1));
+  }
+  latest.jobs = latest.jobs.map((j) => (j.id === job.id ? next : j));
+  await saveGuest(env, latest);
   return {
     job: next,
-    rec: fresh,
+    rec: latest,
     providerState: next.status === "done" ? "success" : "fail",
   };
 }

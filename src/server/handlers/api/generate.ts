@@ -15,6 +15,8 @@ import {
   createImageTask,
   isKieInsufficientBalance,
   isPublicHttpsUrl,
+  KIE_API_KEY_MISSING_MESSAGE,
+  KIE_INSUFFICIENT_BALANCE_MESSAGE,
   parseAspectRatio,
   parseImageResolution,
   type AspectRatio,
@@ -76,12 +78,11 @@ function decodeInputImages(raw: string | null): InputImages {
 }
 
 function kieMissingResponse(): Response {
-  return structuredError(
-    "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Workers secret to enable generation.",
-    503,
-    { kieConfigured: false, mediaRequired: false }
-  );
+  return structuredError("kie_api_key_missing", KIE_API_KEY_MISSING_MESSAGE, 503, {
+    kieConfigured: false,
+    mediaRequired: false,
+    fakeResult: false,
+  });
 }
 
 async function refundCredits(env: Env & { DB: D1Database }, userId: number, cost: number) {
@@ -220,22 +221,21 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 function createFailedResponse(
   created: { message: string; code?: number; status: number }
 ): Response {
-  const msg = created.message || "Failed to create KIE generation task";
+  const providerMsg = created.message || "Failed to create KIE generation task";
   const providerCode = created.code ?? created.status ?? null;
 
   // Honest provider failure — never pretend generate succeeded when KIE rejects the job
-  // (empty wallet / quota). Site credits are refunded by the caller before this returns.
+  // (empty wallet). Site credits are refunded by the caller before this returns.
   if (isKieInsufficientBalance(created)) {
-    return structuredError(
-      "kie_insufficient_balance",
-      msg ||
-        "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate.",
-      502,
-      { providerCode, kieConfigured: true, fakeResult: false }
-    );
+    return structuredError("kie_insufficient_balance", KIE_INSUFFICIENT_BALANCE_MESSAGE, 502, {
+      providerCode,
+      providerMessage: providerMsg,
+      kieConfigured: true,
+      fakeResult: false,
+    });
   }
 
-  return structuredError("kie_create_failed", msg, 502, {
+  return structuredError("kie_create_failed", providerMsg, 502, {
     providerCode,
     kieConfigured: true,
     fakeResult: false,
@@ -922,28 +922,30 @@ async function handleGuestGet(
   }
 
   if (hasKieKey(env)) {
+    // Sequential settle — avoids concurrent KV last-write races on the same guest record.
     const inflight = rec.jobs
       .filter((x) => x.status === "processing" && x.providerJobId)
       .slice(0, 3);
-    await Promise.all(
-      inflight.map(async (j) => {
-        try {
-          await settleGuestJob(env, rec, j, origin, ip);
-        } catch {
-          // One bad settle must not fail the whole guest list.
-        }
-      })
-    );
+    for (const j of inflight) {
+      try {
+        await settleGuestJob(env, rec, j, origin, ip);
+      } catch {
+        // One bad settle must not fail the whole guest list.
+      }
+    }
   }
   const fresh = await loadGuest(env, guestId);
   const jobs = normalizeGuestJobs(fresh.jobs);
-  if (jobs.length !== fresh.jobs.length) {
+  // Persist sanitize even when length is unchanged (corrupt fields / status casing).
+  if (JSON.stringify(jobs) !== JSON.stringify(fresh.jobs)) {
     fresh.jobs = jobs;
     try {
       await saveGuest(env, fresh);
     } catch {
       /* list still returns sanitized jobs */
     }
+  } else {
+    fresh.jobs = jobs;
   }
   const q2 = await guestQuota(env, fresh, ip);
   return json(

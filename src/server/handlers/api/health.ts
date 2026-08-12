@@ -64,6 +64,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     message = "Worker up but a binding probe failed — see probes (DEPLOY.md)";
   } else if (!authReady) {
     message = "Worker up; bind DB + SESSIONS for auth/credits (see BACKEND.md / DEPLOY.md)";
+  } else if (!guestTrialsReady) {
+    message = "SESSIONS probe failed — guest trials unavailable until KV is healthy";
   } else if (!kieConfigured) {
     message =
       "Auth ready — set Workers secret KIE_API_KEY for generation (Pages secrets are separate; live Pages is unchanged)";
@@ -78,8 +80,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     service: "dreamutopia-clone",
     /** Distinguishes Next OpenNext Worker from legacy Pages Functions. */
     runtime: "next-opennext-workers",
-    /** Live production is still Pages until manual cutover — see DEPLOY.md. */
-    productionSurface: "pages-until-cutover",
+    /**
+     * Live production is still Cloudflare Pages until the manual cutover in DEPLOY.md.
+     * Do not change this string while dreamutopia-clone.pages.dev remains the live surface.
+     */
+    productionSurface: "pages-until-cutover" as const,
     livePagesHint: "https://dreamutopia-clone.pages.dev",
     time: Date.now(),
     bindings,
@@ -95,7 +100,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     checkoutConfigured,
     mailConfigured,
     kieWebhookHmac,
+    /** Product supports anonymous Lite trials (see guestLimit). */
     guestTrials: true,
+    /** KV probe healthy — guest cookie/IP quota + job list can run. */
     guestTrialsReady,
     guestLimit: GUEST_LIMIT,
     mediaRequiredForGenerate: false,

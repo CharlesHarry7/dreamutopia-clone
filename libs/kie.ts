@@ -82,22 +82,36 @@ export function isPublicHttpsUrl(value: string): boolean {
 }
 
 /**
- * Detect KIE empty-wallet / quota failures from createTask (or similar) errors.
+ * Detect KIE empty-wallet / payment failures from createTask (or similar) errors.
  * Callers must surface an honest error — never invent a successful generate.
+ * Prefer HTTP 402; message match is deliberately tight to avoid false positives
+ * (e.g. "insufficient parameters").
  */
 export function isKieInsufficientBalance(err: {
   message?: string;
   code?: number;
   status?: number;
 }): boolean {
-  const msg = err.message || "";
+  const msg = String(err.message || "");
   const providerCode = err.code ?? err.status ?? null;
+  if (providerCode === 402 || err.status === 402) return true;
   return (
-    providerCode === 402 ||
-    err.status === 402 ||
-    /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg)
+    /insufficient\s+(account\s+)?(balance|credit|funds)/i.test(msg) ||
+    /payment\s*required/i.test(msg) ||
+    /wallet.*(empty|insufficient|balance)/i.test(msg) ||
+    /(empty|insufficient).*wallet/i.test(msg) ||
+    /top\s*up.*(wallet|balance|account|kie)/i.test(msg) ||
+    /out\s+of\s+(credits?|balance)/i.test(msg)
   );
 }
+
+/** Canonical user-facing copy when KIE wallet cannot fund a job. */
+export const KIE_INSUFFICIENT_BALANCE_MESSAGE =
+  "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate.";
+
+/** Canonical user-facing copy when Workers secret KIE_API_KEY is missing. */
+export const KIE_API_KEY_MISSING_MESSAGE =
+  "KIE_API_KEY is not configured. Set it as a Cloudflare Workers secret to enable generation.";
 
 function authHeaders(apiKey: string): HeadersInit {
   return {
