@@ -235,7 +235,6 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 
 @media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:30px}.model-row{grid-template-columns:1fr}}
 @media(max-width:600px){
-nav{display:none}
 .footer-grid{grid-template-columns:1fr}
 .tabs-primary{width:100%}
 .tabs-primary button{flex:1}
@@ -244,6 +243,7 @@ nav{display:none}
 .upload-grid.two{grid-template-columns:1fr}
 }
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
 <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
@@ -261,7 +261,7 @@ nav{display:none}
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
-<nav>
+<nav id="site-nav">
 <a href="/" data-i18n="nav.home">Home</a>
 <a href="/pricing" data-i18n="nav.pricing">Pricing</a>
 <a href="/#faq" data-i18n="nav.faq">FAQ</a>
@@ -316,6 +316,7 @@ nav{display:none}
 <option value="ja">日本語</option>
 <option value="es">Español</option>
 </select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
 </div>
 </header>
 
@@ -543,6 +544,7 @@ Image
 
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>

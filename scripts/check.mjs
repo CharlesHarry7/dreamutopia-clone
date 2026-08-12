@@ -66,6 +66,7 @@ function extractI18nKeys(src) {
     "gallery.like",
     "guest.left.none",
     "offline.h",
+    "a11y.menu",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -111,6 +112,8 @@ function extractI18nKeys(src) {
   mustContain("functions/api/generate.ts", "kie_unauthorized", "bad KIE key");
   mustContain("functions/api/generate.ts", "guestRemaining", "guest remaining on generate");
   mustContain("functions/api/generate.ts", "GUEST_LIMIT", "guest limit");
+  mustContain("functions/api/generate.ts", "onRequestHead", "generate HEAD");
+  mustContain("functions/api/generate.ts", "Must not poll KIE", "HEAD does not poll KIE");
 }
 
 // --- upload guest remaining ---
@@ -137,12 +140,22 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v7", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v8", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
   mustContain("out/index.html", "prefers-reduced-motion", "reduced motion");
   mustContain("out/index.html", 'aria-live="polite"', "live generate status");
+  mustContain("out/index.html", "nav-toggle", "homepage hamburger");
+  mustContain("out/workspace.html", "nav-toggle", "workspace hamburger");
+  mustContain("out/pricing.html", "nav-toggle", "pricing hamburger");
+  mustContain("out/assets/css/chrome.css", "nav-toggle", "shared mobile nav");
+  mustContain("out/assets/js/nav.js", "nav-open", "nav drawer toggle");
+  mustContain("out/_headers", "X-Content-Type-Options", "nosniff header");
+  mustContain("wrangler.toml", 'pages_build_output_dir = "out"', "Pages output dir");
+  if (/^\s*main\s*=\s*"\.open-next\/worker\.js"/m.test(read("wrangler.toml"))) {
+    fail.push("wrangler.toml must stay Cloudflare Pages (not OpenNext worker main from PR #14)");
+  } else ok.push("wrangler.toml stays Pages (not OpenNext)");
   mustContain("out/assets/js/du.js", "shouldRetryPoll", "poll retries transient errors");
   mustContain("out/assets/js/du.js", "poll_cancelled", "poll cancel");
   mustContain("out/assets/js/seo.js", "og:locale", "SEO locale");
@@ -159,7 +172,10 @@ function extractI18nKeys(src) {
   for (const page of ["out/image-to-video.html", "out/photo-to-video.html", "out/free-ai-video.html"]) {
     mustContain(page, "/assets/js/i18n.js", `${page} i18n`);
     mustContain(page, "lang-select", `${page} lang switcher`);
+    mustContain(page, 'href="#main"', `${page} skip link`);
   }
+  mustContain("out/privacy.html", "lang-select", "privacy lang switcher");
+  mustContain("out/terms.html", "lang-select", "terms lang switcher");
   mustContain("out/auth.html", "credentials: \"same-origin\"", "auth fetch sends guest cookie");
 }
 

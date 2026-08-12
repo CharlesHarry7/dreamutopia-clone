@@ -53,6 +53,23 @@ import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
+/**
+ * HEAD /api/generate — liveness only.
+ * Must not poll KIE (GET ?id= settles jobs and can hit an empty provider wallet).
+ */
+export const onRequestHead: PagesFunction<Env> = async ({ env }) => {
+  if (!hasSessions(env)) {
+    return asHead(
+      structuredError(
+        "bindings_missing",
+        "backend not configured: missing SESSIONS binding — see BACKEND.md",
+        503
+      )
+    );
+  }
+  return asHead(json({ ok: true, poll: false }));
+};
+
 const MAX_IN_FLIGHT = 3;
 
 type InputImages = { first: string | null; last: string | null };

@@ -1,0 +1,131 @@
+/* Shared chrome for the Pages product (not the Next/OpenNext experiment).
+   Load AFTER each page's <style> so the drawer can override nav { display:none }.
+   Visual wash matches PR #14 globals.css without changing wrangler.toml. */
+
+body {
+  background-color: var(--bg, #0d0d12);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168, 85, 247, 0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(236, 72, 153, 0.08), transparent);
+  background-repeat: no-repeat;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 8px;
+  z-index: 200;
+  background: #fff;
+  color: #111;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.skip-link:focus { left: 8px; }
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text, #fff);
+  padding: 7px 28px 7px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nav-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+.nav-toggle-bars,
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+  position: relative;
+  transition: transform 0.15s ease, top 0.15s ease, background 0.15s ease;
+}
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+.nav-toggle-bars::before { top: -6px; }
+.nav-toggle-bars::after { top: 6px; }
+header.nav-open .nav-toggle-bars { background: transparent; }
+header.nav-open .nav-toggle-bars::before { top: 0; transform: rotate(45deg); }
+header.nav-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
+
+@media (max-width: 768px) {
+  .nav-toggle { display: inline-flex; }
+  header nav {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 10px 16px 16px;
+    background: rgba(13, 13, 18, 0.98);
+    border-bottom: 1px solid var(--border, #2a2a38);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    z-index: 60;
+  }
+  header.nav-open nav { display: flex; }
+  header nav > a,
+  header nav .nav-drop > summary {
+    display: block;
+    padding: 12px 10px;
+    margin-left: 0;
+  }
+  header nav .nav-drop > .nav-menu {
+    position: static;
+    min-width: 0;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding: 0 0 8px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .logo span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-toggle-bars,
+  .nav-toggle-bars::before,
+  .nav-toggle-bars::after {
+    transition: none;
+  }
+}

@@ -250,6 +250,7 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | Too many generate/auth requests | `rate_limited` 429 |
 | 3+ jobs already processing | `job_in_flight` 429 |
 | KIE wallet empty (key is set) | `provider_credits_insufficient` 503 (user-safe; not their credits) |
+| HEAD `/api/generate` | 200/503 liveness only — does **not** poll KIE |
 | KIE job fail “top up” copy | Stored/returned as a generic unavailable message (`publicProviderFailMessage`) |
 | KIE key rejected | `kie_unauthorized` 503 |
 | POST `/api/gallery/like` `{ id }` | Increment `likes` once per IP (KV); 40/hour |

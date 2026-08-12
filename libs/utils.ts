@@ -21,7 +21,7 @@ export interface Env {
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
+  "access-control-allow-methods": "GET,HEAD,POST,PUT,DELETE,OPTIONS",
   "access-control-allow-headers": "Content-Type, Authorization, Idempotency-Key",
 };
 

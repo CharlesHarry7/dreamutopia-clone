@@ -23,7 +23,8 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 | dreamutopia-clone | GitHub 仓库 + Cloudflare Pages 项目 |
 | https://dreamutopia-clone.pages.dev | **生产**（`main`，PR #12 已合并） |
 | https://cursor-overnight-prod-polish.dreamutopia-clone.pages.dev | **PR #13 预览**（空 KIE 钱包诚实 503、产品打磨） |
-| [PR #13](https://github.com/CharlesHarry7/dreamutopia-clone/pull/13) | **打开中，勿合并** — 预览打磨；checkout 仍诚实 503 |
+| [PR #13](https://github.com/CharlesHarry7/dreamutopia-clone/pull/13) | **打开中，勿合并** — Pages 生产路径打磨；checkout 仍诚实 503 |
+| [PR #14](https://github.com/CharlesHarry7/dreamutopia-clone/pull/14) | **另开分支实验** — Next.js + Tailwind + shadcn + OpenNext Workers。**不要**并进 PR #13 / 不要改本分支 `wrangler.toml` 为 `main = ".open-next/worker.js"` |
 | [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | **已合并** — 游客试用 / Stripe 接线 / KIE 回调 |
 | dreamutopia-db | D1 数据库 |
 | dreamutopia-media | R2 媒体桶 |
@@ -58,8 +59,10 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   terms.html       # Terms
   assets/js/du.js  # Shared fetch / upload / poll / download
   assets/js/i18n.js # EN / 中文 / 日本語 / Español
+  assets/js/nav.js  # Mobile header drawer
   assets/js/pwa.js  # Service worker + install banner
   assets/js/seo.js  # Canonical + Open Graph
+  assets/css/chrome.css  # Body wash + hamburger (Pages; not Next)
   manifest.webmanifest
   sw.js
 /functions          # Pages Functions
@@ -93,7 +96,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
 4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
 5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist; public items can be liked (once per IP).
-6. Language selector switches EN / 中文 / 日本語 / Español (including keyword landings). PWA: add to home screen (`manifest.webmanifest` + `sw.js` + `/offline`). Generate polling shows elapsed time, retries blips, and can stop waiting without killing the job.
+6. Language selector switches EN / 中文 / 日本語 / Español (including keyword landings). PWA: add to home screen (`manifest.webmanifest` + `sw.js` + `/offline`). Generate polling shows elapsed time, retries blips, and can stop waiting without killing the job. Phone-width headers use a hamburger drawer (`chrome.css` + `nav.js`) instead of hiding nav.
 7. Paid packs: without Stripe secrets, `GET/POST /api/checkout` is **503** (`configured: false`) — no fake charge. With secrets, signed-in POST redirects to Stripe. First purchase +31 credits; invites earn 10% of the pack. Password reset needs Resend. `/robots.txt` and `/sitemap.xml` are Functions.
 
 `node scripts/check.mjs` (also GitHub Action `check`) asserts i18n key parity, pack ids vs pricing, checkout honesty, and that the service worker never caches `/api`.
@@ -113,6 +116,8 @@ If the key is set but KIE’s own balance is empty, generate returns `provider_c
 3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
 `out/_routes.json` sends `/api/*` to Pages Functions so unknown API paths return Function responses instead of the homepage.
+
+**Do not merge PR #14 into this Pages product** without Daniel. PR #14 rewrites `wrangler.toml` to OpenNext Workers (`main = ".open-next/worker.js"`) and would break the live Pages git deploy (`pages_build_output_dir = "out"`). Useful UI ideas (mobile nav, body wash) are ported here in `out/assets/css/chrome.css` without taking that deploy path.
 
 ## Cost
 
