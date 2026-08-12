@@ -111,7 +111,10 @@ function extractI18nKeys(src) {
   const ws = read("out/workspace.html");
   if (!ws.includes("data.configured === true")) fail.push("workspace.html must require data.configured === true");
   else ok.push("workspace.html requires configured === true");
-  ok.push("checkout honesty checks");
+  if (/message:\s*created\.message/.test(checkout)) {
+    fail.push("checkout.ts must not leak Stripe created.message to the browser");
+  } else ok.push("checkout.ts does not leak Stripe created.message");
+  mustContain("out/pricing.html", "note.textContent", "pricing checkout error is text not HTML");
 }
 
 // --- generate provider mapping ---
@@ -122,6 +125,18 @@ function extractI18nKeys(src) {
   mustContain("functions/api/generate.ts", "GUEST_LIMIT", "guest limit");
   mustContain("functions/api/generate.ts", "onRequestHead", "generate HEAD");
   mustContain("functions/api/generate.ts", "Must not poll KIE", "HEAD does not poll KIE");
+  {
+    const gen = read("functions/api/generate.ts");
+    const start = gen.indexOf("function createFailedResponse");
+    const end = gen.indexOf("export const onRequestPost");
+    const fn = start >= 0 && end > start ? gen.slice(start, end) : "";
+    if (!fn.includes("publicProviderFailMessage")) {
+      fail.push("createFailedResponse must sanitize KIE copy via publicProviderFailMessage");
+    } else ok.push("createFailedResponse sanitizes KIE copy");
+    if (/kie_create_failed[\s\S]{0,80}created\.message/.test(fn)) {
+      fail.push("createFailedResponse must not return raw created.message on kie_create_failed");
+    } else ok.push("kie_create_failed does not leak raw KIE message");
+  }
 }
 
 // --- upload guest remaining ---
@@ -148,7 +163,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v13", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v14", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
@@ -213,6 +228,13 @@ function extractI18nKeys(src) {
   } else ok.push("SW PRECACHE uses pretty URLs");
   mustContain("out/manifest.webmanifest", '"id": "/"', "PWA id");
   mustContain("out/manifest.webmanifest", '"lang": "en"', "PWA lang");
+  try {
+    const manifest = JSON.parse(read("out/manifest.webmanifest"));
+    if (!manifest || manifest.start_url !== "/") fail.push("manifest start_url must be /");
+    else ok.push("manifest.webmanifest is valid JSON");
+  } catch (e) {
+    fail.push("manifest.webmanifest is not valid JSON");
+  }
   if (!exists("out/offline.html")) fail.push("missing out/offline.html");
   for (const page of ["out/image-to-video.html", "out/photo-to-video.html", "out/free-ai-video.html"]) {
     mustContain(page, "/assets/js/i18n.js", `${page} i18n`);

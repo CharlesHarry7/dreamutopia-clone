@@ -165,7 +165,7 @@
 
   function failedJobError(message) {
     const raw = String(message || "");
-    if (/credits insufficient|balance isn.?t enough|top up/i.test(raw)) {
+    if (/credits insufficient|balance isn.?t enough|top[- ]?up/i.test(raw)) {
       const err = new Error(t("err.provider_credits_insufficient", "Generation is temporarily unavailable. Please try again later."));
       err.code = "provider_credits_insufficient";
       return err;

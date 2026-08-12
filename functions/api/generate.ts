@@ -245,10 +245,16 @@ function createFailedResponse(
 ): Response {
   const providerCode = created.code ?? null;
   const more = extra || {};
-  if (providerCode === 402 || /credits insufficient|balance isn.?t enough|top up/i.test(created.message || "")) {
+  const raw = created.message || "";
+  const safe = publicProviderFailMessage(raw);
+  if (
+    providerCode === 402 ||
+    created.status === 402 ||
+    /credits insufficient|balance isn.?t enough|top[- ]?up|\b402\b/i.test(raw)
+  ) {
     return structuredError(
       "provider_credits_insufficient",
-      "Generation is temporarily unavailable. Please try again later.",
+      safe,
       503,
       { providerCode, kieConfigured: true, ...more },
       extraHeaders
@@ -265,7 +271,7 @@ function createFailedResponse(
   }
   return structuredError(
     "kie_create_failed",
-    created.message || "Failed to create KIE generation task",
+    safe,
     502,
     { providerCode, ...more },
     extraHeaders

@@ -543,7 +543,7 @@ footer{margin-top:20px;background:var(--bg2);border-top:1px solid var(--border);
         } catch (err) {
           a.textContent = prev;
           if (note) {
-            note.innerHTML = "<b>Checkout failed.</b> " + (err.message || "Try again.");
+            note.textContent = "Checkout failed. " + ((err && err.message) || "Try again.");
           }
         }
       };

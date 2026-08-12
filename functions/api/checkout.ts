@@ -83,7 +83,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
   if (!created.ok) {
     return json(
-      { error: "stripe_session_failed", message: created.message },
+      {
+        error: "stripe_session_failed",
+        code: "stripe_session_failed",
+        message: "Checkout could not start. No charge was made.",
+      },
       created.status >= 400 && created.status < 600 ? created.status : 502
     );
   }
