@@ -116,7 +116,9 @@ function extractI18nKeys(src) {
   if (!checkout.includes("503")) fail.push("checkout.ts missing 503");
   if (!checkout.includes("hasStripe")) fail.push("checkout.ts missing hasStripe gate");
   if (!checkout.includes("onRequestHead")) fail.push("checkout.ts missing HEAD (honest 503)");
+  mustContain("functions/api/checkout.ts", 'method === "HEAD"', "checkout onRequest HEAD fallback (not SPA HTML)");
   mustContain("functions/api/stripe/checkout.ts", "onRequestHead", "stripe checkout alias HEAD");
+  mustContain("functions/api/stripe/checkout.ts", "checkoutOnRequest", "stripe checkout alias onRequest HEAD fallback");
   if (/sk_live_|sk_test_[a-zA-Z0-9]{10,}/.test(checkout)) fail.push("checkout.ts looks like it embeds a Stripe secret");
   const pricing = read("out/pricing.html");
   if (!pricing.includes("data.configured === true") && !pricing.includes("data.ok === true && data.configured === true")) {
@@ -337,7 +339,10 @@ function extractI18nKeys(src) {
     mustContain("out/404.html", 'name="robots" content="noindex"', "404 noindex");
   }
   mustContain("functions/api/auth/forgot.ts", "onRequestGet", "forgot GET probe");
+  mustContain("functions/api/auth/forgot.ts", "onRequestHead", "forgot HEAD (not SPA HTML)");
+  mustContain("functions/api/auth/forgot.ts", 'method === "HEAD"', "forgot onRequest HEAD fallback");
   mustContain("functions/api/auth/forgot.ts", "configured: false", "forgot GET honest unconfigured");
+  mustContain("functions/api/auth/forgot.ts", "email_not_configured", "forgot honest email_not_configured");
   mustContain("out/auth.html", 'method: "GET"', "auth probes forgot GET");
   mustContain("out/auth.html", 'isForgot ? "login"', "forgot switch goes to login");
   mustContain("functions/sitemap.xml.ts", "lastmod", "sitemap lastmod");

@@ -84,3 +84,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   return json({ ok: true });
 };
+
+/**
+ * Pages on some deploys does not invoke onRequestHead — HEAD then hits the SPA
+ * (live: 200 text/html). onRequest is the fallback so HEAD/OPTIONS match GET/POST.
+ */
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const method = ctx.request.method;
+  if (method === "HEAD") return asHead(await onRequestGet(ctx));
+  if (method === "OPTIONS") return onRequestOptions();
+  if (method === "GET") return onRequestGet(ctx);
+  if (method === "POST") return onRequestPost(ctx);
+  return json({ error: "method_not_allowed", code: "method_not_allowed" }, 405);
+};
