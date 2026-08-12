@@ -11,17 +11,28 @@ import { createCheckoutSession, hasStripe } from "../../libs/stripe";
 
 export const onRequestOptions = (): Response => preflight();
 
-function catalog(env: Env) {
+function catalog(configured: boolean) {
   return {
-    ok: true,
-    configured: hasStripe(env),
+    ok: configured,
+    configured,
     packs: publicPacks(),
     firstPurchaseBonus: FIRST_PURCHASE_BONUS_CREDITS,
     referralPercent: REFERRAL_PERCENT,
+    ...(configured
+      ? {}
+      : {
+          error: "checkout_not_configured",
+          code: "checkout_not_configured",
+          message: "Set Pages secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
+        }),
   };
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => json(catalog(env));
+export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+  const configured = hasStripe(env);
+  // Honest 503 until Stripe is configured — never look like a live charge endpoint.
+  return json(catalog(configured), configured ? 200 : 503);
+};
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!hasStripe(env) || !env.STRIPE_SECRET_KEY) {

@@ -1,6 +1,6 @@
 import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
 import { getSession, tokenFromRequest } from "../../../libs/auth";
-import { ensureReferralCode, isSchemaError } from "../../../libs/account";
+import { ensureReferralCode, isSchemaError, mergeGuestJobs } from "../../../libs/account";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -38,6 +38,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (!row) return error("user not found", 404);
+
+  try {
+    await mergeGuestJobs(env, request, Number(row.id));
+  } catch {
+    /* guest cookie missing or schema — history still loads from D1 */
+  }
 
   let referralCode: string | null = row.referral_code || null;
   try {

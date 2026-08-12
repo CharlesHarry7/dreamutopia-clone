@@ -22,6 +22,7 @@ import {
   type ImageResolution,
 } from "../../libs/kie";
 import { isSafeMediaKey, mediaKeyFromUrl, persistRemoteMedia } from "../../libs/media";
+import { mergeGuestJobs } from "../../libs/account";
 import {
   GUEST_LIMIT,
   GUEST_USER_ID,
@@ -726,6 +727,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       "backend not configured: missing DB binding — see BACKEND.md",
       503
     );
+  }
+
+  try {
+    await mergeGuestJobs(env, request, session.userId);
+  } catch {
+    /* keep listing D1 history */
   }
 
   if (idParam) {

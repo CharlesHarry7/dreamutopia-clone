@@ -1,5 +1,5 @@
 /* DreamUtopia clone — cache static chrome; never cache /api. */
-const CACHE = "du-static-v1";
+const CACHE = "du-static-v2";
 const PRECACHE = [
   "/",
   "/workspace",
@@ -9,6 +9,7 @@ const PRECACHE = [
   "/assets/js/du.js",
   "/assets/js/i18n.js",
   "/assets/js/pwa.js",
+  "/assets/js/seo.js",
   "/assets/icons/icon-192.png",
   "/assets/icons/icon-512.png",
   "/assets/icons/apple-touch-icon.png",
@@ -51,6 +52,14 @@ self.addEventListener("fetch", (event) => {
         }
         return res;
       })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match("/")))
+      .catch(() =>
+        caches.match(req).then((hit) => {
+          if (hit) return hit;
+          if (req.mode === "navigate" || req.destination === "document") {
+            return caches.match("/");
+          }
+          return new Response("", { status: 503, statusText: "offline" });
+        })
+      )
   );
 });

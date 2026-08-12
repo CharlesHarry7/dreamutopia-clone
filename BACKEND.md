@@ -15,7 +15,7 @@ When a job finishes, the Function copies the provider file into R2 when `MEDIA` 
 
 ## Payments (optional Stripe)
 
-`GET /api/checkout` always returns `{ ok, configured, packs, firstPurchaseBonus }`. `configured` is true only when `STRIPE_SECRET_KEY` is set.
+`GET /api/checkout` returns **503** `{ ok: false, configured: false, packs, … }` until `STRIPE_SECRET_KEY` is set (honest — not a live charge endpoint). After the secret is set it returns **200** `{ ok: true, configured: true, packs, … }`.
 
 `POST /api/checkout` `{ packId }` (signed-in) creates a Stripe Checkout Session (`price_data`, no pre-created Price IDs). If the secret is missing it returns `checkout_not_configured` (503) — the UI does not pretend to charge.
 
@@ -189,7 +189,7 @@ Expect:
 - `generateReady: true`
 - `guestTrials: true`
 - `uploadReady: true` (MEDIA bound)
-- `checkoutConfigured: true` after `STRIPE_SECRET_KEY` is set (otherwise `false`; GET `/api/checkout` still 200)
+- `checkoutConfigured: true` after `STRIPE_SECRET_KEY` is set (otherwise `false`; GET `/api/checkout` is 503 until then)
 - `mailConfigured: true` after `RESEND_API_KEY` is set
 
 Then:

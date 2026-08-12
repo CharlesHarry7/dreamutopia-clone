@@ -318,8 +318,8 @@ nav{display:none}
 
 <!-- Tabs + Generator -->
 <div class="gen-tabs">
-<button class="gen-tab active" data-i18n="tab.video">🎬 Video</button>
-<button class="gen-tab" data-i18n="tab.image">🖼 Image</button>
+<button class="gen-tab active" data-kind="video" data-i18n="tab.video">🎬 Video</button>
+<button class="gen-tab" data-kind="image" data-i18n="tab.image">🖼 Image</button>
 </div>
 
 <div class="gen-card">
@@ -397,7 +397,7 @@ nav{display:none}
 <li><span class="check">✓</span> <span data-i18n="compare.l1">2 free generations</span></li>
 <li><span class="check">✓</span> <span data-i18n="compare.l2">Lite model only — entry-level quality</span></li>
 <li><span class="check">✓</span> <span data-i18n="compare.l3">Basic controls</span></li>
-<li><span class="check">✓</span> <span data-i18n="compare.l4">Generations not saved to history</span></li>
+<li><span class="check">✓</span> <span data-i18n="compare.l4">Guest tries stay on this device until you sign up</span></li>
 </ul>
 </div>
 <div class="compare-vs">vs</div>
@@ -611,7 +611,17 @@ let homeBusy = false;
 
 function isImageTab() {
   const tab = document.querySelector(".gen-tab.active");
-  return !!(tab && /image/i.test(tab.textContent || ""));
+  return !!(tab && tab.getAttribute("data-kind") === "image");
+}
+
+function syncHomeTab() {
+  const image = isImageTab();
+  const card = document.querySelector(".gen-card h2");
+  if (card) card.textContent = image ? DU.t("gen.imageTitle", "AI Image Generator") : DU.t("gen.videoTitle", "AI Video Generator");
+  const label = document.getElementById("homeUploadLabel");
+  if (label) label.textContent = image ? DU.t("gen.uploadImage", "Reference image (optional)") : DU.t("gen.upload", "Upload Start Image");
+  const promptLabel = document.querySelector(".gen-card .label-row label");
+  if (promptLabel) promptLabel.textContent = image ? "Describe Your Image" : DU.t("gen.prompt", "Describe Your Video");
 }
 
 function goWorkspace(extra) {
@@ -623,13 +633,10 @@ document.querySelectorAll(".gen-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".gen-tab").forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
-    const card = document.querySelector(".gen-card h2");
-    const image = /image/i.test(tab.textContent || "");
-    if (card) card.textContent = image ? DU.t("gen.imageTitle", "AI Image Generator") : DU.t("gen.videoTitle", "AI Video Generator");
-    const label = document.getElementById("homeUploadLabel");
-    if (label) label.textContent = image ? DU.t("gen.uploadImage", "Reference image (optional)") : DU.t("gen.upload", "Upload Start Image");
+    syncHomeTab();
   });
 });
+document.addEventListener("du:i18n", syncHomeTab);
 
 function updateGen(ta) {
   const btn = document.getElementById("genBtn");
@@ -684,8 +691,22 @@ if (homeUpload && homeFileInput) {
   homeFileInput.addEventListener("change", () => {
     const file = homeFileInput.files && homeFileInput.files[0];
     if (!file) return;
-    if (!DU.isAllowedImageFile(file)) return;
-    if (file.size > DU.MAX_UPLOAD_BYTES) return;
+    const status = document.getElementById("homeStatus");
+    const text = document.getElementById("homeStatusText");
+    if (!DU.isAllowedImageFile(file)) {
+      if (status && text) {
+        status.classList.add("show");
+        text.textContent = DU.t("faq.a4", "Use a JPG, PNG, WebP, GIF, or TIFF image.");
+      }
+      return;
+    }
+    if (file.size > DU.MAX_UPLOAD_BYTES) {
+      if (status && text) {
+        status.classList.add("show");
+        text.textContent = "Image must be 20 MB or smaller.";
+      }
+      return;
+    }
     homeFile = file;
     homeImageUrl = "";
     setHomePreview(file);

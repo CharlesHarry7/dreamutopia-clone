@@ -76,7 +76,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           message: "Free trial used up — sign up to upload and generate.",
           guestRemaining: 0,
         },
-        401,
+        402,
         extra
       );
     }

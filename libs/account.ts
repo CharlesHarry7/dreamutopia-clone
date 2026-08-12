@@ -7,7 +7,7 @@ import {
   REFERRAL_PERCENT,
   type CreditPack,
 } from "./packs";
-import { guestIdFromRequest, loadGuest, saveGuest, type GuestJob } from "./guest";
+import { guestIdFromRequest, loadGuest, type GuestJob } from "./guest";
 
 export function makeReferralCode(): string {
   const rand = crypto.getRandomValues(new Uint8Array(4));
@@ -70,10 +70,17 @@ export async function mergeGuestJobs(
 
   let copied = 0;
   for (const job of rec.jobs) {
+    if (job.providerJobId) {
+      const existing = await env.DB.prepare(
+        "SELECT id FROM generations WHERE user_id = ? AND provider_job_id = ?"
+      )
+        .bind(userId, job.providerJobId)
+        .first();
+      if (existing) continue;
+    }
     copied += (await insertGuestJob(env.DB, userId, job)) ? 1 : 0;
   }
-  rec.jobs = [];
-  await saveGuest(env, rec);
+  // Keep KV jobs so in-flight guest polls (`g_…`) still resolve after signup.
   return copied;
 }
 
