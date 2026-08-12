@@ -1,0 +1,60 @@
+import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "@/server/libs/utils";
+import { verifyPassword } from "@/server/libs/password";
+import { createSession } from "@/server/libs/auth";
+import { mergeGuestJobs } from "@/server/libs/account";
+import { rateLimitedResponse, takeRateLimit } from "@/server/libs/rateLimit";
+import { clientIp } from "@/server/libs/guest";
+import type { Env } from "@/server/libs/utils";
+
+export const onRequestOptions = (): Response => preflight();
+
+// POST /api/auth/login  { email, password }
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hasDb(env) || !hasSessions(env)) return bindingsUnavailable("DB+SESSIONS");
+
+  const rl = await takeRateLimit(env.SESSIONS, `login:ip:${clientIp(request) || "unknown"}`, 20, 60);
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
+
+  let body: { email?: string; password?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("invalid json");
+  }
+  const email = (body.email || "").trim().toLowerCase();
+  const password = body.password || "";
+  if (!email || !password) return error("invalid credentials", 401);
+
+  const row = await env.DB.prepare(
+    "SELECT id, email, password_hash, credits FROM users WHERE email = ?"
+  )
+    .bind(email)
+    .first<{ id: number; email: string; password_hash: string; credits: number }>();
+
+  if (!row) return error("invalid credentials", 401);
+
+  const parts = String(row.password_hash).split(":");
+  if (parts.length !== 2) return error("invalid credentials", 401);
+  const [salt, hash] = parts;
+
+  const ok = await verifyPassword(password, salt, hash);
+  if (!ok) return error("invalid credentials", 401);
+
+  const userId = Number(row.id);
+  const token = await createSession(env, userId, String(row.email));
+  let mergedJobs = 0;
+  try {
+    mergedJobs = await mergeGuestJobs(env, request, userId);
+  } catch {
+    mergedJobs = 0;
+  }
+
+  return json({
+    ok: true,
+    token,
+    userId,
+    email: row.email,
+    credits: Number(row.credits),
+    mergedJobs,
+  });
+};

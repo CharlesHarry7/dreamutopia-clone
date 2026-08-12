@@ -2,7 +2,11 @@
 
 本仓库 = Cursor 临摹的 DreamUtopia，不是 pikbo（主站），也不是 OpenCode 的 magicremover-clone。
 
-Cloudflare 资源名：Pages `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+**Runtime (2026 migration):** Next.js App Router on **Cloudflare Workers** via OpenNext (`npm run deploy`). API handlers live in `src/server/handlers` and are exposed through `src/app/api/**/route.ts`. Bindings are still D1 / KV / R2 — same resource IDs in `wrangler.toml`.
+
+Cloudflare 资源名：Workers/Pages project `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+
+Legacy Pages Functions + static HTML remain under `legacy/` for reference only.
 
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
@@ -37,13 +41,13 @@ Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register
 |------------------|------|--------------|---------|
 | `DB` | D1 | auth + generate + checkout | users, credits, generations, gallery, credit_events |
 | `SESSIONS` | KV | auth + generate + reset | login/register/logout/me session tokens, guest trials, reset tokens, rate limits |
-| `KIE_API_KEY` | Pages **secret** | real generate | `/api/generate` → KIE Market API |
-| `KIE_WEBHOOK_HMAC_KEY` | Pages **secret** | optional callback auth | `POST /api/webhooks/kie` (`X-Webhook-Signature`) |
+| `KIE_API_KEY` | Workers **secret** | real generate | `/api/generate` → KIE Market API |
+| `KIE_WEBHOOK_HMAC_KEY` | Workers **secret** | optional callback auth | `POST /api/webhooks/kie` (`X-Webhook-Signature`) |
 | `MEDIA` | R2 | **file upload** | `POST /api/upload`, `GET /api/media` |
-| `STRIPE_SECRET_KEY` | Pages **secret** | paid packs | `POST /api/checkout` |
-| `STRIPE_WEBHOOK_SECRET` | Pages **secret** | paid packs | `POST /api/webhooks/stripe` |
-| `RESEND_API_KEY` | Pages **secret** | password reset email | `POST /api/auth/forgot` |
-| `MAIL_FROM` | Pages var/secret | password reset email | verified Resend from-address |
+| `STRIPE_SECRET_KEY` | Workers **secret** | paid packs | `POST /api/checkout` |
+| `STRIPE_WEBHOOK_SECRET` | Workers **secret** | paid packs | `POST /api/webhooks/stripe` |
+| `RESEND_API_KEY` | Workers **secret** | password reset email | `POST /api/auth/forgot` |
+| `MAIL_FROM` | Workers var/secret | password reset email | verified Resend from-address |
 
 ## Generate path
 
