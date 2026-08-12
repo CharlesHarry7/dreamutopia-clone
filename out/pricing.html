@@ -59,6 +59,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .checkout-note b{color:var(--orange);font-weight:700}
 .checkout-note a{color:var(--primary2);font-weight:600}
 .checkout-note a:hover{text-decoration:underline}
+.checkout-note-en{display:block;margin-top:2px;font-size:13px;color:var(--text2);font-weight:500}
+.checkout-note-extra{display:block;margin-top:8px;font-size:12.5px;color:var(--text3)}
 
 .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-bottom:72px}
 .plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px 24px;position:relative;display:flex;flex-direction:column;transition:transform .3s,border-color .3s}
@@ -101,7 +103,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .model-cost .n{font-size:18px;font-weight:800}
 .model-cost .u{font-size:11px;color:var(--text3);display:block}
 
-.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .feat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
 .feat .fi{font-size:26px;margin-bottom:12px}
 .feat h4{font-size:15px;font-weight:700;margin-bottom:6px}
@@ -127,7 +129,7 @@ footer{margin-top:20px;background:var(--bg2);border-top:1px solid var(--border);
 .footer-col ul li a{font-size:13px;color:var(--text2);transition:color .2s}
 .footer-col ul li a:hover{color:var(--text)}
 
-@media(max-width:980px){.plans{grid-template-columns:repeat(2,1fr)}.feat-grid{grid-template-columns:1fr 1fr}.footer-grid{grid-template-columns:1fr 1fr;gap:30px}}
+@media(max-width:980px){.plans{grid-template-columns:repeat(2,1fr)}.feat-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr;gap:30px}}
 @media(max-width:700px){
 .plans,.how-grid,.feat-grid{grid-template-columns:1fr}
 .page-head h1{font-size:30px}
@@ -158,7 +160,7 @@ nav{display:none}
 </nav>
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
-<a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
+<a href="/auth?mode=signup&amp;next=/workspace" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option value="en">English</option>
 <option value="zh">中文</option>
@@ -195,7 +197,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=starter&amp;next=/workspace" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="starter"></span>
 </div>
 
@@ -214,7 +216,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=plus&amp;next=/workspace" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="plus"></span>
 </div>
 
@@ -234,7 +236,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=pro&amp;next=/workspace" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="pro"></span>
 </div>
 
@@ -253,7 +255,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=premium&amp;next=/workspace" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="premium"></span>
 </div>
 
@@ -327,6 +329,7 @@ nav{display:none}
 <div class="feat"><div class="fi">✨</div><h4>Up to 4K Images</h4><p>Generate high-resolution images</p></div>
 <div class="feat"><div class="fi">🚫</div><h4>Ad-free</h4><p>Any purchase removes ads from the site for good.</p></div>
 <div class="feat"><div class="fi">🤖</div><h4>No CAPTCHAs</h4><p>Generate without stopping to prove you're human.</p></div>
+<div class="feat"><div class="fi">♾️</div><h4>Credits never expire</h4><p>Buy once and spend on any model, at your own pace.</p></div>
 </div>
 <p class="footnote">* Standard Pack and above unlock premium features. Audio generation requires Pro video model + Premium.</p>
 </div>
@@ -343,7 +346,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
+<div class="faq-a">支付即将开放 / Payments coming soon. Selecting a pack will not charge a card — it only remembers the pack. When payments open, first purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -383,6 +386,8 @@ nav{display:none}
 <li><a href="/#faq">FAQ</a></li>
 <li><a href="/pricing">Pricing</a></li>
 <li><a href="/workspace">Workspace</a></li>
+<li><a href="/auth?mode=signup&amp;next=/workspace">Sign up</a></li>
+<li><a href="/auth?mode=login&amp;next=/workspace">Log in</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -416,7 +421,7 @@ nav{display:none}
   const ctas = Array.prototype.slice.call(document.querySelectorAll("[data-checkout-cta]"));
 
   function packAuthHref(pack) {
-    return "/auth?mode=register&pack=" + encodeURIComponent(pack);
+    return "/auth?mode=signup&pack=" + encodeURIComponent(pack) + "&next=" + encodeURIComponent("/workspace");
   }
   function packWorkspaceHref(pack) {
     return "/workspace?pack=" + encodeURIComponent(pack);
@@ -431,14 +436,14 @@ nav{display:none}
       loginBtn.href = "/auth?mode=login";
       loginBtn.onclick = null;
       signupBtn.textContent = (window.DU && DU.t("hdr.signup", "Sign Up")) || "Sign Up";
-      signupBtn.href = "/auth?mode=register";
+      signupBtn.href = "/auth?mode=signup&next=/workspace";
       return;
     }
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) return hydrateHeader(false);
     if (loginBtn) {
       loginBtn.textContent = (window.DU && DU.t("hdr.logout", "Log Out")) || "Log Out";
-      loginBtn.href = "#";
+      loginBtn.href = "/auth?mode=login";
       loginBtn.onclick = function (e) {
         e.preventDefault();
         fetch("/api/auth/logout", {
@@ -457,25 +462,32 @@ nav{display:none}
   }
 
   function applyUnavailableCopy(signedIn) {
+    const t = function (key, fallback) {
+      return (window.DU && DU.t(key, fallback)) || fallback;
+    };
     if (note) {
       note.classList.add("show");
-      note.innerHTML = signedIn
-        ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
-        : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
+      const extra = signedIn
+        ? t("price.soon.extra.signed", "Continue opens your workspace and remembers the pack. No charge.")
+        : t("price.soon.extra.guest", "Continue free opens sign-up — no charge. New accounts still get 10 free credits.");
+      note.innerHTML =
+        "<b>支付即将开放</b>" +
+        "<span class=\"checkout-note-en\">Payments coming soon</span>" +
+        "<span class=\"checkout-note-extra\">" + extra + "</span>";
     }
     ctas.forEach(function (a) {
       const pack = a.getAttribute("data-pack");
       a.textContent = signedIn ? "Continue" : "Continue free";
-      a.setAttribute("title", "Paid checkout not configured — continues without charging");
+      a.setAttribute("title", signedIn ? "Continue · no charge" : "Continue free · no charge");
       a.setAttribute(
         "aria-label",
-        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (checkout not live)"
+        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (no charge)"
       );
       const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
       if (caption) {
         caption.textContent = signedIn
-          ? "Checkout coming soon · no charge"
-          : "Free account · pack saved · no charge";
+          ? t("price.caption.signed", "Continue · no charge")
+          : t("price.caption.guest", "Continue free · no charge");
       }
     });
   }
@@ -509,7 +521,7 @@ nav{display:none}
         a.onclick = null;
         return;
       }
-      a.href = "#";
+      a.href = "/pricing";
       a.onclick = async function (e) {
         e.preventDefault();
         const token = localStorage.getItem(TOKEN_KEY);
@@ -574,8 +586,11 @@ nav{display:none}
     const signedIn = await isSignedIn();
     if (!signedIn) hydrateHeader(false);
     else hydrateHeader(true);
-    document.addEventListener("du:i18n", function () { hydrateHeader(signedIn); });
     const live = await checkoutAvailable();
+    document.addEventListener("du:i18n", function () {
+      hydrateHeader(signedIn);
+      if (!live) applyUnavailableCopy(signedIn);
+    });
     if (live) {
       applyLiveCopy(signedIn);
       return;
