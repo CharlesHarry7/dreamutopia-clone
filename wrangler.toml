@@ -3,31 +3,26 @@ compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
 # -----------------------------------------------------------------------------
-# Bindings — keep COMMENTED until real Cloudflare resource IDs exist.
-# Invalid / REPLACE_ME IDs break Pages deploys.
+# Bindings — D1 + KV enabled with real Cloudflare resource IDs.
+# R2 MEDIA left commented until dreamutopia-media bucket is activated.
 #
-# Create resources (see BACKEND.md):
-#   npx wrangler d1 create dreamutopia-db
-#   npx wrangler kv namespace create SESSIONS
-#   npx wrangler r2 bucket create dreamutopia-media
-#   npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
-#
-# Then uncomment and paste IDs. Also add the same binding NAMES in the
-# Cloudflare Pages project: Settings → Bindings
+# Also ensure the same binding NAMES exist in the Cloudflare Pages project:
+# Settings → Bindings
 #   DB       → D1  dreamutopia-db
 #   SESSIONS → KV  SESSIONS
-#   MEDIA    → R2  dreamutopia-media
+#   MEDIA    → R2  dreamutopia-media (pending)
 # -----------------------------------------------------------------------------
 
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "dreamutopia-db"
-# database_id = "REPLACE_ME_D1_DATABASE_ID"
+[[d1_databases]]
+binding = "DB"
+database_name = "dreamutopia-db"
+database_id = "148c47fa-55da-4423-b031-1a74e4216014"
 
-# [[kv_namespaces]]
-# binding = "SESSIONS"
-# id = "REPLACE_ME_KV_NAMESPACE_ID"
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "6b2dbe20ae95452f8f22b98f0ce6196e"
 
+# Pending R2 bucket activation — do not invent a bucket id.
 # [[r2_buckets]]
 # binding = "MEDIA"
 # bucket_name = "dreamutopia-media"
