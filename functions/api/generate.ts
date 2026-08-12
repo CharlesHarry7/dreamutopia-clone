@@ -382,12 +382,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
+  const token = tokenFromRequest(request);
+  const session = await getSession(env, token);
+
+  if (!session) {
+    const blocked = await guestRequestError(env, request, {
+      kind,
+      model,
+      imageUrl,
+      lastImageUrl,
+    });
+    if (blocked) return blocked;
+  }
+
   if (!hasKieKey(env)) {
     return kieMissingResponse();
   }
-
-  const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
 
   if (!session) {
     return handleGuestPost(env, request, {
@@ -516,21 +526,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   });
 };
 
-async function handleGuestPost(
-  env: Env & { SESSIONS: KVNamespace; KIE_API_KEY: string },
+async function guestRequestError(
+  env: Env & { SESSIONS: KVNamespace },
   request: Request,
-  opts: {
-    prompt: string;
-    kind: GenerationKind;
-    model: string;
-    imageUrl: string;
-    lastImageUrl: string;
-    durationSec: number;
-  }
-): Promise<Response> {
+  opts: { kind: GenerationKind; model: string; imageUrl: string; lastImageUrl: string }
+): Promise<Response | null> {
   const guestId = ensureGuestId(request);
   const headers = guestHeaders(guestId, request);
-
   if (opts.kind !== "video" || opts.model !== "lite") {
     return json(
       {
@@ -566,6 +568,38 @@ async function handleGuestPost(
       headers
     );
   }
+  const rec = await loadGuest(env, guestId);
+  const quota = await guestQuota(env, rec, clientIp(request));
+  if (quota.blocked) {
+    return json(
+      {
+        error: "guest_limit",
+        code: "guest_limit",
+        message: "You used both free Lite videos on this device. Sign up for 10 credits.",
+        guestRemaining: 0,
+        guestLimit: GUEST_LIMIT,
+      },
+      402,
+      headers
+    );
+  }
+  return null;
+}
+
+async function handleGuestPost(
+  env: Env & { SESSIONS: KVNamespace; KIE_API_KEY: string },
+  request: Request,
+  opts: {
+    prompt: string;
+    kind: GenerationKind;
+    model: string;
+    imageUrl: string;
+    lastImageUrl: string;
+    durationSec: number;
+  }
+): Promise<Response> {
+  const guestId = ensureGuestId(request);
+  const headers = guestHeaders(guestId, request);
 
   const rec = await loadGuest(env, guestId);
   const ip = clientIp(request);
