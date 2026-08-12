@@ -481,7 +481,7 @@ function WorkspaceInner() {
           >
             <b>Generate offline.</b>{" "}
             KIE or guest-trial bindings are not ready on this Worker — jobs return an honest error
-            (no fake demo video). Live Pages may still be separate until cutover.
+            (no fake demo video).
           </div>
         )}
 
