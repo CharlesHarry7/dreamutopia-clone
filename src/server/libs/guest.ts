@@ -8,10 +8,14 @@ import { randomId } from "./utils";
 export const GUEST_COOKIE = "du_guest";
 export const GUEST_LIMIT = 2;
 export const GUEST_UPLOAD_LIMIT = 8;
+/** Max guest jobs kept in KV / returned in history lists. */
+export const GUEST_JOBS_CAP = 8;
 /** R2 object prefix for guest uploads / results (matches media key regex). */
 export const GUEST_USER_ID = 0;
 const GUEST_TTL = 60 * 60 * 24 * 365;
 const IP_TTL = 60 * 60 * 24 * 30;
+
+const JOB_STATUSES = new Set(["pending", "processing", "done", "failed"]);
 
 export type GuestJob = {
   id: string;
@@ -32,6 +36,47 @@ export type GuestRecord = {
   uploads: number;
   jobs: GuestJob[];
 };
+
+export function isGuestJobId(id: string): boolean {
+  return /^g_[a-f0-9]{16}$/.test(id);
+}
+
+/** Drop corrupt / duplicate guest jobs; newest-first; capped. */
+export function normalizeGuestJobs(raw: unknown): GuestJob[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: GuestJob[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const j = item as Partial<GuestJob>;
+    const id = typeof j.id === "string" ? j.id : "";
+    if (!isGuestJobId(id) || seen.has(id)) continue;
+    seen.add(id);
+    const statusRaw = typeof j.status === "string" ? j.status.toLowerCase() : "failed";
+    const status = JOB_STATUSES.has(statusRaw) ? statusRaw : "failed";
+    out.push({
+      id,
+      providerJobId: typeof j.providerJobId === "string" ? j.providerJobId : "",
+      prompt: typeof j.prompt === "string" ? j.prompt.slice(0, 8000) : "",
+      kind: "video",
+      model: "lite",
+      status,
+      inputImageUrl: typeof j.inputImageUrl === "string" ? j.inputImageUrl : null,
+      resultUrl: typeof j.resultUrl === "string" && j.resultUrl ? j.resultUrl : null,
+      errorMessage: typeof j.errorMessage === "string" ? j.errorMessage : null,
+      createdAt:
+        typeof j.createdAt === "string" && j.createdAt
+          ? j.createdAt
+          : new Date(0).toISOString(),
+    });
+  }
+  out.sort((a, b) => {
+    const ta = Date.parse(a.createdAt) || 0;
+    const tb = Date.parse(b.createdAt) || 0;
+    return tb - ta;
+  });
+  return out.slice(0, GUEST_JOBS_CAP);
+}
 
 export function guestIdFromRequest(request: Request): string | null {
   const header = request.headers.get("cookie") || "";
@@ -87,16 +132,26 @@ export async function loadGuest(
   env: { SESSIONS: KVNamespace },
   id: string
 ): Promise<GuestRecord> {
-  const raw = await env.SESSIONS.get(guestKey(id));
+  if (!id || !/^gst_[a-f0-9]{16}$/.test(id)) {
+    return { id: id || "gst_invalid", used: 0, uploads: 0, jobs: [] };
+  }
+  let raw: string | null = null;
+  try {
+    raw = await env.SESSIONS.get(guestKey(id));
+  } catch {
+    return { id, used: 0, uploads: 0, jobs: [] };
+  }
   if (!raw) return { id, used: 0, uploads: 0, jobs: [] };
   try {
     const parsed = JSON.parse(raw) as GuestRecord;
     if (!parsed || parsed.id !== id) return { id, used: 0, uploads: 0, jobs: [] };
+    const used = Math.max(0, Number(parsed.used) || 0);
+    const uploads = Math.max(0, Number(parsed.uploads) || 0);
     return {
       id,
-      used: Number(parsed.used) || 0,
-      uploads: Number(parsed.uploads) || 0,
-      jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+      used: Math.min(used, GUEST_LIMIT * 4),
+      uploads: Math.min(uploads, GUEST_UPLOAD_LIMIT * 4),
+      jobs: normalizeGuestJobs(parsed.jobs),
     };
   } catch {
     return { id, used: 0, uploads: 0, jobs: [] };
@@ -104,8 +159,18 @@ export async function loadGuest(
 }
 
 export async function saveGuest(env: { SESSIONS: KVNamespace }, rec: GuestRecord): Promise<void> {
-  rec.jobs = rec.jobs.slice(0, 8);
-  await env.SESSIONS.put(guestKey(rec.id), JSON.stringify(rec), { expirationTtl: GUEST_TTL });
+  const jobs = normalizeGuestJobs(rec.jobs);
+  rec.jobs = jobs;
+  await env.SESSIONS.put(
+    guestKey(rec.id),
+    JSON.stringify({
+      id: rec.id,
+      used: Math.max(0, Number(rec.used) || 0),
+      uploads: Math.max(0, Number(rec.uploads) || 0),
+      jobs,
+    } satisfies GuestRecord),
+    { expirationTtl: GUEST_TTL }
+  );
 }
 
 export async function loadIpUsed(env: { SESSIONS: KVNamespace }, ip: string | null): Promise<number> {
@@ -139,8 +204,4 @@ export async function guestQuota(
   const ipUsed = await loadIpUsed(env, ip);
   const used = Math.max(rec.used, ipUsed);
   return { remaining: remainingOf(used), used, blocked: used >= GUEST_LIMIT };
-}
-
-export function isGuestJobId(id: string): boolean {
-  return /^g_[a-f0-9]{16}$/.test(id);
 }

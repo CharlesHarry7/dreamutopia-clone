@@ -214,10 +214,14 @@ curl -s https://<worker-host>/api/health | jq
 
 Expect:
 
-- `authReady: true`
-- `kieConfigured: true` (after secret is set)
-- `generateReady: true`
+- `runtime: "next-opennext-workers"` (Worker only; live Pages today has no this value)
+- `productionSurface: "pages-until-cutover"` until you finish **DEPLOY.md** cutover
+- `authReady: true` (D1 + KV bound **and** soft probes OK)
+- `guestTrialsReady: true` (KV probe OK — guest cookie/IP trials)
+- `kieConfigured: true` (after Workers secret is set)
+- `generateReady: true` (`guestTrialsReady` ∧ `kieConfigured`)
 - `guestTrials: true`
+- `degraded: false` (bound DB/KV must answer probes)
 - `uploadReady: true` (MEDIA bound)
 - `checkoutConfigured: true` after `STRIPE_SECRET_KEY` is set (otherwise `false`; GET `/api/checkout` is 503 until then)
 - `mailConfigured: true` after `RESEND_API_KEY` is set

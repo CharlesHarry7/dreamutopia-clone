@@ -42,6 +42,7 @@ import {
   guestQuota,
   isGuestJobId,
   loadGuest,
+  normalizeGuestJobs,
   saveGuest,
   saveIpUsed,
   clientIp,
@@ -883,7 +884,6 @@ async function handleGuestGet(
   const headers = guestHeaders(guestId, request);
   const rec = await loadGuest(env, guestId);
   const ip = clientIp(request);
-  const quota = await guestQuota(env, rec, ip);
 
   if (idParam) {
     if (!isGuestJobId(idParam)) {
@@ -894,10 +894,16 @@ async function handleGuestGet(
     let providerState: string | null = null;
     if (job.status === "processing" && job.providerJobId) {
       if (!hasKieKey(env)) return kieMissingResponse();
-      const synced = await settleGuestJob(env, rec, job, origin, ip);
-      job = synced.job;
-      providerState = synced.providerState;
+      try {
+        const synced = await settleGuestJob(env, rec, job, origin, ip);
+        job = synced.job;
+        providerState = synced.providerState;
+      } catch {
+        // Keep stored row if KIE settle throws — single-job GET must stay usable.
+        providerState = null;
+      }
     }
+    const q1 = await guestQuota(env, await loadGuest(env, guestId), ip);
     return json(
       {
         ok: true,
@@ -907,7 +913,7 @@ async function handleGuestGet(
         resultUrl: job.resultUrl,
         status: job.status,
         providerState,
-        guestRemaining: quota.remaining,
+        guestRemaining: q1.remaining,
         guestLimit: GUEST_LIMIT,
       },
       200,
@@ -916,11 +922,29 @@ async function handleGuestGet(
   }
 
   if (hasKieKey(env)) {
-    for (const j of rec.jobs.filter((x) => x.status === "processing" && x.providerJobId).slice(0, 3)) {
-      await settleGuestJob(env, rec, j, origin, ip);
-    }
+    const inflight = rec.jobs
+      .filter((x) => x.status === "processing" && x.providerJobId)
+      .slice(0, 3);
+    await Promise.all(
+      inflight.map(async (j) => {
+        try {
+          await settleGuestJob(env, rec, j, origin, ip);
+        } catch {
+          // One bad settle must not fail the whole guest list.
+        }
+      })
+    );
   }
   const fresh = await loadGuest(env, guestId);
+  const jobs = normalizeGuestJobs(fresh.jobs);
+  if (jobs.length !== fresh.jobs.length) {
+    fresh.jobs = jobs;
+    try {
+      await saveGuest(env, fresh);
+    } catch {
+      /* list still returns sanitized jobs */
+    }
+  }
   const q2 = await guestQuota(env, fresh, ip);
   return json(
     {
@@ -929,7 +953,7 @@ async function handleGuestGet(
       guest: true,
       guestRemaining: q2.remaining,
       guestLimit: GUEST_LIMIT,
-      generations: fresh.jobs.map(publicGuestJob),
+      generations: jobs.map(publicGuestJob),
     },
     200,
     headers

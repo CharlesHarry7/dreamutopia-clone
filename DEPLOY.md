@@ -58,14 +58,16 @@ Aliases: `npm run preview` / `npm run deploy` → same as `cf:*`.
 ### Tell Pages vs Worker apart
 
 ```bash
-# Live Pages (today)
+# Live Pages (today) — no next-opennext-workers runtime
 curl -s https://dreamutopia-clone.pages.dev/api/health | jq '{service,runtime,kieConfigured}'
+npm run check:health -- https://dreamutopia-clone.pages.dev --expect-pages
 
-# Next Worker (after cf:deploy)
-curl -s https://<worker>.workers.dev/api/health | jq '{service,runtime,kieConfigured}'
+# Next Worker (after cf:deploy) — staging only until cutover
+curl -s https://<worker>.workers.dev/api/health | jq '{service,runtime,productionSurface,degraded,guestTrialsReady,kieConfigured}'
+npm run check:health -- https://<worker>.workers.dev --expect-worker
 ```
 
-Next Worker health includes `"runtime": "next-opennext-workers"`. Legacy Pages health has no `runtime` field (or not that value).
+Next Worker health includes `"runtime": "next-opennext-workers"`, `"productionSurface": "pages-until-cutover"`, soft `probes` / `degraded`, and `guestTrialsReady`. Legacy Pages health has no `runtime` field (or not that value). **Live traffic stays on Pages until the manual cutover below.**
 
 ### Workers Builds (CI) — optional staging
 
@@ -83,7 +85,7 @@ Set Worker secrets in the dashboard (`wrangler secret` / Variables and Secrets).
 1. Branch green: `npm run lint`, `npm run build`, `npm run cf:preview` smoke OK  
 2. `npm run cf:deploy` → Worker healthy (`runtime: next-opennext-workers`)  
 3. Worker secrets set (`KIE_API_KEY`, optional Stripe/Resend)  
-4. `npm run check:health -- https://<worker-host>` — checkout still **503** if Stripe unset  
+4. `npm run check:health -- https://<worker-host> --expect-worker` — checkout still **503** if Stripe unset; `degraded` must be false
 5. Funded KIE wallet for a real generate (empty wallet → `kie_insufficient_balance`, expected)  
 6. Point custom domain / traffic at the Worker  
 7. Pause or disconnect **Pages** git deploy so `main` merges don’t fight the Worker  

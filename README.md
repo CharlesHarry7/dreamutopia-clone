@@ -76,6 +76,8 @@ Without bindings/secrets, UI still loads; `/api/health` reports readiness, and g
 ## Build & deploy (Cloudflare Workers)
 
 Staging Worker + **manual** Pages → Workers cutover: **[DEPLOY.md](./DEPLOY.md)**.  
+Live production remains [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) until that checklist is done.  
+Use `npm run check:health -- <url> --expect-worker` (or `--expect-pages`) to tell the surfaces apart.
 `cf:deploy` does **not** replace [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).
 
 ```bash

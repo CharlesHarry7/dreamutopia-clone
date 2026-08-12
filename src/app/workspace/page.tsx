@@ -32,16 +32,48 @@ type HistoryItem = {
   prompt: string;
   status: string;
   resultUrl?: string | null;
+  errorMessage?: string | null;
   kind?: string;
   model?: string;
 };
+
+function asHistoryItem(raw: unknown): HistoryItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const id =
+    typeof row.id === "string" || typeof row.id === "number"
+      ? row.id
+      : typeof row.job_id === "string"
+        ? row.job_id
+        : null;
+  if (id === null || id === "") return null;
+  const prompt = typeof row.prompt === "string" ? row.prompt : "";
+  const status = typeof row.status === "string" ? row.status : "unknown";
+  const resultUrl =
+    (typeof row.resultUrl === "string" && row.resultUrl) ||
+    (typeof row.result_url === "string" && row.result_url) ||
+    null;
+  const errorMessage =
+    (typeof row.errorMessage === "string" && row.errorMessage) ||
+    (typeof row.error_message === "string" && row.error_message) ||
+    null;
+  return {
+    id,
+    prompt,
+    status,
+    resultUrl,
+    errorMessage,
+    kind: typeof row.kind === "string" ? row.kind : undefined,
+    model: typeof row.model === "string" ? row.model : undefined,
+  };
+}
 
 const VIDEO_COSTS = { lite: 3, medium: 5, pro: 16 } as const;
 const IMAGE_COSTS = { lite: 1, pro: 2 } as const;
 
 function WorkspaceInner() {
   const { t } = useI18n();
-  const { user, guestRemaining, loading: authLoading, refresh } = useAuth();
+  const { user, guestRemaining, loading: authLoading, refresh, noteGuestRemaining } = useAuth();
   const params = useSearchParams();
   const pack = params.get("pack") || "";
 
@@ -104,26 +136,25 @@ function WorkspaceInner() {
     void (async () => {
       try {
         const data = await api<{
-          generations?: Array<HistoryItem & { result_url?: string | null; guest?: boolean }>;
+          generations?: unknown[];
           guest?: boolean;
           guestRemaining?: number;
+          ok?: boolean;
         }>("/generate");
         if (cancelled) return;
+        if (typeof data.guestRemaining === "number") {
+          noteGuestRemaining(data.guestRemaining);
+        }
         const list = Array.isArray(data.generations) ? data.generations : [];
-        setHistory(
-          list.map((g) => ({
-            ...g,
-            resultUrl: g.resultUrl ?? g.result_url ?? null,
-          }))
-        );
+        setHistory(list.map(asHistoryItem).filter((g): g is HistoryItem => Boolean(g)));
       } catch {
-        if (!cancelled) setHistory([]);
+        // Keep last good history on transient failures (corrupt-row / settle blips).
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, resultUrl]);
+  }, [user, authLoading, resultUrl, noteGuestRemaining]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -200,6 +231,10 @@ function WorkspaceInner() {
         headers: { "Idempotency-Key": newIdempotencyKey() },
         body: JSON.stringify(body),
       });
+
+      if (typeof created.guestRemaining === "number") {
+        noteGuestRemaining(created.guestRemaining);
+      }
 
       setStatus(t("progress.rendering", "Rendering…"));
       const settled = await pollGeneration(created.generationId, (tick) => {
@@ -643,11 +678,16 @@ function WorkspaceInner() {
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-muted-foreground">{item.prompt}</div>
+                      <div className="truncate text-sm text-muted-foreground">
+                        {item.prompt.trim() || t("ws.history.untitled", "Untitled job")}
+                      </div>
                       <div className="mt-1 text-xs text-[var(--text3)]">
                         {item.status} · {item.model || "lite"}
                         {!user ? " · guest" : ""}
                       </div>
+                      {item.status === "failed" && item.errorMessage ? (
+                        <p className="mt-1 text-xs text-destructive">{item.errorMessage}</p>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       {item.status === "processing" && (

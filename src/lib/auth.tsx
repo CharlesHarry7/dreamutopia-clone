@@ -30,6 +30,8 @@ type AuthContextValue = {
   guestRemaining: number | null;
   loading: boolean;
   refresh: () => Promise<void>;
+  /** Sync guest quota from generate/credits responses without a full refresh. */
+  noteGuestRemaining: (n: number) => void;
   logout: () => Promise<void>;
   applyAuthResponse: (data: {
     token: string;
@@ -116,6 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  const noteGuestRemaining = useCallback((n: number) => {
+    if (!Number.isFinite(n)) return;
+    setGuestRemaining(Math.max(0, Math.floor(n)));
+  }, []);
+
   const logout = useCallback(async () => {
     const token = getToken();
     if (token) {
@@ -156,8 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, guestRemaining, loading, refresh, logout, applyAuthResponse }),
-    [user, guestRemaining, loading, refresh, logout, applyAuthResponse]
+    () => ({
+      user,
+      guestRemaining,
+      loading,
+      refresh,
+      noteGuestRemaining,
+      logout,
+      applyAuthResponse,
+    }),
+    [user, guestRemaining, loading, refresh, noteGuestRemaining, logout, applyAuthResponse]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
