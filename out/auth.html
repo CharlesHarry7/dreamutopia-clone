@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — DreamUtopia</title>
+<meta name="description" content="Log in or create a free DreamUtopia account to claim 10 credits and unlock advanced AI models.">
+<link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d12;--bg2:#16161e;--card:#1c1c26;--border:#2a2a38;--border2:#3a3a4a;--text:#fff;--text2:#a8a8b8;--text3:#6a6a7a;--primary:#a855f7;--primary2:#c084fc;--accent:#ec4899;--orange:#fb923c;--green:#22c55e;--red:#ef4444}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;display:flex;flex-direction:column}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{max-width:100%;display:block}
+
+header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.2px}
+.logo-img{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0}
+nav{display:flex;gap:8px;align-items:center}
+nav>a{font-size:14px;color:var(--text2);font-weight:500;padding:8px 12px;border-radius:8px;transition:color .2s,background .2s}
+nav>a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.header-right{display:flex;gap:10px;align-items:center}
+.btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
+.btn-login.active{color:var(--text)}
+.btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
+
+.auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 20px;position:relative}
+.auth-main::before{content:'';position:absolute;inset:0 10% auto;height:320px;background:radial-gradient(ellipse at center,rgba(168,85,247,.16),transparent 70%);pointer-events:none}
+.auth-card{position:relative;z-index:1;width:100%;max-width:420px;background:rgba(255,255,255,.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:32px 28px}
+.auth-card h1{font-size:24px;font-weight:800;letter-spacing:-.3px;margin-bottom:8px}
+.auth-card .lead{font-size:14px;color:var(--text2);margin-bottom:22px;line-height:1.5}
+.mode-tabs{display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.05);border-radius:10px;margin-bottom:22px}
+.mode-tabs button{flex:1;padding:9px 12px;border-radius:8px;font-size:14px;font-weight:600;color:rgba(255,255,255,.55);transition:all .2s}
+.mode-tabs button:hover{color:#fff;background:rgba(255,255,255,.08)}
+.mode-tabs button.active{background:#7c3aed;color:#fff;box-shadow:0 8px 20px rgba(124,58,237,.35)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;color:rgba(255,255,255,.8);margin-bottom:7px}
+.field input{width:100%;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit;transition:border-color .2s}
+.field input:focus{outline:none;border-color:rgba(168,85,247,.5);box-shadow:0 0 0 1px rgba(168,85,247,.35)}
+.field input::placeholder{color:rgba(255,255,255,.3)}
+.submit{width:100%;margin-top:8px;padding:14px;border-radius:12px;font-size:15px;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;box-shadow:0 10px 28px rgba(168,85,247,.25);transition:opacity .2s}
+.submit:hover:not(:disabled){opacity:.92}
+.submit:disabled{opacity:.55;cursor:not-allowed}
+.form-error{display:none;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fecaca;font-size:13px}
+.form-error.show{display:block}
+.perk{margin-top:18px;padding:12px 14px;border-radius:12px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);font-size:13px;color:var(--text2)}
+.perk b{color:#fff;font-weight:600}
+.switch{margin-top:18px;text-align:center;font-size:13px;color:var(--text2)}
+.switch a{color:var(--primary2);font-weight:600}
+.switch a:hover{text-decoration:underline}
+.back{display:block;margin-top:16px;text-align:center;font-size:13px;color:var(--text3)}
+.back:hover{color:var(--text2)}
+
+footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);padding:28px 20px;text-align:center;font-size:13px;color:var(--text3)}
+
+@media(max-width:600px){
+nav{display:none}
+.auth-card{padding:26px 20px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<a href="/" class="logo" aria-label="DreamUtopia AI">
+<img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
+<span>DreamUtopia AI</span>
+</a>
+<nav>
+<a href="/">Home</a>
+<a href="/pricing">Pricing</a>
+<a href="/workspace">Workspace</a>
+</nav>
+<div class="header-right">
+<a href="/auth?mode=login" class="btn-login" id="hdrLogin">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="hdrSignup">Sign Up</a>
+</div>
+</header>
+
+<main class="auth-main">
+<div class="auth-card">
+<h1 id="title">Create your account</h1>
+<p class="lead" id="lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>
+
+<div class="mode-tabs" role="tablist">
+<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true">Sign Up</button>
+<button type="button" id="tabLogin" role="tab" aria-selected="false">Log In</button>
+</div>
+
+<form id="authForm" novalidate>
+<div class="field">
+<label for="email">Email</label>
+<input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+</div>
+<div class="field">
+<label for="password">Password</label>
+<input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
+</div>
+<button class="submit" id="submitBtn" type="submit">Sign Up Free</button>
+<div class="form-error" id="formError" role="alert"></div>
+</form>
+
+<div class="perk" id="perk">New accounts get <b>10 free credits</b> instantly — no credit card required.</div>
+<p class="switch" id="switchLine">Already have an account? <a href="/auth?mode=login" id="switchLink">Log in</a></p>
+<a class="back" href="/workspace">← Back to workspace</a>
+</div>
+</main>
+
+<footer>© DreamUtopia AI · Auth powered by Cloudflare</footer>
+
+<script>
+const TOKEN_KEY = "dreamutopia_token";
+const params = new URLSearchParams(location.search);
+let mode = params.get("mode") === "login" ? "login" : "register";
+
+const title = document.getElementById("title");
+const lead = document.getElementById("lead");
+const tabRegister = document.getElementById("tabRegister");
+const tabLogin = document.getElementById("tabLogin");
+const submitBtn = document.getElementById("submitBtn");
+const perk = document.getElementById("perk");
+const switchLine = document.getElementById("switchLine");
+const switchLink = document.getElementById("switchLink");
+const formError = document.getElementById("formError");
+const passwordInput = document.getElementById("password");
+const hdrLogin = document.getElementById("hdrLogin");
+const hdrSignup = document.getElementById("hdrSignup");
+
+function setMode(next) {
+  mode = next === "login" ? "login" : "register";
+  const isLogin = mode === "login";
+  title.textContent = isLogin ? "Welcome back" : "Create your account";
+  lead.textContent = isLogin
+    ? "Log in to continue creating in your workspace."
+    : "Claim 10 free credits and unlock advanced AI models in the workspace.";
+  tabRegister.classList.toggle("active", !isLogin);
+  tabLogin.classList.toggle("active", isLogin);
+  tabRegister.setAttribute("aria-selected", String(!isLogin));
+  tabLogin.setAttribute("aria-selected", String(isLogin));
+  submitBtn.textContent = isLogin ? "Log In" : "Sign Up Free";
+  perk.style.display = isLogin ? "none" : "";
+  switchLine.innerHTML = isLogin
+    ? 'New here? <a href="/auth?mode=register" id="switchLink">Sign up free</a>'
+    : 'Already have an account? <a href="/auth?mode=login" id="switchLink">Log in</a>';
+  document.getElementById("switchLink").onclick = (e) => {
+    e.preventDefault();
+    setMode(isLogin ? "register" : "login");
+  };
+  passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
+  hdrLogin.classList.toggle("active", isLogin);
+  formError.classList.remove("show");
+  formError.textContent = "";
+  const nextUrl = "/auth?mode=" + mode;
+  if (location.pathname + location.search !== nextUrl) {
+    history.replaceState(null, "", nextUrl);
+  }
+  document.title = (isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
+}
+
+tabRegister.onclick = () => setMode("register");
+tabLogin.onclick = () => setMode("login");
+
+async function api(path, body) {
+  const res = await fetch("/api" + path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "request failed");
+  return data;
+}
+
+document.getElementById("authForm").onsubmit = async (e) => {
+  e.preventDefault();
+  formError.classList.remove("show");
+  const email = document.getElementById("email").value.trim();
+  const password = passwordInput.value;
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    formError.textContent = "Please enter a valid email.";
+    formError.classList.add("show");
+    return;
+  }
+  if (!password || password.length < 6) {
+    formError.textContent = "Password must be at least 6 characters.";
+    formError.classList.add("show");
+    return;
+  }
+  submitBtn.disabled = true;
+  const prev = submitBtn.textContent;
+  submitBtn.textContent = mode === "login" ? "Logging in…" : "Creating account…";
+  try {
+    const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+    const data = await api(endpoint, { email, password });
+    localStorage.setItem(TOKEN_KEY, data.token);
+    location.href = "/workspace";
+  } catch (err) {
+    formError.textContent = err.message || "Something went wrong";
+    formError.classList.add("show");
+    submitBtn.disabled = false;
+    submitBtn.textContent = prev;
+  }
+};
+
+(async function init() {
+  setMode(mode);
+  const existing = localStorage.getItem(TOKEN_KEY);
+  if (!existing) return;
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { authorization: "Bearer " + existing },
+    });
+    if (res.ok) {
+      location.replace("/workspace");
+      return;
+    }
+    localStorage.removeItem(TOKEN_KEY);
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

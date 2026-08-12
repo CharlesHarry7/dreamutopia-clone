@@ -2,6 +2,10 @@ name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
+# Bindings used by Pages git deploys. Invalid / missing resources break deploys.
+# D1 + KV are live. R2 MEDIA stays commented until dreamutopia-media exists —
+# enabling a missing R2 bucket fails Cloudflare Pages (see fe0d20d).
+
 [[d1_databases]]
 binding = "DB"
 database_name = "dreamutopia-db"
@@ -11,6 +15,7 @@ database_id = "148c47fa-55da-4423-b031-1a74e4216014"
 binding = "SESSIONS"
 id = "6b2dbe20ae95452f8f22b98f0ce6196e"
 
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "dreamutopia-media"
+# Pending R2 bucket — do not uncomment until the bucket is created/activated.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "dreamutopia-media"
