@@ -6,11 +6,27 @@
   const CREDITS_KEY = "dreamutopia_credits";
   const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
+  function normalizeRef(value) {
+    const s = String(value || "").trim();
+    if (!s) return "";
+    // Keep in sync with libs/account.ts lookupReferrer.
+    if (/^[a-f0-9]{8}$/i.test(s)) return s.toLowerCase();
+    if (/^ref_[a-z0-9]{4,16}$/i.test(s)) return s;
+    if (/^[a-z0-9]{6,16}$/i.test(s)) return s;
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   try {
-    const ref = new URLSearchParams(location.search).get("ref");
-    if (ref && /^[a-z0-9]{6,16}$/i.test(ref.trim())) {
-      localStorage.setItem("du_ref", ref.trim());
-    }
+    const ref = normalizeRef(new URLSearchParams(location.search).get("ref"));
+    if (ref) localStorage.setItem("du_ref", ref);
   } catch (e) {}
 
   function getToken() {
@@ -474,5 +490,7 @@
     prefersReducedMotion: prefersReducedMotion,
     trapFocus: trapFocus,
     bindPasswordToggle: bindPasswordToggle,
+    normalizeRef: normalizeRef,
+    escapeHtml: escapeHtml,
   };
 })(window);

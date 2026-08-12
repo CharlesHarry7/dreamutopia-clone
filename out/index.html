@@ -935,23 +935,26 @@ if (homeCancelBtn) {
     const id = item.id;
     if (!id) return "";
     const likes = Number(item.likes) || 0;
-    const label = DU.t("gallery.like", "Like");
-    return '<button type="button" class="gallery-like" data-like-id="' + id + '" aria-label="' + label.replace(/"/g, "&quot;") + '">♥ <span>' + likes + "</span></button>";
+    const label = (DU.escapeHtml || String)(DU.t("gallery.like", "Like"));
+    return '<button type="button" class="gallery-like" data-like-id="' + id + '" aria-label="' + label + '">♥ <span>' + likes + "</span></button>";
   }
   fetch("/api/gallery")
     .then(function (r) { return r.json(); })
     .then(function (data) {
       const items = (data && data.items) || [];
       if (!items.length) return;
+      const esc = DU.escapeHtml || function (s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      };
       const live = items.slice(0, 12).map(function (item) {
-        const url = item.url || "";
-        const kind = item.kind || "image";
-        const prompt = (item.prompt || "").replace(/</g, "&lt;");
+        const url = esc(item.url || "");
+        const kind = item.kind === "video" ? "video" : "image";
+        const prompt = esc(item.prompt || "");
         const like = likeBtn(item);
         if (kind === "video") {
-          return '<div class="gallery-item" tabindex="0" data-id="' + (item.id || "") + '" data-kind="video" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><video src="' + url.replace(/"/g, "&quot;") + '" muted playsinline preload="metadata"></video><div class="play">▶</div>' + like + "</div>";
+          return '<div class="gallery-item" tabindex="0" data-id="' + esc(item.id || "") + '" data-kind="video" data-url="' + url + '" data-prompt="' + prompt + '"><video src="' + url + '" muted playsinline preload="metadata"></video><div class="play">▶</div>' + like + "</div>";
         }
-        return '<div class="gallery-item" tabindex="0" data-id="' + (item.id || "") + '" data-kind="image" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><img src="' + url.replace(/"/g, "&quot;") + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div>' + like + "</div>";
+        return '<div class="gallery-item" tabindex="0" data-id="' + esc(item.id || "") + '" data-kind="image" data-url="' + url + '" data-prompt="' + prompt + '"><img src="' + url + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div>' + like + "</div>";
       }).join("");
       if (items.length >= 6) grid.innerHTML = live;
       else grid.insertAdjacentHTML("afterbegin", live);

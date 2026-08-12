@@ -4,7 +4,9 @@
  * Run: node scripts/check.mjs
  */
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -146,7 +148,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v12", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v13", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
@@ -220,6 +222,14 @@ function extractI18nKeys(src) {
   mustContain("out/privacy.html", "lang-select", "privacy lang switcher");
   mustContain("out/terms.html", "lang-select", "terms lang switcher");
   mustContain("out/auth.html", "credentials: \"same-origin\"", "auth fetch sends guest cookie");
+  mustContain("out/assets/js/du.js", "normalizeRef", "shared invite-ref sanitizer");
+  mustContain("out/auth.html", "DU.normalizeRef", "auth sanitizes invite ref");
+  mustContain("out/index.html", "DU.escapeHtml", "gallery HTML escape");
+  mustContain("libs/account.ts", "lookupReferrer", "server invite lookup");
+  mustContain(".github/workflows/check.yml", 'node-version: "22"', "CI Node 22 for TS strip-types");
+  if (/localStorage\.setItem\(\s*REF_KEY\s*,\s*params\.get\(\s*"ref"\)/.test(read("out/auth.html"))) {
+    fail.push("auth.html must not store unsanitized invite ref");
+  } else ok.push("auth.html does not store raw invite ref");
 }
 
 // --- no fake stripe / leaked secrets in static ---
@@ -239,6 +249,78 @@ function extractI18nKeys(src) {
     }
   }
   ok.push("no embedded Stripe secrets in scanned files");
+}
+
+// --- syntax (lint equivalent: parse JS/TS, do not execute) ---
+{
+  const major = Number(String(process.versions.node || "0").split(".")[0]);
+  if (major < 22) {
+    fail.push(`check.mjs needs Node 22+ for TS strip-types (got ${process.versions.node})`);
+  } else ok.push(`Node ${process.versions.node} for strip-types`);
+
+  function walk(dir, exts, acc = []) {
+    if (!exists(path.relative(root, dir)) && !fs.existsSync(dir)) return acc;
+    for (const name of fs.readdirSync(dir)) {
+      const abs = path.join(dir, name);
+      const st = fs.statSync(abs);
+      if (st.isDirectory()) walk(abs, exts, acc);
+      else if (exts.some((e) => name.endsWith(e))) acc.push(abs);
+    }
+    return acc;
+  }
+
+  function syntaxCheck(abs, args, label) {
+    const r = spawnSync(process.execPath, [...args, "--check", abs], {
+      encoding: "utf8",
+      timeout: 20000,
+    });
+    if (r.status !== 0) {
+      const msg = (r.stderr || r.stdout || "syntax check failed").trim().split("\n")[0];
+      fail.push(`syntax ${label}: ${msg}`);
+    } else ok.push(`syntax ${label}`);
+  }
+
+  for (const abs of [
+    ...walk(path.join(root, "out/assets/js"), [".js"]),
+    path.join(root, "out/sw.js"),
+    path.join(root, "scripts/check.mjs"),
+  ]) {
+    syntaxCheck(abs, [], path.relative(root, abs));
+  }
+
+  if (major >= 22) {
+    for (const abs of [
+      ...walk(path.join(root, "functions"), [".ts"]),
+      ...walk(path.join(root, "libs"), [".ts"]),
+    ]) {
+      syntaxCheck(abs, ["--experimental-strip-types"], path.relative(root, abs));
+    }
+  }
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "du-inline-"));
+  try {
+    const htmlFiles = fs.readdirSync(path.join(root, "out")).filter((n) => n.endsWith(".html"));
+    for (const name of htmlFiles) {
+      const rel = "out/" + name;
+      const src = read(rel);
+      const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
+      let n = 0;
+      let m;
+      while ((m = re.exec(src))) {
+        const attrs = m[1] || "";
+        if (/\bsrc\s*=/.test(attrs)) continue;
+        if (/type\s*=\s*["']application\/ld\+json["']/i.test(attrs)) continue;
+        const code = (m[2] || "").trim();
+        if (!code) continue;
+        n += 1;
+        const tmpFile = path.join(tmp, `${name.replace(/[^\w.-]/g, "_")}-${n}.js`);
+        fs.writeFileSync(tmpFile, code);
+        syntaxCheck(tmpFile, [], `${rel} inline #${n}`);
+      }
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 console.log(ok.map((s) => "ok  " + s).join("\n"));

@@ -148,9 +148,13 @@ const PACKS = {
 };
 const params = new URLSearchParams(location.search);
 const REF_KEY = "du_ref";
-if ((params.get("ref") || "").trim()) localStorage.setItem(REF_KEY, params.get("ref").trim());
 function currentRef() {
-  return (params.get("ref") || localStorage.getItem(REF_KEY) || "").trim();
+  const raw = params.get("ref") || localStorage.getItem(REF_KEY) || "";
+  return DU.normalizeRef ? DU.normalizeRef(raw) : "";
+}
+{
+  const incoming = currentRef();
+  if (incoming) localStorage.setItem(REF_KEY, incoming);
 }
 let mode = params.get("mode") === "login" ? "login" : params.get("mode") === "forgot" ? "forgot" : "register";
 const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
@@ -229,7 +233,7 @@ function setMode(next) {
   } else if (!isLogin && !isForgot) {
     const ref = currentRef();
     perk.innerHTML = DU.t("auth.perk", "New accounts get <b>10 free credits</b> instantly — no credit card required.")
-      + (ref ? " Invite code <b>" + ref + "</b> will be attached." : "");
+      + (ref ? " Invite code <b>" + (DU.escapeHtml ? DU.escapeHtml(ref) : ref) + "</b> will be attached." : "");
   }
   switchLine.innerHTML = isForgot
     ? DU.t("auth.forgot.remember", "Remembered it?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
