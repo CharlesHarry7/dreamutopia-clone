@@ -109,14 +109,19 @@ function parseResultUrl(resultJson: unknown): string | null {
 async function createKieTask(
   apiKey: string,
   model: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  callBackUrl?: string
 ): Promise<KieCreateResult | KieCreateError> {
+  const payload: Record<string, unknown> = { model, input };
+  if (callBackUrl && /^https:\/\//i.test(callBackUrl)) {
+    payload.callBackUrl = callBackUrl;
+  }
   let res: Response;
   try {
     res = await fetch(`${KIE_API_BASE}/api/v1/jobs/createTask`, {
       method: "POST",
       headers: authHeaders(apiKey),
-      body: JSON.stringify({ model, input }),
+      body: JSON.stringify(payload),
     });
   } catch (e) {
     return {
@@ -154,14 +159,20 @@ export function createImageToVideoTask(
     imageUrl: string;
     durationSec: number;
     sound: boolean;
+    callBackUrl?: string;
   }
 ): Promise<KieCreateResult | KieCreateError> {
-  return createKieTask(apiKey, KIE_I2V_MODEL, {
-    prompt: opts.prompt.slice(0, 1000),
-    image_urls: [opts.imageUrl],
-    sound: opts.sound,
-    duration: kieDuration(opts.durationSec),
-  });
+  return createKieTask(
+    apiKey,
+    KIE_I2V_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      image_urls: [opts.imageUrl],
+      sound: opts.sound,
+      duration: kieDuration(opts.durationSec),
+    },
+    opts.callBackUrl
+  );
 }
 
 /** Kling 2.6 text-to-video (no start image). */
@@ -172,14 +183,20 @@ export function createTextToVideoTask(
     durationSec: number;
     sound: boolean;
     aspectRatio: AspectRatio;
+    callBackUrl?: string;
   }
 ): Promise<KieCreateResult | KieCreateError> {
-  return createKieTask(apiKey, KIE_T2V_MODEL, {
-    prompt: opts.prompt.slice(0, 1000),
-    sound: opts.sound,
-    aspect_ratio: opts.aspectRatio,
-    duration: kieDuration(opts.durationSec),
-  });
+  return createKieTask(
+    apiKey,
+    KIE_T2V_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      sound: opts.sound,
+      aspect_ratio: opts.aspectRatio,
+      duration: kieDuration(opts.durationSec),
+    },
+    opts.callBackUrl
+  );
 }
 
 /** Kling 3.0 first + last frame (Medium/Pro). */
@@ -192,16 +209,22 @@ export function createFirstLastVideoTask(
     durationSec: number;
     sound: boolean;
     mode: "std" | "pro";
+    callBackUrl?: string;
   }
 ): Promise<KieCreateResult | KieCreateError> {
-  return createKieTask(apiKey, KIE_FLF_MODEL, {
-    prompt: opts.prompt.slice(0, 1000),
-    image_urls: [opts.firstUrl, opts.lastUrl],
-    sound: opts.sound,
-    duration: kieDuration3(opts.durationSec),
-    mode: opts.mode,
-    multi_shots: false,
-  });
+  return createKieTask(
+    apiKey,
+    KIE_FLF_MODEL,
+    {
+      prompt: opts.prompt.slice(0, 1000),
+      image_urls: [opts.firstUrl, opts.lastUrl],
+      sound: opts.sound,
+      duration: kieDuration3(opts.durationSec),
+      mode: opts.mode,
+      multi_shots: false,
+    },
+    opts.callBackUrl
+  );
 }
 
 /** Nano Banana 2 text-to-image, image-to-image, or multi-image blend. */
@@ -211,6 +234,7 @@ export function createImageTask(
     prompt: string;
     imageUrls?: string[];
     resolution: ImageResolution;
+    callBackUrl?: string;
   }
 ): Promise<KieCreateResult | KieCreateError> {
   const input: Record<string, unknown> = {
@@ -221,7 +245,7 @@ export function createImageTask(
   };
   const urls = (opts.imageUrls || []).filter(Boolean).slice(0, 14);
   if (urls.length) input.image_input = urls;
-  return createKieTask(apiKey, KIE_T2I_MODEL, input);
+  return createKieTask(apiKey, KIE_T2I_MODEL, input, opts.callBackUrl);
 }
 
 /** Poll KIE task status; parse first result URL when success. */

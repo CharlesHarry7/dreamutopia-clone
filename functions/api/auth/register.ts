@@ -8,6 +8,9 @@ import {
   makeReferralCode,
   mergeGuestJobs,
 } from "../../../libs/account";
+import { hasMailer, sendWelcomeEmail } from "../../../libs/mail";
+import { rateLimitedResponse, takeRateLimit } from "../../../libs/rateLimit";
+import { clientIp } from "../../../libs/guest";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -15,8 +18,11 @@ export const onRequestOptions = (): Response => preflight();
 const SIGNUP_CREDITS = 10;
 
 // POST /api/auth/register  { email, password, referralCode? }
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   if (!hasDb(env) || !hasSessions(env)) return bindingsUnavailable("DB+SESSIONS");
+
+  const rl = await takeRateLimit(env.SESSIONS, `reg:ip:${clientIp(request) || "unknown"}`, 8, 3600);
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
   let body: { email?: string; password?: string; referralCode?: string };
   try {
@@ -89,6 +95,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const origin = new URL(request.url).origin;
+  if (hasMailer(env)) {
+    waitUntil(sendWelcomeEmail(env, { to: email, origin }).then(() => undefined));
+  }
   return json({
     ok: true,
     token,

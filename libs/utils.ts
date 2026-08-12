@@ -15,12 +15,14 @@ export interface Env {
   /** Resend (optional). Without it, POST /api/auth/forgot returns email_not_configured. */
   RESEND_API_KEY?: string;
   MAIL_FROM?: string;
+  /** Optional KIE callback HMAC (kie.ai Settings → webhookHmacKey). */
+  KIE_WEBHOOK_HMAC_KEY?: string;
 }
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
-  "access-control-allow-headers": "Content-Type, Authorization",
+  "access-control-allow-headers": "Content-Type, Authorization, Idempotency-Key",
 };
 
 export function json(

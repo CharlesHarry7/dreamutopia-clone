@@ -59,6 +59,15 @@
     return data;
   }
 
+  function newIdempotencyKey() {
+    try {
+      if (global.crypto && typeof global.crypto.randomUUID === "function") return global.crypto.randomUUID();
+    } catch (e) {}
+    const bytes = new Uint8Array(16);
+    (global.crypto || window.crypto).getRandomValues(bytes);
+    return Array.from(bytes, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+  }
+
   async function uploadImage(file) {
     const token = getToken();
     const headers = {};
@@ -155,5 +164,6 @@
     downloadResult: downloadResult,
     publishGallery: publishGallery,
     isAllowedImageFile: isAllowedImageFile,
+    newIdempotencyKey: newIdempotencyKey,
   };
 })(window);

@@ -1131,6 +1131,7 @@ async function generate() {
       model: currentModel,
       durationSec: durationSec,
       aspectRatio: aspectRatio,
+      idempotencyKey: DU.newIdempotencyKey(),
     };
     if (imageUrl) payload.imageUrl = imageUrl;
     if (lastUrl && currentMode === "video") payload.lastImageUrl = lastUrl;
@@ -1176,6 +1177,8 @@ async function generate() {
       updateAuthUI();
     } else if (code === "guest_lite_only") {
       msg = e.message || "Sign up for 10 credits to keep creating.";
+    } else if (code === "rate_limited" || code === "job_in_flight") {
+      msg = e.message || "Too many requests — wait a moment and try again.";
     } else if (code === "unsupported_type" || code === "file_too_large") {
       msg = e.message || "Use a JPG/PNG/WebP/GIF/TIFF under 20 MB.";
     }

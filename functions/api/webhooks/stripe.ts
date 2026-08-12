@@ -1,5 +1,5 @@
 import { json, hasDb, type Env } from "../../../libs/utils";
-import { applyPaidPack, isSchemaError } from "../../../libs/account";
+import { applyPaidPack, isSchemaError, saveStripeCustomerId } from "../../../libs/account";
 import { hasStripeWebhook, packFromMetadata, verifyStripeSignature } from "../../../libs/stripe";
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
@@ -18,6 +18,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     data?: {
       object?: {
         id?: string;
+        customer?: string;
         client_reference_id?: string;
         metadata?: { userId?: string; pack?: string };
       };
@@ -37,8 +38,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const sessionId = session?.id;
   const userId = Number(session?.metadata?.userId || session?.client_reference_id || 0);
   const pack = packFromMetadata(session?.metadata?.pack);
+  const customerId = typeof session?.customer === "string" ? session.customer : "";
   if (!sessionId || !userId || !pack) {
     return json({ ok: true, ignored: "missing_metadata" });
+  }
+
+  if (customerId) {
+    try {
+      await saveStripeCustomerId(env.DB, userId, customerId);
+    } catch {
+      /* column missing until migration 004 — checkout still works via email */
+    }
   }
 
   try {

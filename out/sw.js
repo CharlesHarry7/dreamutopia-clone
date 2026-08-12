@@ -1,5 +1,5 @@
 /* DreamUtopia clone — cache static chrome; never cache /api. */
-const CACHE = "du-static-v2";
+const CACHE = "du-static-v3";
 const PRECACHE = [
   "/",
   "/workspace",

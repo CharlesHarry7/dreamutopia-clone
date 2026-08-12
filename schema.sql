@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   referral_code TEXT,
   referred_by INTEGER,
   first_purchase_at TEXT,
+  stripe_customer_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -53,5 +54,9 @@ CREATE TABLE IF NOT EXISTS gallery (
 );
 
 CREATE INDEX IF NOT EXISTS idx_generations_user ON generations(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_generations_provider_job ON generations(provider_job_id);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery(created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_gallery_generation ON gallery(generation_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_events_refund_gen ON credit_events(reason)
+  WHERE reason LIKE 'refund:gen:%';

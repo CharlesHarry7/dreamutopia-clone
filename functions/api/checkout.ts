@@ -1,5 +1,6 @@
-import { json, preflight, type Env } from "../../libs/utils";
+import { json, preflight, hasDb, hasSessions, type Env } from "../../libs/utils";
 import { getSessionUser } from "../../libs/auth";
+import { getStripeCustomerId } from "../../libs/account";
 import {
   FIRST_PURCHASE_BONUS_CREDITS,
   PACKS,
@@ -8,6 +9,7 @@ import {
   publicPacks,
 } from "../../libs/packs";
 import { createCheckoutSession, hasStripe } from "../../libs/stripe";
+import { rateLimitedResponse, takeRateLimit } from "../../libs/rateLimit";
 
 export const onRequestOptions = (): Response => preflight();
 
@@ -50,6 +52,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const session = await getSessionUser(env, request);
   if (!session) return json({ error: "unauthorized" }, 401);
 
+  if (hasSessions(env)) {
+    const rl = await takeRateLimit(env.SESSIONS, `pay:u:${session.userId}`, 10, 60);
+    if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
+  }
+
   let body: { packId?: string };
   try {
     body = await request.json();
@@ -62,12 +69,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const pack = PACKS[packId];
 
   const origin = new URL(request.url).origin;
+  const customerId = hasDb(env) ? await getStripeCustomerId(env.DB, session.userId).catch(() => null) : null;
   const created = await createCheckoutSession({
     secretKey: env.STRIPE_SECRET_KEY,
     origin,
     userId: session.userId,
     email: session.email,
     pack,
+    customerId,
   });
 
   if (!created.ok) {

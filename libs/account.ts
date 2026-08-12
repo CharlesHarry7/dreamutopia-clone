@@ -215,3 +215,37 @@ export async function applyPaidPack(
     referralAward,
   };
 }
+
+export async function getStripeCustomerId(db: D1Database, userId: number): Promise<string | null> {
+  try {
+    const row = await db
+      .prepare("SELECT stripe_customer_id FROM users WHERE id = ?")
+      .bind(userId)
+      .first<{ stripe_customer_id: string | null }>();
+    const id = row?.stripe_customer_id?.trim();
+    return id || null;
+  } catch (err) {
+    if (isSchemaError(err)) return null;
+    throw err;
+  }
+}
+
+export async function saveStripeCustomerId(
+  db: D1Database,
+  userId: number,
+  customerId: string
+): Promise<void> {
+  const id = customerId.trim();
+  if (!id) return;
+  try {
+    await db
+      .prepare(
+        "UPDATE users SET stripe_customer_id = ? WHERE id = ? AND (stripe_customer_id IS NULL OR stripe_customer_id = '')"
+      )
+      .bind(id, userId)
+      .run();
+  } catch (err) {
+    if (isSchemaError(err)) return;
+    throw err;
+  }
+}

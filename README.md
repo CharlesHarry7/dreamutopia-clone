@@ -73,7 +73,9 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   generate.ts      # POST/GET /api/generate (KIE)
   gallery.ts       # GET public gallery + POST opt-in publish
   checkout.ts      # GET catalog + POST Stripe session
+  stripe/          # template aliases → checkout + stripe webhook
   webhooks/stripe.ts
+  webhooks/kie.ts  # KIE callBackUrl (re-verify + idempotent refund)
   upload-ticket.ts # Legacy probe
 /libs              # Shared backend logic
 /schema.sql        # D1 database schema
@@ -93,7 +95,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 
 ## Backend setup
 
-See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, optional Stripe + Resend), and D1 migrations `001_generations_kie.sql` / `002_gallery_unique.sql` / `003_referrals_credits.sql`.
+See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, optional Stripe + Resend + KIE webhook HMAC), and D1 migrations `001`–`004`.
 
 **Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
 **Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.

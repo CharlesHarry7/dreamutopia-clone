@@ -755,7 +755,7 @@ async function homeGenerate() {
       homeImageUrl = imageUrl;
     }
     text.textContent = "Starting KIE job…";
-    const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5 };
+    const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5, idempotencyKey: DU.newIdempotencyKey() };
     if (imageUrl) payload.imageUrl = imageUrl;
     const data = await DU.api("/generate", { method: "POST", body: JSON.stringify(payload) });
     if (data.guestRemaining !== undefined) {

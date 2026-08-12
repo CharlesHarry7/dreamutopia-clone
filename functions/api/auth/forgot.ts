@@ -1,5 +1,7 @@
 import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
 import { hasMailer, sendResetEmail } from "../../../libs/mail";
+import { rateLimitedResponse, takeRateLimit } from "../../../libs/rateLimit";
+import { clientIp } from "../../../libs/guest";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -24,6 +26,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       503
     );
   }
+
+  const rl = await takeRateLimit(env.SESSIONS, `forgot:ip:${clientIp(request) || "unknown"}`, 5, 3600);
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
   let body: { email?: string };
   try {

@@ -56,13 +56,18 @@ export async function createCheckoutSession(opts: {
   userId: number;
   email: string;
   pack: CreditPack;
+  customerId?: string | null;
 }): Promise<{ ok: true; url: string; id: string } | { ok: false; status: number; message: string }> {
   const params = new URLSearchParams();
   params.set("mode", "payment");
   params.set("success_url", `${opts.origin}/workspace?checkout=success`);
   params.set("cancel_url", `${opts.origin}/pricing?checkout=cancel`);
   params.set("client_reference_id", String(opts.userId));
-  params.set("customer_email", opts.email);
+  if (opts.customerId) {
+    params.set("customer", opts.customerId);
+  } else {
+    params.set("customer_email", opts.email);
+  }
   params.set("metadata[userId]", String(opts.userId));
   params.set("metadata[pack]", opts.pack.id);
   params.set("line_items[0][quantity]", "1");

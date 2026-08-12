@@ -20,5 +20,6 @@ bucket_name = "dreamutopia-media"
 
 # Secrets (Pages dashboard / wrangler pages secret):
 #   KIE_API_KEY
+#   KIE_WEBHOOK_HMAC_KEY                   (optional; kie.ai Settings → webhookHmacKey)
 #   STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET  (paid credits)
-#   RESEND_API_KEY + MAIL_FROM                 (password reset email)
+#   RESEND_API_KEY + MAIL_FROM                 (password reset + welcome email)

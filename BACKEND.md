@@ -11,7 +11,9 @@ Auth, credits, and generation history need Cloudflare bindings. Image-to-video, 
 
 Guests (no session) get **2 Lite image-to-video** tries per device cookie + IP, stored in KV (`du_guest`). Signed-in jobs go to D1.
 
-When a job finishes, the Function copies the provider file into R2 when `MEDIA` is bound, then stores that `/api/media` URL as `result_url`.
+When a job finishes, the Function copies the provider file into R2 when `MEDIA` is bound, then stores that `/api/media` URL as `result_url`. KIE also POSTs `callBackUrl` to `/api/webhooks/kie` (same settle path as poll — credits refund at most once).
+
+The first commit in this repo is the purchased Cloudflare Pages backend template (TaleTok-style: D1 + KV sessions + Stripe fetch + Resend). This clone keeps that stack and maps it to DreamUtopia one-time credit packs (not subscriptions). Template paths `/api/stripe/checkout` and `/api/stripe/webhook` still work as aliases.
 
 ## Payments (optional Stripe)
 
@@ -19,13 +21,13 @@ When a job finishes, the Function copies the provider file into R2 when `MEDIA` 
 
 `POST /api/checkout` `{ packId }` (signed-in) creates a Stripe Checkout Session (`price_data`, no pre-created Price IDs). If the secret is missing it returns `checkout_not_configured` (503) — the UI does not pretend to charge.
 
-Webhook: `POST /api/webhooks/stripe` with `Stripe-Signature`. On `checkout.session.completed` credits are added (idempotent via `credit_events.stripe_session_id`). First purchase adds **31** bonus credits (5 Lite + 1 Pro). If the buyer has `referred_by`, the referrer gets **10%** of the pack credits.
+Webhook: `POST /api/webhooks/stripe` (alias `POST /api/stripe/webhook`) with `Stripe-Signature`. On `checkout.session.completed` credits are added (idempotent via `credit_events.stripe_session_id`). First purchase adds **31** bonus credits (5 Lite + 1 Pro). If the buyer has `referred_by`, the referrer gets **10%** of the pack credits. Repeat checkouts reuse `users.stripe_customer_id` when migration `004` is applied.
 
 Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`.
 
 ## Password reset (optional Resend)
 
-`POST /api/auth/forgot` `{ email }` sends a 1-hour KV token via Resend. If `RESEND_API_KEY` is missing it returns `email_not_configured` (503) and never returns a reset URL to the client. `POST /api/auth/reset` `{ token, password }` sets the new hash.
+`POST /api/auth/forgot` `{ email }` sends a 1-hour KV token via Resend. If `RESEND_API_KEY` is missing it returns `email_not_configured` (503) and never returns a reset URL to the client. `POST /api/auth/reset` `{ token, password }` sets the new hash. Register also sends a welcome email when Resend is configured (failure does not block signup).
 
 Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register accepts optional `referralCode` (`?ref=` on `/auth`).
 
@@ -34,8 +36,9 @@ Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register
 | Binding / secret | Type | Required for | Used by |
 |------------------|------|--------------|---------|
 | `DB` | D1 | auth + generate + checkout | users, credits, generations, gallery, credit_events |
-| `SESSIONS` | KV | auth + generate + reset | login/register/logout/me session tokens, guest trials, reset tokens |
+| `SESSIONS` | KV | auth + generate + reset | login/register/logout/me session tokens, guest trials, reset tokens, rate limits |
 | `KIE_API_KEY` | Pages **secret** | real generate | `/api/generate` → KIE Market API |
+| `KIE_WEBHOOK_HMAC_KEY` | Pages **secret** | optional callback auth | `POST /api/webhooks/kie` (`X-Webhook-Signature`) |
 | `MEDIA` | R2 | **file upload** | `POST /api/upload`, `GET /api/media` |
 | `STRIPE_SECRET_KEY` | Pages **secret** | paid packs | `POST /api/checkout` |
 | `STRIPE_WEBHOOK_SECRET` | Pages **secret** | paid packs | `POST /api/webhooks/stripe` |
@@ -66,7 +69,7 @@ POST /api/generate
 
 → guest: Lite I2V only, 2 tries, KV job id `g_…`
 → account: deduct credits (video Lite 3 / Med 5 / Pro 16 · image Lite 1 / Pro 2)
-→ KIE createTask:
+→ KIE createTask (+ callBackUrl `/api/webhooks/kie`):
      video + lastImageUrl → kling-3.0/video (Medium/Pro)
      video + imageUrl     → kling-2.6/image-to-video
      video, no image      → kling-2.6/text-to-video
@@ -74,9 +77,13 @@ POST /api/generate
 → { generationId, kind, status, providerJobId, credits?, guestRemaining? }
 
 GET /api/generate?id=<generationId>
-→ poll KIE recordInfo when still processing
+→ poll KIE recordInfo when still processing (same settle as the webhook)
 → copy result into R2 when MEDIA is bound
+→ fail refunds credits once (`WHERE status='processing'` + `refund:gen:{id}`)
 → { status, resultUrl, generation.kind, providerState }
+
+POST /api/webhooks/kie
+→ KIE callBackUrl; re-fetches recordInfo; optional HMAC if `KIE_WEBHOOK_HMAC_KEY` is set
 
 POST /api/gallery   Authorization: Bearer <session>
   { "generationId" }
@@ -126,6 +133,7 @@ npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/002_gallery_unique.sql
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/003_referrals_credits.sql
+npx wrangler d1 execute dreamutopia-db --remote --file=migrations/004_template_hardening.sql
 ```
 
 ## 2. Paste IDs into `wrangler.toml`
@@ -162,6 +170,8 @@ Do **not** commit the key.
 2. Developers → Webhooks → Add endpoint `https://<your-host>/api/webhooks/stripe` → event `checkout.session.completed`
 3. Paste the webhook signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`
 4. Redeploy. `GET /api/health` → `checkoutConfigured: true`. Pricing CTAs then open Stripe.
+
+Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settings), set Pages secret `KIE_WEBHOOK_HMAC_KEY` to the same `webhookHmacKey`. Until then, `/api/webhooks/kie` still settles by re-querying KIE (does not trust the POST body for credits).
 
 **Resend (password reset email)**
 
@@ -235,15 +245,18 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | D1 missing new columns | `schema_migration_required` 503 |
 | Checkout without Stripe secret | GET `{ configured: false }`; POST `checkout_not_configured` 503 |
 | Forgot password without Resend | `email_not_configured` 503 |
+| Too many generate/auth requests | `rate_limited` 429 |
+| 3+ jobs already processing | `job_in_flight` 429 |
 
 ## Checklist
 
 - [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
-- [ ] `schema.sql` (+ `001_generations_kie.sql` / `002_gallery_unique.sql` / `003_referrals_credits.sql` if DB already existed)
+- [ ] `schema.sql` (+ `001`–`004` migrations if the DB already existed)
 - [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
 - [ ] Pages secret: `KIE_API_KEY`
 - [ ] Optional: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/webhooks/stripe`)
-- [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset)
+- [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset + welcome)
+- [ ] Optional: `KIE_WEBHOOK_HMAC_KEY` after enabling HMAC on kie.ai Settings
 - [ ] Redeploy
 - [ ] `/api/health` → `generateReady: true`, `uploadReady: true`
 - [ ] Logged-in POST `/api/upload` then `/api/generate` queues a KIE job; GET returns `resultUrl`

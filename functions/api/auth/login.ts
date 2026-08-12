@@ -2,6 +2,8 @@ import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from 
 import { verifyPassword } from "../../../libs/password";
 import { createSession } from "../../../libs/auth";
 import { mergeGuestJobs } from "../../../libs/account";
+import { rateLimitedResponse, takeRateLimit } from "../../../libs/rateLimit";
+import { clientIp } from "../../../libs/guest";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -9,6 +11,9 @@ export const onRequestOptions = (): Response => preflight();
 // POST /api/auth/login  { email, password }
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!hasDb(env) || !hasSessions(env)) return bindingsUnavailable("DB+SESSIONS");
+
+  const rl = await takeRateLimit(env.SESSIONS, `login:ip:${clientIp(request) || "unknown"}`, 20, 60);
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
   let body: { email?: string; password?: string };
   try {

@@ -6,7 +6,6 @@ import {
   hasDb,
   hasSessions,
   hasKieKey,
-  hasMedia,
 } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
@@ -14,66 +13,45 @@ import {
   createTextToVideoTask,
   createFirstLastVideoTask,
   createImageTask,
-  getTaskInfo,
   isPublicHttpsUrl,
   parseAspectRatio,
   parseImageResolution,
   type AspectRatio,
   type ImageResolution,
 } from "../../libs/kie";
-import { isSafeMediaKey, mediaKeyFromUrl, persistRemoteMedia } from "../../libs/media";
+import { kieCallbackUrl } from "../../libs/kieWebhook";
+import { isSafeMediaKey, mediaKeyFromUrl } from "../../libs/media";
 import { mergeGuestJobs } from "../../libs/account";
+import { IMAGE_COST, VIDEO_COST, parseStoredModel, storeModel, type GenerationKind } from "../../libs/costs";
+import { rateLimitedResponse, takeRateLimit } from "../../libs/rateLimit";
+import {
+  loadGenerationById,
+  loadIdempotentGenerationId,
+  normalizeIdempotencyKey,
+  rememberKieTask,
+  saveIdempotentGenerationId,
+  settleAccountJob,
+  settleGuestJob,
+  type GenerationRow,
+} from "../../libs/settle";
 import {
   GUEST_LIMIT,
-  GUEST_USER_ID,
   ensureGuestId,
   guestHeaders,
   guestQuota,
   isGuestJobId,
   loadGuest,
   saveGuest,
-  loadIpUsed,
   saveIpUsed,
   clientIp,
   remainingOf,
   type GuestJob,
-  type GuestRecord,
 } from "../../libs/guest";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
-const VIDEO_COST: Record<string, number> = { lite: 3, medium: 5, pro: 16 };
-const IMAGE_COST: Record<string, number> = { lite: 1, pro: 2 };
-
-type GenerationKind = "video" | "image";
-
-function parseStoredModel(stored: string): { kind: GenerationKind; model: string } {
-  if (stored.startsWith("image-")) {
-    const model = stored.slice(6);
-    return { kind: "image", model: IMAGE_COST[model] ? model : "lite" };
-  }
-  return { kind: "video", model: VIDEO_COST[stored] ? stored : "lite" };
-}
-
-function storeModel(kind: GenerationKind, model: string): string {
-  return kind === "image" ? `image-${model}` : model;
-}
-
-type GenerationRow = {
-  id: number;
-  user_id: number;
-  model: string;
-  prompt: string;
-  status: string;
-  media_key: string | null;
-  duration_sec: number | null;
-  input_image_url: string | null;
-  provider_job_id: string | null;
-  result_url: string | null;
-  error_message: string | null;
-  created_at: string;
-};
+const MAX_IN_FLIGHT = 3;
 
 type InputImages = { first: string | null; last: string | null };
 
@@ -110,69 +88,44 @@ async function refundCredits(env: Env & { DB: D1Database }, userId: number, cost
     .run();
 }
 
-async function persistResult(
-  env: Env,
-  userId: number,
-  sourceUrl: string,
-  origin: string
-): Promise<string> {
-  if (!hasMedia(env)) return sourceUrl;
-  try {
-    const copied = await persistRemoteMedia(env.MEDIA, { userId, sourceUrl, origin });
-    return copied || sourceUrl;
-  } catch {
-    return sourceUrl;
-  }
-}
-
-async function syncProviderStatus(
-  env: Env & { DB: D1Database; KIE_API_KEY: string },
-  row: GenerationRow,
-  origin: string
-): Promise<{ row: GenerationRow; providerState: string | null }> {
-  if (row.status !== "processing" || !row.provider_job_id) {
-    return { row, providerState: row.status === "done" ? "success" : row.status === "failed" ? "fail" : null };
-  }
-
-  const info = await getTaskInfo(env.KIE_API_KEY, row.provider_job_id);
-  if (!info.ok) {
-    return { row, providerState: null };
-  }
-
-  if (info.state === "success" && info.resultUrl) {
-    const resultUrl = await persistResult(env, row.user_id, info.resultUrl, origin);
-    const mediaKey = mediaKeyFromUrl(resultUrl);
-    await env.DB.prepare(
-      "UPDATE generations SET status = 'done', result_url = ?, media_key = COALESCE(?, media_key), error_message = NULL WHERE id = ?"
-    )
-      .bind(resultUrl, mediaKey, row.id)
-      .run();
-    return {
-      row: {
-        ...row,
-        status: "done",
-        result_url: resultUrl,
-        media_key: mediaKey || row.media_key,
-        error_message: null,
-      },
-      providerState: "success",
-    };
-  }
-
-  if (info.state === "fail") {
-    const msg = info.failMsg || info.failCode || "provider generation failed";
-    await env.DB.prepare(
-      "UPDATE generations SET status = 'failed', error_message = ? WHERE id = ?"
-    )
-      .bind(msg, row.id)
-      .run();
-    const parsed = parseStoredModel(row.model);
-    const cost = parsed.kind === "image" ? IMAGE_COST[parsed.model] : VIDEO_COST[parsed.model];
-    if (cost) await refundCredits(env, row.user_id, cost);
-    return { row: { ...row, status: "failed", error_message: msg }, providerState: "fail" };
-  }
-
-  return { row, providerState: info.state || "generating" };
+function createdResponse(opts: {
+  generationId: string | number;
+  kind: GenerationKind;
+  model: string;
+  cost: number;
+  credits: number | null;
+  providerJobId: string;
+  imageUrl: string | null;
+  lastImageUrl: string | null;
+  videoMode: string;
+  mediaKey: string | null;
+  guest: boolean;
+  guestRemaining?: number;
+  replay?: boolean;
+}) {
+  return {
+    ok: true,
+    demo: false,
+    guest: opts.guest,
+    generationId: opts.generationId,
+    kind: opts.kind,
+    model: opts.model,
+    cost: opts.cost,
+    credits: opts.credits,
+    status: "processing",
+    providerJobId: opts.providerJobId,
+    imageUrl: opts.imageUrl,
+    lastImageUrl: opts.lastImageUrl,
+    videoMode: opts.videoMode,
+    mediaKey: opts.mediaKey,
+    resultUrl: null,
+    mediaRequired: false,
+    ...(opts.replay ? { idempotentReplay: true } : {}),
+    ...(opts.guestRemaining !== undefined
+      ? { guestRemaining: opts.guestRemaining, guestLimit: GUEST_LIMIT }
+      : {}),
+    message: "KIE job created — poll GET /api/generate?id=" + opts.generationId + " for status.",
+  };
 }
 
 function publicGeneration(row: GenerationRow) {
@@ -237,6 +190,8 @@ type GenerateBody = {
   image_urls?: unknown;
   mediaKey?: string;
   media_key?: string;
+  idempotencyKey?: string;
+  idempotency_key?: string;
 };
 
 function collectHttpsUrls(values: unknown): string[] {
@@ -258,38 +213,6 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
     }
   }
   return out;
-}
-
-async function syncGuestJob(
-  env: Env & { SESSIONS: KVNamespace; KIE_API_KEY: string },
-  rec: GuestRecord,
-  job: GuestJob,
-  origin: string,
-  ip: string | null
-): Promise<{ job: GuestJob; providerState: string | null }> {
-  if (job.status !== "processing" || !job.providerJobId) {
-    return { job, providerState: job.status === "done" ? "success" : job.status === "failed" ? "fail" : null };
-  }
-  const info = await getTaskInfo(env.KIE_API_KEY, job.providerJobId);
-  if (!info.ok) return { job, providerState: null };
-
-  let next = job;
-  if (info.state === "success" && info.resultUrl) {
-    const resultUrl = await persistResult(env, GUEST_USER_ID, info.resultUrl, origin);
-    next = { ...job, status: "done", resultUrl, errorMessage: null };
-  } else if (info.state === "fail") {
-    const msg = info.failMsg || info.failCode || "provider generation failed";
-    next = { ...job, status: "failed", errorMessage: msg };
-    rec.used = Math.max(0, rec.used - 1);
-    const ipUsed = await loadIpUsed(env, ip);
-    await saveIpUsed(env, ip, Math.max(0, ipUsed - 1));
-  } else {
-    return { job, providerState: info.state || "generating" };
-  }
-
-  rec.jobs = rec.jobs.map((j) => (j.id === job.id ? next : j));
-  await saveGuest(env, rec);
-  return { job: next, providerState: next.status === "done" ? "success" : "fail" };
 }
 
 function createFailedResponse(
@@ -399,6 +322,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
+  const ip = clientIp(request);
+  const rl = await takeRateLimit(
+    env.SESSIONS,
+    session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
+    session ? 30 : 10,
+    60
+  );
+  if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
+
+  const idempotencyKey = normalizeIdempotencyKey(
+    body.idempotencyKey || body.idempotency_key || request.headers.get("idempotency-key")
+  );
 
   if (!session) {
     const blocked = await guestRequestError(env, request, {
@@ -422,6 +357,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       imageUrl,
       lastImageUrl,
       durationSec: durationSec || 5,
+      idempotencyKey,
     });
   }
 
@@ -431,6 +367,53 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       "backend not configured: missing DB binding — see BACKEND.md.",
       503,
       { mediaRequired: false }
+    );
+  }
+
+  if (idempotencyKey) {
+    const existingId = await loadIdempotentGenerationId(env, `u:${session.userId}`, idempotencyKey);
+    const existingNum = existingId ? Number(existingId) : 0;
+    if (existingNum > 0) {
+      const existing = await loadGenerationById(env.DB, existingNum, session.userId);
+      if (existing) {
+        const parsed = parseStoredModel(existing.model);
+        const images = decodeInputImages(existing.input_image_url);
+        const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+          .bind(session.userId)
+          .first<{ credits: number }>();
+        return json({
+          ...createdResponse({
+            generationId: existing.id,
+            kind: parsed.kind,
+            model: parsed.model,
+            cost,
+            credits: bal ? Number(bal.credits) : 0,
+            providerJobId: existing.provider_job_id || "",
+            imageUrl: images.first,
+            lastImageUrl: images.last,
+            videoMode: parsed.kind === "image" ? "image" : images.last ? "flf" : images.first ? "i2v" : "t2v",
+            mediaKey: existing.media_key,
+            guest: false,
+            replay: true,
+          }),
+          status: existing.status,
+          resultUrl: existing.result_url,
+        });
+      }
+    }
+  }
+
+  const inFlight = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM generations WHERE user_id = ? AND status = 'processing'"
+  )
+    .bind(session.userId)
+    .first<{ n: number }>();
+  if (inFlight && Number(inFlight.n) >= MAX_IN_FLIGHT) {
+    return structuredError(
+      "job_in_flight",
+      "You already have jobs rendering. Wait for one to finish.",
+      429,
+      { retryAfter: 15 }
     );
   }
 
@@ -448,6 +431,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "insufficient credits", credits }, 402);
   }
 
+  const callBackUrl = kieCallbackUrl(new URL(request.url).origin);
   const blendUrls = uniqueUrls([imageUrl || null], extraUrls);
   const created =
     kind === "image"
@@ -455,6 +439,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           prompt,
           imageUrls: blendUrls,
           resolution,
+          callBackUrl,
         })
       : lastImageUrl
         ? await createFirstLastVideoTask(env.KIE_API_KEY, {
@@ -464,6 +449,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             durationSec: durationSec || 5,
             sound,
             mode: model === "pro" ? "pro" : "std",
+            callBackUrl,
           })
         : imageUrl
           ? await createImageToVideoTask(env.KIE_API_KEY, {
@@ -471,12 +457,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
               imageUrl,
               durationSec: durationSec || 5,
               sound,
+              callBackUrl,
             })
           : await createTextToVideoTask(env.KIE_API_KEY, {
               prompt,
               durationSec: durationSec || 5,
               sound,
               aspectRatio,
+              callBackUrl,
             });
 
   if (!created.ok) {
@@ -514,31 +502,35 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const generationId = Number(insert.meta.last_row_id);
+  await rememberKieTask(env, created.taskId, {
+    kind: "user",
+    userId: session.userId,
+    generationId,
+  });
+  if (idempotencyKey) {
+    await saveIdempotentGenerationId(env, `u:${session.userId}`, idempotencyKey, generationId);
+  }
   const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
     .bind(session.userId)
     .first<{ credits: number }>();
   const credits = bal ? Number(bal.credits) : 0;
   const videoMode = kind === "image" ? "image" : lastImageUrl ? "flf" : imageUrl ? "i2v" : "t2v";
 
-  return json({
-    ok: true,
-    demo: false,
-    guest: false,
-    generationId,
-    kind,
-    model,
-    cost,
-    credits,
-    status: "processing",
-    providerJobId: created.taskId,
-    imageUrl: imageUrl || null,
-    lastImageUrl: lastImageUrl || null,
-    videoMode,
-    mediaKey,
-    resultUrl: null,
-    mediaRequired: false,
-    message: "KIE job created — poll GET /api/generate?id=" + generationId + " for status.",
-  });
+  return json(
+    createdResponse({
+      generationId,
+      kind,
+      model,
+      cost,
+      credits,
+      providerJobId: created.taskId,
+      imageUrl: imageUrl || null,
+      lastImageUrl: lastImageUrl || null,
+      videoMode,
+      mediaKey,
+      guest: false,
+    })
+  );
 };
 
 async function guestRequestError(
@@ -616,10 +608,45 @@ async function handleGuestPost(
     imageUrl: string;
     lastImageUrl: string;
     durationSec: number;
+    idempotencyKey: string | null;
   }
 ): Promise<Response> {
   const guestId = ensureGuestId(request);
   const headers = guestHeaders(guestId, request);
+
+  if (opts.idempotencyKey) {
+    const existingId = await loadIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey);
+    if (existingId) {
+      const rec0 = await loadGuest(env, guestId);
+      const job0 = rec0.jobs.find((j) => j.id === existingId);
+      if (job0) {
+        const quota0 = await guestQuota(env, rec0, clientIp(request));
+        return json(
+          {
+            ...createdResponse({
+              generationId: job0.id,
+              kind: "video",
+              model: "lite",
+              cost: 0,
+              credits: null,
+              providerJobId: job0.providerJobId,
+              imageUrl: job0.inputImageUrl,
+              lastImageUrl: null,
+              videoMode: "i2v",
+              mediaKey: mediaKeyFromUrl(job0.inputImageUrl || ""),
+              guest: true,
+              guestRemaining: quota0.remaining,
+              replay: true,
+            }),
+            status: job0.status,
+            resultUrl: job0.resultUrl,
+          },
+          200,
+          headers
+        );
+      }
+    }
+  }
 
   const rec = await loadGuest(env, guestId);
   const ip = clientIp(request);
@@ -643,6 +670,7 @@ async function handleGuestPost(
     imageUrl: opts.imageUrl,
     durationSec: 5,
     sound: false,
+    callBackUrl: kieCallbackUrl(new URL(request.url).origin),
   });
   if (!created.ok) {
     return createFailedResponse(created);
@@ -664,29 +692,26 @@ async function handleGuestPost(
   rec.jobs.unshift(job);
   await saveGuest(env, rec);
   await saveIpUsed(env, ip, rec.used);
+  await rememberKieTask(env, created.taskId, { kind: "guest", guestId, jobId: job.id });
+  if (opts.idempotencyKey) {
+    await saveIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey, job.id);
+  }
 
   return json(
-    {
-      ok: true,
-      demo: false,
-      guest: true,
+    createdResponse({
       generationId: job.id,
       kind: "video",
       model: "lite",
       cost: 0,
       credits: null,
-      guestRemaining: remainingOf(rec.used),
-      guestLimit: GUEST_LIMIT,
-      status: "processing",
       providerJobId: created.taskId,
       imageUrl: opts.imageUrl,
       lastImageUrl: null,
       videoMode: "i2v",
       mediaKey: mediaKeyFromUrl(opts.imageUrl),
-      resultUrl: null,
-      mediaRequired: false,
-      message: "KIE job created — poll GET /api/generate?id=" + job.id + " for status.",
-    },
+      guest: true,
+      guestRemaining: remainingOf(rec.used),
+    }),
     200,
     headers
   );
@@ -770,7 +795,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      const synced = await syncProviderStatus(env, row, origin);
+      const synced = await settleAccountJob(env, row, origin);
       row = synced.row;
       providerState = synced.providerState;
     }
@@ -809,7 +834,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const list = rows.results || [];
   if (hasKieKey(env)) {
     for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
-      await syncProviderStatus(env, g, origin);
+      await settleAccountJob(env, g, origin);
     }
     const refreshed = await env.DB.prepare(
       `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
@@ -855,7 +880,7 @@ async function handleGuestGet(
     let providerState: string | null = null;
     if (job.status === "processing" && job.providerJobId) {
       if (!hasKieKey(env)) return kieMissingResponse();
-      const synced = await syncGuestJob(env, rec, job, origin, ip);
+      const synced = await settleGuestJob(env, rec, job, origin, ip);
       job = synced.job;
       providerState = synced.providerState;
     }
@@ -878,7 +903,7 @@ async function handleGuestGet(
 
   if (hasKieKey(env)) {
     for (const j of rec.jobs.filter((x) => x.status === "processing" && x.providerJobId).slice(0, 3)) {
-      await syncGuestJob(env, rec, j, origin, ip);
+      await settleGuestJob(env, rec, j, origin, ip);
     }
   }
   const fresh = await loadGuest(env, guestId);
