@@ -259,6 +259,59 @@
     return api("/gallery/like", { method: "POST", body: JSON.stringify({ id: id }) });
   }
 
+  function fileFromClipboard(e) {
+    const cd = e && e.clipboardData;
+    if (!cd) return null;
+    const items = cd.items || [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//i.test(items[i].type || "")) {
+        const f = items[i].getAsFile();
+        if (f) return f;
+      }
+    }
+    const files = cd.files;
+    if (files && files[0] && isAllowedImageFile(files[0])) return files[0];
+    return null;
+  }
+
+  function bindImageDrop(area, onFiles) {
+    if (!area || typeof onFiles !== "function") return;
+    area.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      area.classList.add("drag");
+    });
+    area.addEventListener("dragleave", function (e) {
+      if (e.relatedTarget && area.contains(e.relatedTarget)) return;
+      area.classList.remove("drag");
+    });
+    area.addEventListener("drop", function (e) {
+      e.preventDefault();
+      area.classList.remove("drag");
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length) onFiles(files);
+    });
+  }
+
+  function bindImagePaste(onFile) {
+    if (typeof onFile !== "function") return;
+    document.addEventListener("paste", function (e) {
+      const file = fileFromClipboard(e);
+      if (!file) return;
+      e.preventDefault();
+      onFile(file);
+    });
+  }
+
+  function bindModEnter(el, fn) {
+    if (!el || typeof fn !== "function") return;
+    el.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        fn();
+      }
+    });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -276,5 +329,8 @@
     errorMessage: errorMessage,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
+    bindImageDrop: bindImageDrop,
+    bindImagePaste: bindImagePaste,
+    bindModEnter: bindModEnter,
   };
 })(window);

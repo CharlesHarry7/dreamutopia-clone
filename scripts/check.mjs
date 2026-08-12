@@ -142,7 +142,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v9", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v10", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
@@ -160,6 +160,14 @@ function extractI18nKeys(src) {
   } else ok.push("wrangler.toml stays Pages (not OpenNext)");
   mustContain("out/assets/js/du.js", "shouldRetryPoll", "poll retries transient errors");
   mustContain("out/assets/js/du.js", "poll_cancelled", "poll cancel");
+  mustContain("out/assets/js/du.js", "bindImageDrop", "drop helper");
+  mustContain("out/assets/js/du.js", "bindImagePaste", "paste helper");
+  mustContain("out/assets/js/du.js", "bindModEnter", "mod+enter generate");
+  mustContain("out/index.html", "bindImageDrop", "homepage drop");
+  mustContain("out/index.html", "bindImagePaste", "homepage paste");
+  mustContain("out/workspace.html", "bindImagePaste", "workspace paste");
+  mustContain("out/assets/js/nav.js", "nav-lock", "nav scroll lock");
+  mustContain("out/assets/css/chrome.css", "html.nav-lock", "nav lock CSS");
   mustContain("out/assets/js/seo.js", "og:locale", "SEO locale");
   mustContain("out/assets/js/seo.js", "application/ld+json", "JSON-LD");
   mustContain("out/assets/js/seo.js", '"@type": "WebPage"', "interior JSON-LD WebPage");

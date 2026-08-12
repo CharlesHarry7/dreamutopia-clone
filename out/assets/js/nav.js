@@ -5,8 +5,11 @@
 (function () {
   function closeNav(header, btn) {
     if (!header) return;
+    var wasOpen = header.classList.contains("nav-open");
     header.classList.remove("nav-open");
+    document.documentElement.classList.remove("nav-lock");
     if (btn) btn.setAttribute("aria-expanded", "false");
+    if (wasOpen && btn && header.contains(document.activeElement)) btn.focus();
   }
 
   function onReady() {
@@ -21,6 +24,7 @@
       e.stopPropagation();
       var open = header.classList.toggle("nav-open");
       btn.setAttribute("aria-expanded", open ? "true" : "false");
+      document.documentElement.classList.toggle("nav-lock", open);
     });
 
     nav.addEventListener("click", function (e) {

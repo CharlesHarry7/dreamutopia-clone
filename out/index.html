@@ -344,7 +344,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <input type="file" id="homeFile" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none">
 <div class="icon" id="homeUploadIcon">🖼</div>
 <div class="p1" id="homeUploadLabel" data-i18n="gen.upload">Upload Start Image</div>
-<div class="p2" id="homeUploadHint" data-i18n="gen.browse">Click to browse · JPG, PNG, WebP, GIF, or TIFF</div>
+<div class="p2" id="homeUploadHint" data-i18n="gen.browse">Click, drop, or paste · JPG, PNG, WebP, GIF, or TIFF</div>
 <button type="button" class="remove-btn" id="homeRemove" hidden data-i18n="gen.remove">Remove</button>
 </div>
 
@@ -696,6 +696,30 @@ function setHomePreview(file) {
 
 const homeUpload = document.getElementById("homeUpload");
 const homeFileInput = document.getElementById("homeFile");
+
+function takeHomeFile(file) {
+  const status = document.getElementById("homeStatus");
+  const text = document.getElementById("homeStatusText");
+  if (!file) return;
+  if (!DU.isAllowedImageFile(file)) {
+    if (status && text) {
+      status.classList.add("show");
+      text.textContent = DU.t("faq.a4", "Use a JPG, PNG, WebP, GIF, or TIFF image.");
+    }
+    return;
+  }
+  if (file.size > DU.MAX_UPLOAD_BYTES) {
+    if (status && text) {
+      status.classList.add("show");
+      text.textContent = DU.t("err.file_too_large", "Image must be 20 MB or smaller.");
+    }
+    return;
+  }
+  homeFile = file;
+  homeImageUrl = "";
+  setHomePreview(file);
+}
+
 if (homeUpload && homeFileInput) {
   homeUpload.addEventListener("click", (e) => {
     if (e.target && e.target.id === "homeRemove") return;
@@ -709,26 +733,7 @@ if (homeUpload && homeFileInput) {
   });
   homeFileInput.addEventListener("change", () => {
     const file = homeFileInput.files && homeFileInput.files[0];
-    if (!file) return;
-    const status = document.getElementById("homeStatus");
-    const text = document.getElementById("homeStatusText");
-    if (!DU.isAllowedImageFile(file)) {
-      if (status && text) {
-        status.classList.add("show");
-        text.textContent = DU.t("faq.a4", "Use a JPG, PNG, WebP, GIF, or TIFF image.");
-      }
-      return;
-    }
-    if (file.size > DU.MAX_UPLOAD_BYTES) {
-      if (status && text) {
-        status.classList.add("show");
-        text.textContent = DU.t("err.file_too_large", "Image must be 20 MB or smaller.");
-      }
-      return;
-    }
-    homeFile = file;
-    homeImageUrl = "";
-    setHomePreview(file);
+    takeHomeFile(file);
   });
   document.getElementById("homeRemove").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -737,6 +742,17 @@ if (homeUpload && homeFileInput) {
     homeFileInput.value = "";
     setHomePreview(null);
   });
+  if (DU.bindImageDrop) {
+    DU.bindImageDrop(homeUpload, function (files) {
+      takeHomeFile(files && files[0]);
+    });
+  }
+  if (DU.bindImagePaste) {
+    DU.bindImagePaste(function (file) { takeHomeFile(file); });
+  }
+}
+if (DU.bindModEnter) {
+  DU.bindModEnter(document.getElementById("homePrompt"), homeGenerate);
 }
 
 function setGuestFoot(n) {

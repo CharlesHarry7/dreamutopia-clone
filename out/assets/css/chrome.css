@@ -122,6 +122,16 @@ header.nav-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
   .logo span { display: none; }
 }
 
+html.nav-lock,
+html.nav-lock body {
+  overflow: hidden;
+}
+
+.upload-area.drag {
+  border-color: rgba(168, 85, 247, 0.7);
+  background: rgba(168, 85, 247, 0.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nav-toggle-bars,
   .nav-toggle-bars::before,

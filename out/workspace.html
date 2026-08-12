@@ -380,7 +380,7 @@ Image
 <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none" onchange="handleFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1" id="uploadLabel">Upload Start Image</div>
-<div class="p2" id="uploadHint" data-i18n="ws.upload.hint">JPG, PNG, WebP, GIF, or TIFF · up to 20 MB</div>
+<div class="p2" id="uploadHint" data-i18n="ws.upload.hint">Drop, paste, or browse · JPG, PNG, WebP, GIF, or TIFF · up to 20 MB</div>
 <button type="button" class="remove-btn" id="removeImgBtn" onclick="event.stopPropagation(); clearUpload()" aria-label="Remove image">✕</button>
 </div>
 <div class="upload-area last-slot" id="lastUploadArea" onclick="document.getElementById('lastFileInput').click()">
@@ -1076,21 +1076,27 @@ function renderBlendThumbs() {
 }
 
 function bindUploadDrop() {
-  function bind(area, handler) {
-    if (!area) return;
-    area.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      area.classList.add("drag");
+  if (DU.bindImageDrop) {
+    DU.bindImageDrop(document.getElementById("uploadArea"), function (files) {
+      handleFile({ files: files });
     });
-    area.addEventListener("dragleave", () => area.classList.remove("drag"));
-    area.addEventListener("drop", (e) => {
-      e.preventDefault();
-      area.classList.remove("drag");
-      handler({ files: e.dataTransfer && e.dataTransfer.files });
+    DU.bindImageDrop(document.getElementById("lastUploadArea"), function (files) {
+      handleLastFile({ files: files });
     });
   }
-  bind(document.getElementById("uploadArea"), handleFile);
-  bind(document.getElementById("lastUploadArea"), handleLastFile);
+  if (DU.bindImagePaste) {
+    DU.bindImagePaste(function (file) {
+      const last = document.getElementById("lastUploadArea");
+      if (last && document.activeElement && last.contains(document.activeElement)) {
+        handleLastFile({ files: [file] });
+      } else {
+        handleFile({ files: [file] });
+      }
+    });
+  }
+  if (DU.bindModEnter) {
+    DU.bindModEnter(document.getElementById("promptInput"), generate);
+  }
 }
 
 async function uploadImageFile(file) {

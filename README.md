@@ -92,7 +92,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 
 ## Generate path
 
-1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1.
+1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1. Start image: click, drop, or paste; Ctrl/⌘+Enter generates.
 2. **Account:** sign up (10 credits). Video: text-to-video, image-to-video, or first+last frame (Medium/Pro). Image: T2I / I2I / blend, 1K–4K.
 3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
 4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
