@@ -137,8 +137,9 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v5", "SW cache bump");
-  mustContain("out/sw.js", "/offline.html", "SW offline fallback");
+  mustContain("out/sw.js", "du-static-v6", "SW cache bump");
+  mustContain("out/sw.js", '"/offline"', "SW precaches pretty /offline");
+  mustContain("out/sw.js", "caches.match(\"/offline\")", "SW offline fallback pretty URL");
   mustContain("out/manifest.webmanifest", '"id": "/"', "PWA id");
   mustContain("out/manifest.webmanifest", '"lang": "en"', "PWA lang");
   if (!exists("out/offline.html")) fail.push("missing out/offline.html");

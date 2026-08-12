@@ -1,12 +1,11 @@
 /* DreamUtopia clone — cache static chrome; never cache /api. */
-const CACHE = "du-static-v5";
+const CACHE = "du-static-v6";
 const PRECACHE = [
   "/",
   "/workspace",
-  "/workspace.html",
   "/pricing",
   "/auth",
-  "/offline.html",
+  "/offline",
   "/manifest.webmanifest",
   "/assets/js/du.js",
   "/assets/js/i18n.js",
@@ -58,7 +57,7 @@ self.addEventListener("fetch", (event) => {
         caches.match(req).then((hit) => {
           if (hit) return hit;
           if (req.mode === "navigate" || req.destination === "document") {
-            return caches.match("/offline.html").then((offline) => offline || caches.match("/"));
+            return caches.match("/offline").then((offline) => offline || caches.match("/"));
           }
           return new Response("", { status: 503, statusText: "offline" });
         })

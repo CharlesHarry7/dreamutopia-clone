@@ -989,7 +989,7 @@ function acceptImageFile(file) {
     return null;
   }
   if (file.size > DU.MAX_UPLOAD_BYTES) {
-    toast("Image must be 20 MB or smaller.", true);
+    toast(DU.t("err.file_too_large", "Image must be 20 MB or smaller."), true);
     return null;
   }
   return file;
@@ -1089,7 +1089,7 @@ async function uploadImageFile(file) {
 
 async function generate() {
   const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return toast("Please enter a prompt.", true);
+  if (!prompt) return toast(DU.t("ws.prompt.required", "Please enter a prompt."), true);
 
   let imageUrl = document.getElementById("imageUrlInput").value.trim();
   let lastUrl = (document.getElementById("lastImageUrlInput") || {}).value || "";
@@ -1111,15 +1111,15 @@ async function generate() {
   const spinner = document.getElementById("genSpinner");
   btn.disabled = true;
   btn.classList.remove("ready");
-  document.getElementById("genBtnLabel").textContent = "Generating...";
+  document.getElementById("genBtnLabel").textContent = DU.t("progress.generating", "Generating…");
   status.classList.add("show");
   spinner.style.display = "";
   showResult(null);
-  statusText.textContent = "Starting KIE job…";
+  statusText.textContent = DU.t("progress.starting", "Starting…");
 
   try {
     if (uploadedImage && !uploadedImageUrl) {
-      statusText.textContent = "Uploading start image…";
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       try {
         const up = await uploadImageFile(uploadedImage);
         uploadedImageUrl = up.imageUrl || "";
@@ -1136,7 +1136,7 @@ async function generate() {
     }
 
     if (lastImage && !lastImageUrlStored) {
-      statusText.textContent = "Uploading last frame…";
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       const up = await uploadImageFile(lastImage);
       lastImageUrlStored = up.imageUrl || "";
       lastUrl = lastImageUrlStored || lastUrl;
@@ -1144,14 +1144,14 @@ async function generate() {
 
     const extraUrls = [];
     if (currentMode === "image" && blendFiles.length) {
-      statusText.textContent = "Uploading blend images…";
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       for (const file of blendFiles) {
         const up = await uploadImageFile(file);
         if (up.imageUrl) extraUrls.push(up.imageUrl);
       }
     }
 
-    statusText.textContent = "Starting KIE job…";
+    statusText.textContent = DU.t("progress.starting", "Starting…");
     const payload = {
       prompt,
       kind: currentMode,
@@ -1178,13 +1178,13 @@ async function generate() {
       if (!token) updateAuthUI();
     }
 
-    statusText.textContent = "Queued · waiting for provider…";
+    statusText.textContent = DU.t("progress.queued", "Queued · waiting for provider…");
     const done = await pollGeneration(data.generationId, statusText);
     spinner.style.display = "none";
     const kind = done.kind || data.kind || currentMode;
     statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
     showResult(done.resultUrl, kind, done.generation && done.generation.id || data.generationId);
-    toast(kind === "image" ? "Image ready" : "Video ready");
+    toast(kind === "image" ? DU.t("ws.ready.image", "Image ready") : DU.t("ws.ready.video", "Video ready"));
     loadHistory();
   } catch (e) {
     spinner.style.display = "none";
