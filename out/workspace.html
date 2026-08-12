@@ -216,6 +216,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .history-item .h-status.processing,.history-item .h-status.pending{background:rgba(168,85,247,.15);color:var(--primary2)}
 .history-item .h-status.failed{background:rgba(239,68,68,.15);color:#ef4444}
 .history-item .h-prompt{font-size:13px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item .h-error{font-size:12px;color:var(--red);margin-top:6px;line-height:1.45}
 
 .toast{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:13px;z-index:100;display:none;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .toast.show{display:block;animation:fadeIn .3s}
@@ -579,6 +580,7 @@ let lastGenerationId = null;
 let lastResultUrl = "";
 let genPollAbort = null;
 let genBusy = false;
+let historyById = Object.create(null);
 if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return genBusy; });
 
 const GEN_PREFS_KEY = "du_gen_prefs";
@@ -946,6 +948,22 @@ function syncVideoOptions() {
   if (resRow) resRow.classList.toggle("show", currentMode === "image" && currentModel === "pro");
 }
 
+function syncModeLabels() {
+  const video = currentMode === "video";
+  const title = document.getElementById("genTitle");
+  if (title) title.textContent = video ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
+  const uploadLabel = document.getElementById("uploadLabel");
+  if (uploadLabel) uploadLabel.textContent = video ? DU.t("gen.upload", "Upload Start Image") : DU.t("gen.uploadImage", "Reference image (optional)");
+  const promptLabel = document.getElementById("promptLabel");
+  if (promptLabel) promptLabel.textContent = video ? DU.t("gen.prompt", "Describe Your Video") : DU.t("gen.prompt.image", "Describe Your Image");
+  const promptInput = document.getElementById("promptInput");
+  if (promptInput) {
+    promptInput.placeholder = video
+      ? DU.t("gen.placeholder", "A futuristic city with flying cars...")
+      : DU.t("gen.placeholder.image", "A cinematic portrait with soft lighting...");
+  }
+}
+
 function switchMode(mode) {
   currentMode = mode === "image" ? "image" : "video";
   document.getElementById("modeVideo").classList.toggle("active", currentMode === "video");
@@ -954,12 +972,7 @@ function switchMode(mode) {
   document.getElementById("modeImage").setAttribute("aria-selected", currentMode === "image" ? "true" : "false");
   document.getElementById("modeVideo").tabIndex = currentMode === "video" ? 0 : -1;
   document.getElementById("modeImage").tabIndex = currentMode === "image" ? 0 : -1;
-  document.getElementById("genTitle").textContent = currentMode === "video" ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
-  document.getElementById("uploadLabel").textContent = currentMode === "video" ? "Upload Start Image" : "Reference image (optional)";
-  document.getElementById("promptLabel").textContent = currentMode === "video" ? "Describe Your Video" : "Describe Your Image";
-  document.getElementById("promptInput").placeholder = currentMode === "video"
-    ? "A futuristic city with flying cars..."
-    : "A cinematic portrait with soft lighting...";
+  syncModeLabels();
   document.getElementById("videoModels").style.display = currentMode === "video" ? "grid" : "none";
   document.getElementById("imageModels").style.display = currentMode === "image" ? "grid" : "none";
   const hint = document.getElementById("urlHint");
@@ -1366,6 +1379,36 @@ function refreshHistoryEmpty() {
   }
 }
 
+function reuseGeneration(g) {
+  if (!g) return;
+  const kind = g.kind === "image" ? "image" : "video";
+  switchMode(kind);
+  const model = String(g.model || "lite");
+  if (kind === "image") pickModel(model === "pro" ? "pro" : "lite");
+  else pickModel(model === "medium" || model === "pro" ? model : "lite");
+  if (kind === "video") {
+    const dur = Number(g.duration_sec || g.durationSec || 5);
+    pickDuration(dur === 10 ? 10 : 5);
+  }
+  clearUpload();
+  clearLastUpload();
+  const startUrl = g.input_image_url || g.inputImageUrl || "";
+  const lastUrl = g.last_image_url || g.lastImageUrl || "";
+  const startInput = document.getElementById("imageUrlInput");
+  const lastInput = document.getElementById("lastImageUrlInput");
+  if (startInput) startInput.value = startUrl;
+  if (lastInput) lastInput.value = lastUrl;
+  const ta = document.getElementById("promptInput");
+  if (ta) {
+    ta.value = String(g.prompt || "").slice(0, 8000);
+    onPromptInput();
+  }
+  syncVideoOptions();
+  switchPrimaryTab("create");
+  if (DU.focusEl && ta) DU.focusEl(ta);
+  toast(DU.t("ws.history.reused", "Loaded into Create"));
+}
+
 async function loadHistory() {
   const empty = document.getElementById("historyEmpty");
   const list = document.getElementById("historyList");
@@ -1376,6 +1419,10 @@ async function loadHistory() {
       updateAuthUI();
     }
     const gens = data.generations || [];
+    historyById = Object.create(null);
+    gens.forEach(function (g) {
+      historyById[String(g.id)] = g;
+    });
     if (!gens.length) {
       empty.hidden = false;
       list.hidden = true;
@@ -1391,15 +1438,14 @@ async function loadHistory() {
       const guestTag = g.guest ? " · guest" : "";
       const statusRaw = String(g.status || "");
       const statusLabel = DU.t("ws.status." + statusRaw, statusRaw);
+      const failCopy = statusRaw === "failed" ? (g.error_message || g.errorMessage || "") : "";
       const meta = kind === "image"
         ? `#${g.id} · image · ${escapeHtml(String(g.model))}${guestTag}`
         : `#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s${guestTag}`;
-      const link = url
-        ? `<div class="h-actions">
-            <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(DU.t("gen.open", "Open result"))}</a>
+      const openBits = url
+        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(DU.t("gen.open", "Open result"))}</a>
             <button type="button" data-act="download" data-url="${escapeHtml(url)}" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("gen.download", "Download"))}</button>
-            ${g.guest ? "" : `<button type="button" data-act="share" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.result.share", "Share to gallery"))}</button>`}
-          </div>`
+            ${g.guest ? "" : `<button type="button" data-act="share" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.result.share", "Share to gallery"))}</button>`}`
         : "";
       const alt = escapeHtml((g.prompt || "").slice(0, 120) || (kind === "image" ? "Generated image" : "Generated video"));
       const preview = !url
@@ -1407,6 +1453,7 @@ async function loadHistory() {
         : kind === "image"
           ? `<img src="${escapeHtml(url)}" alt="${alt}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
           : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" aria-label="${alt}" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
+      const errLine = failCopy ? `<p class="h-error">${escapeHtml(failCopy)}</p>` : "";
       return `
       <article class="history-item" role="listitem">
         <div class="h-top">
@@ -1414,8 +1461,12 @@ async function loadHistory() {
           <span class="h-status ${escapeHtml(statusRaw)}">${escapeHtml(statusLabel)}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
+        ${errLine}
         ${preview}
-        ${link}
+        <div class="h-actions">
+          ${openBits}
+          <button type="button" data-act="reuse" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.history.reuse", "Use again"))}</button>
+        </div>
       </article>`;
     }).join("");
     list.setAttribute("aria-busy", "false");
@@ -1426,9 +1477,10 @@ async function loadHistory() {
         if (!btn) return;
         const id = btn.getAttribute("data-id");
         const url = btn.getAttribute("data-url");
-        if (btn.getAttribute("data-act") === "download") {
+        const act = btn.getAttribute("data-act");
+        if (act === "download") {
           DU.downloadResult(url, "dreamutopia-" + id);
-        } else if (btn.getAttribute("data-act") === "share") {
+        } else if (act === "share") {
           btn.disabled = true;
           try {
             const res = await DU.publishGallery(Number(id));
@@ -1438,6 +1490,8 @@ async function loadHistory() {
             btn.disabled = false;
             toast(err.message || "Could not share", true);
           }
+        } else if (act === "reuse") {
+          reuseGeneration(historyById[String(id)]);
         }
       });
     }
@@ -1530,8 +1584,7 @@ function escapeHtml(s) {
 document.addEventListener("du:i18n", function () {
   updateAuthUI();
   resetGenBtn();
-  const title = document.getElementById("genTitle");
-  if (title) title.textContent = currentMode === "video" ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
+  syncModeLabels();
 });
 const genCancelBtn = document.getElementById("genCancel");
 if (genCancelBtn) {

@@ -656,7 +656,16 @@ function syncHomeTab() {
   const label = document.getElementById("homeUploadLabel");
   if (label) label.textContent = image ? DU.t("gen.uploadImage", "Reference image (optional)") : DU.t("gen.upload", "Upload Start Image");
   const promptLabel = document.querySelector(".gen-card .label-row label");
-  if (promptLabel) promptLabel.textContent = image ? "Describe Your Image" : DU.t("gen.prompt", "Describe Your Video");
+  if (promptLabel) promptLabel.textContent = image ? DU.t("gen.prompt.image", "Describe Your Image") : DU.t("gen.prompt", "Describe Your Video");
+  const homePrompt = document.getElementById("homePrompt");
+  if (homePrompt) {
+    homePrompt.setAttribute(
+      "placeholder",
+      image
+        ? DU.t("gen.placeholder.image", "A cinematic portrait with soft lighting...")
+        : DU.t("gen.placeholder", "A futuristic city with flying cars...")
+    );
+  }
   const panel = document.getElementById("homeGenCard");
   document.querySelectorAll(".gen-tab").forEach(function (t) {
     const on = t.classList.contains("active");

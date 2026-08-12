@@ -77,6 +77,9 @@ function extractI18nKeys(src) {
     "gen.workspace",
     "ws.invite.copy",
     "ws.invite.copied",
+    "gen.prompt.image",
+    "ws.history.reuse",
+    "ws.history.reused",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -188,12 +191,15 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v15", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v16", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");
   mustContain("out/workspace.html", "du_gen_prefs", "remember generate prefs");
   mustContain("out/workspace.html", "ws.invite.copy", "invite copy i18n");
+  mustContain("out/workspace.html", 'data-act="reuse"', "history use-again remix");
+  mustContain("out/workspace.html", "reuseGeneration", "history reuse loads Create");
+  mustContain("out/index.html", "gen.prompt.image", "homepage image prompt i18n");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
