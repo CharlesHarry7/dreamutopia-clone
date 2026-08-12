@@ -109,11 +109,15 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status.show{display:block}
 .gen-status .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes du-skel{0%{background-position:100% 0}100%{background-position:-100% 0}}
 .gen-status .cap{font-size:13px;color:var(--text2)}
 .gen-result{margin-top:14px;display:none;text-align:center}
 .gen-result.show{display:block}
 .gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;margin:0 auto}
 .gen-result a{display:inline-block;margin-top:8px;font-size:13px;color:var(--primary2)}
+.gen-skel{display:none;margin-top:14px}
+.gen-skel.show{display:block}
+.gen-skel-frame{width:100%;max-width:480px;margin:0 auto;aspect-ratio:16/9;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.18),rgba(255,255,255,.06));background-size:200% 100%;animation:du-skel 1.1s ease-in-out infinite}
 .result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .result-actions a,.result-actions button{border:1px solid var(--border2);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text)}
 .result-actions button.primary{background:linear-gradient(135deg,var(--primary),var(--accent));border:none}
@@ -370,6 +374,9 @@ nav{display:none}
 <div class="gen-status" id="homeStatus">
 <div class="spinner"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
+</div>
+<div class="gen-skel" id="homeSkel" aria-hidden="true">
+<div class="gen-skel-frame" role="img" aria-label="Generating preview"></div>
 </div>
 <div class="gen-result" id="homeResult">
 <video id="homeVideo" controls playsinline></video>
@@ -769,9 +776,14 @@ async function homeGenerate() {
   const text = document.getElementById("homeStatusText");
   const result = document.getElementById("homeResult");
   const video = document.getElementById("homeVideo");
+  const skel = document.getElementById("homeSkel");
   btn.disabled = true;
   status.classList.add("show");
   result.classList.remove("show");
+  if (skel) {
+    skel.classList.add("show");
+    skel.setAttribute("aria-hidden", "false");
+  }
   text.textContent = "Starting…";
   try {
     let imageUrl = homeImageUrl;
@@ -807,9 +819,17 @@ async function homeGenerate() {
       DU.downloadResult(done.resultUrl, "dreamutopia-" + (data.generationId || "video"));
     };
     result.classList.add("show");
+    if (skel) {
+      skel.classList.remove("show");
+      skel.setAttribute("aria-hidden", "true");
+    }
     text.innerHTML = '<span style="color:#22c55e">Done</span>';
   } catch (e) {
     result.classList.remove("show");
+    if (skel) {
+      skel.classList.remove("show");
+      skel.setAttribute("aria-hidden", "true");
+    }
     const mapped = DU.presentApiError(e);
     text.textContent = mapped.message;
   }
