@@ -6,6 +6,10 @@
  * onRequestHead and falls through to the SPA (200 text/html). Rewrite those
  * HEAD probes to GET (same Function as GET/POST), then strip the body.
  * Do not rewrite HEAD /api/generate — that must stay liveness-only (no KIE poll).
+ *
+ * GET /api/history is canonical history JSON. Aliases: /api/jobs, /api/creations,
+ * /api/generations. If Pages serves SPA HTML on those paths, coerce to JSON
+ * (HEAD 200, GET 404) so clients never parse the homepage as history.
  */
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
@@ -18,6 +22,13 @@ const HEAD_AS_GET = {
   "/api/checkout": true,
   "/api/stripe/checkout": true,
   "/api/auth/forgot": true,
+};
+
+const HISTORY_JSON = {
+  "/api/history": true,
+  "/api/jobs": true,
+  "/api/creations": true,
+  "/api/generations": true,
 };
 
 function pathnameOf(request) {
@@ -41,6 +52,34 @@ function headProbe503() {
   return new Response(null, { status: 503, headers: JSON_HEADERS });
 }
 
+function jsonProbe503() {
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      configured: false,
+      error: "not_configured",
+      code: "not_configured",
+      message: "Endpoint is not configured.",
+    }),
+    { status: 503, headers: JSON_HEADERS }
+  );
+}
+
+function historyHeadOk() {
+  return new Response(null, { status: 200, headers: JSON_HEADERS });
+}
+
+function historyGetMissing() {
+  return new Response(
+    JSON.stringify({
+      error: "not_found",
+      code: "not_found",
+      message: "History is not available.",
+    }),
+    { status: 404, headers: JSON_HEADERS }
+  );
+}
+
 export const onRequest: PagesFunction = async (context) => {
   try {
     const method = context.request.method;
@@ -60,8 +99,15 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     const res = await context.next();
-    if (method === "HEAD" && HEAD_AS_GET[path] && isHtml(res)) {
-      return headProbe503();
+    if (isHtml(res)) {
+      if (HEAD_AS_GET[path]) {
+        if (method === "HEAD") return headProbe503();
+        return jsonProbe503();
+      }
+      if (HISTORY_JSON[path] && (method === "HEAD" || method === "GET")) {
+        if (method === "HEAD") return historyHeadOk();
+        return historyGetMissing();
+      }
     }
     return res;
   } catch {

@@ -127,6 +127,11 @@ function extractI18nKeys(src) {
   mustContain("functions/api/_middleware.ts", "/api/auth/forgot", "middleware HEAD forgot not SPA");
   mustContain("functions/api/_middleware.ts", "HEAD_AS_GET", "middleware rewrites HEAD probes to GET");
   mustContain("functions/api/_middleware.ts", "headProbe503", "HTML HEAD on checkout/forgot becomes 503");
+  mustContain("functions/api/_middleware.ts", "HISTORY_JSON", "middleware history aliases never SPA HTML");
+  mustContain("functions/api/_middleware.ts", "/api/history", "middleware canonical GET /api/history");
+  mustContain("functions/api/_middleware.ts", "/api/jobs", "middleware /api/jobs alias");
+  mustContain("functions/api/_middleware.ts", "/api/creations", "middleware /api/creations alias");
+  mustContain("functions/api/_middleware.ts", "historyGetMissing", "SPA GET history becomes JSON 404 not HTML");
   mustContain("functions/api/stripe/checkout.ts", "onRequestHead", "stripe checkout alias HEAD");
   mustContain("functions/api/stripe/checkout.ts", "checkoutOnRequest", "stripe checkout alias onRequest HEAD fallback");
   if (/sk_live_|sk_test_[a-zA-Z0-9]{10,}/.test(checkout)) fail.push("checkout.ts looks like it embeds a Stripe secret");
@@ -225,6 +230,7 @@ function extractI18nKeys(src) {
   mustContain("out/workspace.html", "handleAuthExpired", "stale session clears token var");
   mustContain("out/workspace.html", "refreshCredits", "credits refresh after generate/history");
   mustContain("functions/api/generate.ts", "worker_exception", "POST catch is JSON worker_exception not 1101");
+  mustContain("functions/api/generate.ts", "guestImageRequiredResponse", "guest no-image is 400 JSON not 1101");
   mustContain("libs/utils.ts", "function workerExceptionJson", "failsafe JSON 500 helper");
   if (!exists("functions/api/history.ts")) fail.push("missing functions/api/history.ts (real file, not implicit route)");
   if (!exists("functions/api/jobs.ts")) fail.push("missing functions/api/jobs.ts (real file, not implicit route)");
@@ -277,6 +283,7 @@ function extractI18nKeys(src) {
       fail.push("guest no-image must use guestImageRequiredResponse (400 image_url_required)");
     } else ok.push("guest no-image helper is 400 image_url_required");
   }
+  mustContain("functions/api/history.ts", "Canonical history JSON", "canonical GET /api/history documented");
   mustContain("functions/api/history.ts", 'from "./generate"', "history reuses generate GET JSON");
   mustContain("functions/api/jobs.ts", 'from "./generate"', "jobs reuses generate GET JSON");
   mustContain("functions/api/creations.ts", 'from "./generate"', "creations reuses generate GET JSON");
