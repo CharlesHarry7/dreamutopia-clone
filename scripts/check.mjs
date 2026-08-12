@@ -87,6 +87,7 @@ function extractI18nKeys(src) {
     "gallery.sample",
     "ws.quota.h",
     "price.cta.free",
+    "ws.history.error.h",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -135,6 +136,19 @@ function extractI18nKeys(src) {
   mustContain("out/index.html", 'class="feat-card" href="/workspace"', "features card is a real link");
   mustContain("out/assets/js/du.js", "function errorAction", "generate fail has a next-step CTA");
   mustContain("out/workspace.html", "guestQuotaBanner", "guest quota empty state");
+  mustContain("out/workspace.html", "ws.history.error.h", "history load error is not fake-empty");
+  mustContain("out/pricing.html", "Starter Pack", "live pack names unchanged");
+  mustContain("out/pricing.html", "$5", "starter $5 unchanged");
+  mustContain("out/pricing.html", "$25", "plus $25 unchanged");
+  mustContain("out/pricing.html", "$90", "pro $90 unchanged");
+  mustContain("out/pricing.html", "$200", "premium $200 unchanged");
+  if (read("out/pricing.html").includes("Credit pack · one-time")) {
+    fail.push("pricing.html must not add one-time pack chrome — live already matches that model");
+  } else ok.push("pricing model chrome not reworked");
+  if (/structuredError\("generate_failed",\s*msg/.test(read("functions/api/generate.ts"))) {
+    fail.push("generate GET must not leak D1 error message");
+  } else ok.push("generate GET does not leak D1 error message");
+  mustContain("functions/api/auth/me.ts", "auth_failed", "auth/me catch is JSON not 1101");
 }
 
 // --- generate provider mapping ---
@@ -160,7 +174,7 @@ function extractI18nKeys(src) {
       fail.push("createFailedResponse must Number() coerce provider code (KIE may send string 402)");
     } else ok.push("createFailedResponse Number() coerces provider code");
   }
-  mustContain("libs/auth.ts", "auth_required", "stale Bearer is 401 not guest");
+  mustContain("libs/auth.ts", "Let KV throws propagate", "KV blip is not auth_required");
   mustContain("functions/api/generate.ts", "insufficient_credits", "account generate deducts credits");
   mustContain("functions/api/generate.ts", "expiredSessionResponse", "auth gate helper");
   mustContain("functions/api/credits.ts", "expiredSessionResponse", "credits auth gate");
@@ -258,7 +272,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v19", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v20", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

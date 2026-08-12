@@ -25,14 +25,12 @@ export async function getSession(
   token: string | null
 ): Promise<Session | null> {
   if (!token) return null;
+  // Let KV throws propagate — swallowing them as null made callers send 401
+  // auth_required and the UI wiped a still-valid session.
+  const raw = await env.SESSIONS.get(token);
+  if (!raw) return null;
   try {
-    const raw = await env.SESSIONS.get(token);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as Session;
-    } catch {
-      return null;
-    }
+    return JSON.parse(raw) as Session;
   } catch {
     return null;
   }

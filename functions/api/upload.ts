@@ -48,7 +48,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!hasSessions(env)) return json(base);
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return json(base);
+  }
   if (session) return json({ ...base, guest: false });
 
   const guestId = ensureGuestId(request);
@@ -87,7 +92,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError("upload_failed", "Upload failed. Please try again.", 500, { mediaRequired: false });
+  }
   if (token && !session) return expiredSessionResponse();
   const guestId = ensureGuestId(request);
   const extra = session ? undefined : guestHeaders(guestId, request);

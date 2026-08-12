@@ -7,11 +7,15 @@ export const onRequestOptions = (): Response => preflight();
 
 /** HEAD /api/auth/me — session liveness only (does not merge guest jobs). */
 export const onRequestHead: PagesFunction<Env> = async ({ request, env }) => {
-  if (!hasDb(env) || !hasSessions(env)) return asHead(bindingsUnavailable("DB+SESSIONS"));
-  const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
-  if (!session) return asHead(expiredSessionResponse());
-  return asHead(json({ ok: true }));
+  try {
+    if (!hasDb(env) || !hasSessions(env)) return asHead(bindingsUnavailable("DB+SESSIONS"));
+    const token = tokenFromRequest(request);
+    const session = await getSession(env, token);
+    if (!session) return asHead(expiredSessionResponse());
+    return asHead(json({ ok: true }));
+  } catch {
+    return asHead(structuredError("auth_failed", "Could not load account.", 500));
+  }
 };
 
 // GET /api/auth/me — current user

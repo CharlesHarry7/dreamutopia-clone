@@ -926,6 +926,16 @@ async function homeGenerate() {
         localStorage.removeItem("dreamutopia_token");
         localStorage.removeItem("dreamutopia_credits");
       } catch (x) {}
+      const loginBtn = document.getElementById("hdrLogin");
+      const signupBtn = document.getElementById("hdrSignup");
+      if (loginBtn) {
+        loginBtn.textContent = DU.t("hdr.login", "Log In");
+        loginBtn.href = "/auth?mode=login";
+      }
+      if (signupBtn) {
+        signupBtn.textContent = DU.t("hdr.signup", "Sign Up");
+        signupBtn.href = "/auth?mode=register";
+      }
     }
     const errWs = document.getElementById("homeStatusWorkspace");
     if (errWs) errWs.hidden = false;
@@ -954,6 +964,17 @@ if (homeCancelBtn) {
   const loginBtn = document.getElementById("hdrLogin");
   const signupBtn = document.getElementById("hdrSignup");
   function applyLoggedInChrome() {
+    if (!localStorage.getItem(TOKEN_KEY)) {
+      if (loginBtn) {
+        loginBtn.textContent = DU.t("hdr.login", "Log In");
+        loginBtn.href = "/auth?mode=login";
+      }
+      if (signupBtn) {
+        signupBtn.textContent = DU.t("hdr.signup", "Sign Up");
+        signupBtn.href = "/auth?mode=register";
+      }
+      return;
+    }
     if (loginBtn) loginBtn.textContent = DU.t("hdr.logout", "Log Out");
     if (signupBtn) {
       signupBtn.textContent = DU.t("nav.workspace", "Workspace");
@@ -963,6 +984,7 @@ if (homeCancelBtn) {
   if (loginBtn) {
     loginBtn.href = "#";
     loginBtn.addEventListener("click", function (e) {
+      if (!localStorage.getItem(TOKEN_KEY)) return;
       e.preventDefault();
       fetch("/api/auth/logout", {
         method: "POST",

@@ -1629,8 +1629,16 @@ async function loadHistory() {
     empty.hidden = false;
     list.hidden = true;
     const toolbar = document.getElementById("historyToolbar");
-    if (toolbar) toolbar.hidden = true;
-    refreshHistoryEmpty();
+    if (toolbar) toolbar.hidden = false;
+    const title = document.getElementById("historyEmptyTitle");
+    const desc = document.getElementById("historyEmptyDesc");
+    const cta = document.getElementById("historyEmptyCta");
+    if (title) title.textContent = DU.t("ws.history.error.h", "Couldn’t load history");
+    if (desc) desc.textContent = DU.t("ws.history.error.p", "Check your connection and tap Refresh. Your creations are still saved.");
+    if (cta) {
+      cta.textContent = DU.t("ws.history.refresh", "Refresh");
+      cta.onclick = function () { loadHistory(); };
+    }
   }
 }
 

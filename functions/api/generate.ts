@@ -974,7 +974,7 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
           503
         );
       }
-      return structuredError("generate_failed", msg || "Could not load history. Please try again.", 500);
+      return structuredError("generate_failed", "Could not load history. Please try again.", 500);
     }
 
     if (!row) return error("not found", 404);
@@ -984,9 +984,13 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      const synced = await settleAccountJob(env, row, origin);
-      row = synced.row;
-      providerState = synced.providerState;
+      try {
+        const synced = await settleAccountJob(env, row, origin);
+        row = synced.row;
+        providerState = synced.providerState;
+      } catch {
+        /* return the D1 row even if KIE poll fails */
+      }
     }
 
     return json({
@@ -1017,27 +1021,35 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
         503
       );
     }
-    return structuredError("generate_failed", msg || "Could not load history. Please try again.", 500);
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
   }
 
   const list = rows.results || [];
   if (hasKieKey(env)) {
     for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
-      await settleAccountJob(env, g, origin);
+      try {
+        await settleAccountJob(env, g, origin);
+      } catch {
+        /* keep listing even if one poll fails */
+      }
     }
-    const refreshed = await env.DB.prepare(
-      `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
-              input_image_url, provider_job_id, result_url, error_message, created_at
-       FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
-    )
-      .bind(session.userId)
-      .all<GenerationRow>();
-    return json({
-      ok: true,
-      demo: false,
-      guest: false,
-      generations: (refreshed.results || []).map(publicGeneration),
-    });
+    try {
+      const refreshed = await env.DB.prepare(
+        `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
+                input_image_url, provider_job_id, result_url, error_message, created_at
+         FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
+      )
+        .bind(session.userId)
+        .all<GenerationRow>();
+      return json({
+        ok: true,
+        demo: false,
+        guest: false,
+        generations: (refreshed.results || []).map(publicGeneration),
+      });
+    } catch {
+      /* fall through to the pre-settle list */
+    }
   }
 
   return json({
