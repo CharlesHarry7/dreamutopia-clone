@@ -91,21 +91,18 @@ export default function HomePage() {
             {t("hero.free", "2 FREE generations for everyone — no login needed")}
           </div>
           <p className="mb-7 text-[13.5px] text-muted-foreground">
-            <Link
-              href="/auth?mode=register"
-              className="font-semibold text-[var(--primary2)] hover:underline"
-            >
-              Sign up
-            </Link>{" "}
+            <Button asChild variant="link" className="h-auto px-0 text-[13.5px] font-semibold">
+              <Link href="/auth?mode=register">Sign up</Link>
+            </Button>{" "}
             to get <b className="text-foreground">10 free credits</b> — unlock more advanced models
             with full controls.
           </p>
 
-          <div className="mb-12 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg" className="animate-pulse-glow">
+          <div className="mb-12 flex w-full max-w-md flex-col justify-center gap-3 sm:max-w-none sm:flex-row sm:flex-wrap">
+            <Button asChild size="lg" className="animate-pulse-glow w-full sm:w-auto">
               <Link href="/workspace">{t("hero.cta", "Start Creating Free →")}</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
               <Link href="/#gallery">{t("hero.how", "See examples")}</Link>
             </Button>
           </div>

@@ -425,7 +425,7 @@ function WorkspaceInner() {
         )}
 
         {!user && !authLoading && (
-          <div className="relative mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[rgba(168,85,247,.28)] bg-gradient-to-br from-[rgba(168,85,247,.14)] to-[rgba(236,72,153,.08)] p-5">
+          <div className="relative mb-5 flex flex-col gap-4 rounded-2xl border border-[rgba(168,85,247,.28)] bg-gradient-to-br from-[rgba(168,85,247,.14)] to-[rgba(236,72,153,.08)] p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="mb-1 text-lg font-bold">
                 {t("ws.welcome.h", "Welcome — try DreamUtopia free")}
@@ -438,11 +438,11 @@ function WorkspaceInner() {
                 {guestRemaining !== null ? ` (${guestRemaining} left)` : ""}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/auth?mode=login">{t("hdr.login", "Log In")}</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/auth?mode=register">{t("hdr.signup", "Sign Up")}</Link>
               </Button>
             </div>
@@ -450,12 +450,9 @@ function WorkspaceInner() {
         )}
 
         {pack && (
-          <div
-            className="relative mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-400/35 bg-orange-400/10 p-4"
-            role="status"
-          >
+          <InlineAlert variant="info" className="mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
-              <h2 className="mb-1 text-base font-bold text-[var(--orange)]">
+              <h2 className="mb-1 text-base font-bold">
                 {savedPack
                   ? `Pack saved: ${savedPack.name}`
                   : `Pack remembered: ${pack}`}
@@ -467,21 +464,22 @@ function WorkspaceInner() {
                 Nothing is charged until Stripe is configured — then buy from Pricing.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/pricing">Buy credits</Link>
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="w-full sm:w-auto"
                 aria-label="Dismiss saved pack"
                 onClick={() => router.replace("/workspace", { scroll: false })}
               >
                 Dismiss
               </Button>
             </div>
-          </div>
+          </InlineAlert>
         )}
 
         {kieReady === false && (
@@ -842,12 +840,9 @@ function WorkspaceInner() {
                               : `Free trial (Lite I2V) · ${guestRemaining} left`}
                       </Badge>
                       {user && !canAfford && (
-                        <Link
-                          href="/pricing"
-                          className="text-xs font-semibold text-[var(--primary2)] hover:underline"
-                        >
-                          Buy credits
-                        </Link>
+                        <Button asChild variant="link" className="h-auto px-0 text-xs">
+                          <Link href="/pricing">Buy credits</Link>
+                        </Button>
                       )}
                     </div>
                     {guestTrialExhausted ? (
@@ -878,14 +873,17 @@ function WorkspaceInner() {
                       {(errorCode === "insufficient_credits" ||
                         errorCode === "insufficient credits" ||
                         errorCode === "guest_limit") && (
-                        <Link
-                          href={errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"}
-                          className="inline-block font-semibold text-[var(--primary2)] hover:underline"
-                        >
-                          {errorCode === "guest_limit"
-                            ? "Sign up for 10 credits"
-                            : "View credit packs"}
-                        </Link>
+                        <Button asChild variant="link" className="h-auto px-0 font-semibold">
+                          <Link
+                            href={
+                              errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"
+                            }
+                          >
+                            {errorCode === "guest_limit"
+                              ? "Sign up for 10 credits"
+                              : "View credit packs"}
+                          </Link>
+                        </Button>
                       )}
                       {errorCode === "kie_insufficient_balance" && (
                         <p className="text-xs text-muted-foreground">

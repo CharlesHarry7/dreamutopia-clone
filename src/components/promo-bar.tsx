@@ -21,8 +21,8 @@ export function PromoBar() {
     : t("promo.cta.free", "Start free");
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3.5 border-b border-[var(--border)] bg-gradient-to-r from-[#1f1235] to-[#2d1654] px-5 py-2.5 text-[13.5px]">
-      <p className="max-w-[800px] flex-1 text-center text-[#e8d5ff]">
+    <div className="flex flex-wrap items-center justify-center gap-2 border-b border-[var(--border)] bg-gradient-to-r from-[#1f1235] to-[#2d1654] px-4 py-2.5 text-[13.5px] sm:gap-3.5 sm:px-5">
+      <p className="max-w-[800px] flex-1 basis-full text-center text-[#e8d5ff] sm:basis-auto">
         {t(
           "promo.text",
           "Your first purchase unlocks 5 free Lite videos + 1 free Pro video — plus earn 10% credits every time a friend you invite buys."
@@ -36,14 +36,16 @@ export function PromoBar() {
           <Link href="/pricing">{t("promo.cta.pricing", "Pricing")}</Link>
         </Button>
       )}
-      <button
+      <Button
         type="button"
-        className="px-1.5 text-lg text-muted-foreground hover:text-white"
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 px-0 text-muted-foreground hover:text-white"
         aria-label="Dismiss"
         onClick={() => setDismissed(true)}
       >
         ✕
-      </button>
+      </Button>
     </div>
   );
 }
