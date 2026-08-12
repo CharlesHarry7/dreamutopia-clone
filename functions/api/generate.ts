@@ -3,9 +3,11 @@ import {
   error,
   structuredError,
   preflight,
+  asHead,
   hasDb,
   hasSessions,
   hasKieKey,
+  workerExceptionJson,
 } from "../../libs/utils";
 import { getSession, tokenFromRequest } from "../../libs/auth";
 import {
@@ -50,6 +52,24 @@ import {
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
+
+/** HEAD /api/generate — liveness only. Must not poll KIE. */
+export const onRequestHead: PagesFunction<Env> = async ({ env }) => {
+  try {
+    if (!hasSessions(env)) {
+      return asHead(
+        structuredError(
+          "bindings_missing",
+          "backend not configured: missing SESSIONS binding — see BACKEND.md",
+          503
+        )
+      );
+    }
+    return asHead(json({ ok: true, poll: false }));
+  } catch {
+    return workerExceptionJson("Generation failed. Please try again.");
+  }
+};
 
 const MAX_IN_FLIGHT = 3;
 
@@ -238,13 +258,34 @@ function createFailedResponse(
  * Guests (no session): 2 Lite image-to-video tries per device/IP.
  * Signed-in: T2V, I2V, first+last (Medium/Pro), image T2I/I2I/blend.
  */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let body: GenerateBody;
+export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   try {
-    body = await request.json();
+    return await handleGeneratePost(ctx);
+  } catch {
+    try {
+      return structuredError(
+        "worker_exception",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    } catch {
+      return workerExceptionJson("Generation failed. Please try again.");
+    }
+  }
+};
+
+async function handleGeneratePost({ request, env }: { request: Request; env: Env }): Promise<Response> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
   } catch {
     return error("invalid json");
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return error("invalid json");
+  }
+  const body = parsed as GenerateBody;
 
   const prompt = (body.prompt || "").trim();
   if (!prompt) return error("prompt required");
@@ -322,6 +363,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
+
+  if (!session) {
+    const blocked = await guestRequestError(env, request, {
+      kind,
+      model,
+      imageUrl,
+      lastImageUrl,
+    });
+    if (blocked) return blocked;
+  }
+
   const ip = clientIp(request);
   const rl = await takeRateLimit(
     env.SESSIONS,
@@ -334,16 +386,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const idempotencyKey = normalizeIdempotencyKey(
     body.idempotencyKey || body.idempotency_key || request.headers.get("idempotency-key")
   );
-
-  if (!session) {
-    const blocked = await guestRequestError(env, request, {
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-    });
-    if (blocked) return blocked;
-  }
 
   if (!hasKieKey(env)) {
     return kieMissingResponse();
@@ -531,7 +573,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       guest: false,
     })
   );
-};
+}
 
 async function guestRequestError(
   env: Env & { SESSIONS: KVNamespace },
@@ -727,7 +769,15 @@ function randomGuestJobId(): string {
  * GET /api/generate — history (account or this device's guest jobs)
  * GET /api/generate?id=N — single job; polls KIE when still processing
  */
-export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await handleGenerateGet(ctx);
+  } catch {
+    return workerExceptionJson("Could not load history. Please try again.");
+  }
+};
+
+async function handleGenerateGet({ request, env }: { request: Request; env: Env }): Promise<Response> {
   if (!hasSessions(env)) {
     return structuredError(
       "bindings_missing",
@@ -857,7 +907,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     guest: false,
     generations: list.map(publicGeneration),
   });
-};
+}
 
 async function handleGuestGet(
   env: Env & { SESSIONS: KVNamespace },
