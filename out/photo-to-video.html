@@ -40,12 +40,21 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
-<div class="header-right">
 <nav id="site-nav">
 <a href="/" data-i18n="nav.home">Home</a>
-<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
 <a href="/pricing" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
+<details class="nav-drop">
+<summary data-i18n="nav.features">Features</summary>
+<div class="nav-menu">
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+</div>
+</details>
 </nav>
+<div class="header-right">
 <select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>

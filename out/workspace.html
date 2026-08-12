@@ -77,6 +77,11 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .welcome-actions .btn-outline{border:1px solid var(--border2);padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;color:var(--text)}
 .welcome-actions .btn-outline:hover{border-color:var(--primary)}
 .welcome-actions .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600}
+.quota-banner{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:16px;padding:18px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.quota-banner.show{display:flex}
+.quota-banner h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.quota-banner p{font-size:13.5px;color:var(--text2);max-width:560px}
+.quota-banner .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;flex-shrink:0}
 .pack-banner{display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.35);border-radius:16px;padding:16px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .pack-banner.show{display:flex}
 .pack-banner h2{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--orange)}
@@ -191,6 +196,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status .cap{font-size:13px;color:var(--text2)}
 .gen-status[aria-busy="false"] .spinner{display:none}
 .gen-cancel{margin-top:10px;font-size:12.5px;color:var(--primary2);text-decoration:underline}
+.gen-status-link{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--primary2);font-weight:600}
+.gen-status-link[hidden]{display:none !important}
 
 /* Save CTA */
 .save-card{display:none;max-width:820px;margin:0 auto 8px;background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(236,72,153,.07));border:1px solid rgba(168,85,247,.25);border-radius:16px;padding:28px 24px;text-align:center}
@@ -339,6 +346,14 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 </div>
 </section>
 
+<section class="quota-banner" id="guestQuotaBanner" hidden>
+<div>
+<h2 data-i18n="ws.quota.h">Free tries used on this device</h2>
+<p data-i18n="ws.quota.p">Sign up for 10 credits and every model. Guest jobs stay in this browser until you register.</p>
+</div>
+<a href="/auth?mode=register" class="btn-primary" id="quotaSignup" data-i18n="hdr.signup">Sign Up Free</a>
+</section>
+
 <!-- Selected credit pack from /pricing -->
 <section class="pack-banner" id="packBanner" hidden>
 <div>
@@ -460,6 +475,7 @@ Image
 <div class="spinner" id="genSpinner" aria-hidden="true"></div>
 <div class="cap" id="genStatusText">Generating…</div>
 <button type="button" class="gen-cancel" id="genCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
+<a id="genStatusAction" class="gen-status-link" href="/auth?mode=register" hidden>Sign up for 10 credits</a>
 </div>
 <div class="gen-result" id="genResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
 <video id="genResultVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
@@ -795,7 +811,7 @@ function showPackBanner() {
       const text = document.getElementById("packBannerText");
       if (text && token) {
         text.innerHTML = live
-          ? base + " Select Buy with Stripe to pay."
+          ? base + " Buy with Stripe to pay."
           : base + " Stripe is not configured yet — no charge. Keep creating with your current credits.";
       }
       if (!buyBtn) return;
@@ -880,6 +896,8 @@ function bindAuthTriggers() {
   const saveSignup = document.getElementById("saveSignup");
   if (saveLogin) saveLogin.href = authHref("login");
   if (saveSignup) saveSignup.href = authHref("register");
+  const quotaSignup = document.getElementById("quotaSignup");
+  if (quotaSignup) quotaSignup.href = authHref("register");
 }
 
 function updateAuthUI(credits) {
@@ -908,7 +926,12 @@ function updateAuthUI(credits) {
     buy.hidden = false;
     welcome.classList.remove("show");
     save.classList.remove("show");
-    foot.innerHTML = 'Credits never expire. <a href="/pricing">Buy more credits</a>';
+    const quotaHide = document.getElementById("guestQuotaBanner");
+    if (quotaHide) {
+      quotaHide.hidden = true;
+      quotaHide.classList.remove("show");
+    }
+    foot.innerHTML = 'Credits never expire. <a href="/pricing">View credit packs</a>';
     btnLabel.textContent = DU.t("ws.gen.go", "Generate");
     const loginBtn = document.getElementById("loginBtn");
     loginBtn.textContent = DU.t("hdr.logout", "Log Out");
@@ -928,7 +951,13 @@ function updateAuthUI(credits) {
     badge.classList.remove("loading");
     buy.hidden = true;
     writeCachedCredits(null);
-    welcome.classList.add("show");
+    const usedUp = guestRemaining !== null && guestRemaining <= 0;
+    const quota = document.getElementById("guestQuotaBanner");
+    if (quota) {
+      quota.hidden = !usedUp;
+      quota.classList.toggle("show", usedUp);
+    }
+    welcome.classList.toggle("show", !usedUp);
     save.classList.add("show");
     const left = guestRemaining == null ? 2 : guestRemaining;
     foot.innerHTML = left > 0
@@ -1276,6 +1305,8 @@ async function generate() {
   document.getElementById("genBtnLabel").textContent = DU.t("progress.generating", "Generating…");
   spinner.style.display = "";
   if (cancel) cancel.hidden = false;
+  const statusAct = document.getElementById("genStatusAction");
+  if (statusAct) statusAct.hidden = true;
   if (card) card.setAttribute("aria-busy", "true");
   showResult(null);
   if (DU.setLiveStatus) {
@@ -1386,6 +1417,7 @@ async function generate() {
     }
     statusText.textContent = msg;
     if (DU.setLiveStatus) DU.setLiveStatus(status, statusText, { error: true, text: msg });
+    if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("genStatusAction"), code);
     toast(msg, true);
     loadHistory();
   }

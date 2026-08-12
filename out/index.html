@@ -156,7 +156,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 
 /* Features 3-cards */
 .features-3{max-width:1100px;margin:80px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .3s}
+.feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .3s;color:inherit;text-decoration:none;display:block}
 .feat-card:hover{transform:translateY(-4px)}
 .feat-card .feat-img{width:100%;aspect-ratio:16/10;position:relative;overflow:hidden;background:var(--bg2)}
 .feat-card .feat-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
@@ -200,6 +200,9 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover}
 .gallery-item .play{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2}
 .gallery-item .play.hidden{display:none}
+.gallery-item .gallery-badge{position:absolute;top:8px;left:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.gallery-item.broken{cursor:default}
+.gallery-item.broken::after{content:'Unavailable';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,13,18,.72);color:var(--text3);font-size:12px;font-weight:600}
 .gallery-like{position:absolute;bottom:8px;right:8px;z-index:3;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit}
 .gallery-like:hover{background:rgba(0,0,0,.75)}
 .gallery-like.liked{color:#fb7185}
@@ -311,6 +314,17 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
+<script>
+(function () {
+  try {
+    if (!localStorage.getItem("dreamutopia_token")) return;
+    var loginBtn = document.getElementById("hdrLogin");
+    var signupBtn = document.getElementById("hdrSignup");
+    if (loginBtn) { loginBtn.textContent = "Log Out"; loginBtn.href = "#"; }
+    if (signupBtn) { signupBtn.textContent = "Workspace"; signupBtn.href = "/workspace"; }
+  } catch (e) {}
+})();
+</script>
 <select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
@@ -369,6 +383,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <div class="cap" id="homeStatusText">Generating…</div>
 <button type="button" class="gen-cancel" id="homeCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
 <a id="homeStatusWorkspace" class="gen-status-link" href="/workspace?tab=history" hidden data-i18n="gen.workspace">View in Workspace</a>
+<a id="homeStatusAction" class="gen-status-link" href="/auth?mode=register" hidden>Sign up for 10 credits</a>
 </div>
 <div class="gen-result" id="homeResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
 <video id="homeVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
@@ -383,27 +398,27 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 
 <!-- 3 Feature Cards -->
 <section class="features-3" id="features">
-<div class="feat-card">
+<a class="feat-card" href="/workspace">
 <div class="feat-img"><img src="/assets/images/feature-ai-models.webp" alt="Multiple Premium AI Models" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat1.h">Multiple Premium AI Models</h3>
 <p data-i18n="feat1.p">Choose from Lite, Medium, and Pro tiers — each optimized for different styles, quality levels, and motion types.</p>
 </div>
-</div>
-<div class="feat-card">
+</a>
+<a class="feat-card" href="/#get-started">
 <div class="feat-img"><img src="/assets/images/feature-image-to-video.webp" alt="Ready in Seconds" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat2.h">Ready in Seconds</h3>
 <p data-i18n="feat2.p">Upload an image, describe the motion you want, and get your AI video in seconds. Zero technical skills needed.</p>
 </div>
-</div>
-<div class="feat-card new">
+</a>
+<a class="feat-card new" href="/pricing">
 <div class="feat-img"><img src="/assets/images/feature-cinematic.webp" alt="Pro Model with Sound" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat3.h">Pro Model with Sound</h3>
 <p data-i18n="feat3.p">Generate AI videos with synchronized audio. The Pro model brings your creations to life with full sound output.</p>
 </div>
-</div>
+</a>
 </section>
 
 <!-- Compare -->
@@ -451,18 +466,18 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <p data-i18n="gallery.p">A gallery of stunning visuals our creators have made</p>
 </div>
 <div class="gallery-grid" id="galleryGrid">
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g3.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g4.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g5.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g6.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g7.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g8.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g9.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/g10.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/b1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item" tabindex="0"><img src="/assets/images/b2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g1.webp"><img src="/assets/images/g1.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g2.webp"><img src="/assets/images/g2.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g3.webp"><img src="/assets/images/g3.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g4.webp"><img src="/assets/images/g4.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g5.webp"><img src="/assets/images/g5.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g6.webp"><img src="/assets/images/g6.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g7.webp"><img src="/assets/images/g7.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g8.webp"><img src="/assets/images/g8.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g9.webp"><img src="/assets/images/g9.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g10.webp"><img src="/assets/images/g10.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/b1.webp"><img src="/assets/images/b1.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/b2.webp"><img src="/assets/images/b2.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
 </div>
 </section>
 
@@ -851,6 +866,8 @@ async function homeGenerate() {
   if (wsLink) wsLink.hidden = true;
   const statusWs = document.getElementById("homeStatusWorkspace");
   if (statusWs) statusWs.hidden = true;
+  const statusAct = document.getElementById("homeStatusAction");
+  if (statusAct) statusAct.hidden = true;
   if (cancel) cancel.hidden = false;
   if (DU.setLiveStatus) {
     DU.setLiveStatus(status, text, { busy: true, text: DU.t("progress.starting", "Starting…") });
@@ -912,6 +929,7 @@ async function homeGenerate() {
     }
     const errWs = document.getElementById("homeStatusWorkspace");
     if (errWs) errWs.hidden = false;
+    if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("homeStatusAction"), code);
   }
   if (card) card.setAttribute("aria-busy", "false");
   if (cancel) cancel.hidden = true;
@@ -969,6 +987,16 @@ if (homeCancelBtn) {
     const label = (DU.escapeHtml || String)(DU.t("gallery.like", "Like"));
     return '<button type="button" class="gallery-like" data-like-id="' + id + '" aria-label="' + label + '">♥ <span>' + likes + "</span></button>";
   }
+  function bindBrokenMedia(root) {
+    if (!root) return;
+    root.querySelectorAll("img,video").forEach(function (el) {
+      el.addEventListener("error", function () {
+        const item = el.closest(".gallery-item");
+        if (item) item.classList.add("broken");
+      });
+    });
+  }
+  bindBrokenMedia(grid);
   fetch("/api/gallery")
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -989,6 +1017,7 @@ if (homeCancelBtn) {
       }).join("");
       if (items.length >= 6) grid.innerHTML = live;
       else grid.insertAdjacentHTML("afterbegin", live);
+      bindBrokenMedia(grid);
       markGalleryItems();
     })
     .catch(function () {});

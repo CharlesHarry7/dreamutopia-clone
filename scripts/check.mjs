@@ -83,6 +83,10 @@ function extractI18nKeys(src) {
     "ws.history.refresh",
     "err.auth_required",
     "err.insufficient_credits",
+    "err.worker_exception",
+    "gallery.sample",
+    "ws.quota.h",
+    "price.cta.free",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -124,6 +128,13 @@ function extractI18nKeys(src) {
     fail.push("checkout.ts must not leak Stripe created.message to the browser");
   } else ok.push("checkout.ts does not leak Stripe created.message");
   mustContain("out/pricing.html", "note.textContent", "pricing checkout error is text not HTML");
+  mustContain("out/pricing.html", "Continue free", "honest CTA when checkout is off");
+  mustContain("out/pricing.html", 'class="checkout-note show"', "paused checkout note visible before JS");
+  mustContain("out/pricing.html", "Paid checkout not configured", "CTA title says no charge");
+  mustContain("out/index.html", "gallery-item sample", "gallery sample placeholders");
+  mustContain("out/index.html", 'class="feat-card" href="/workspace"', "features card is a real link");
+  mustContain("out/assets/js/du.js", "function errorAction", "generate fail has a next-step CTA");
+  mustContain("out/workspace.html", "guestQuotaBanner", "guest quota empty state");
 }
 
 // --- generate provider mapping ---
@@ -247,7 +258,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v18", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v19", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");
@@ -335,6 +346,7 @@ function extractI18nKeys(src) {
     mustContain(page, "/assets/js/i18n.js", `${page} i18n`);
     mustContain(page, "lang-select", `${page} lang switcher`);
     mustContain(page, 'href="#main"', `${page} skip link`);
+    mustContain(page, "nav-drop", `${page} Features nav`);
   }
   mustContain("out/privacy.html", "lang-select", "privacy lang switcher");
   mustContain("out/terms.html", "lang-select", "terms lang switcher");

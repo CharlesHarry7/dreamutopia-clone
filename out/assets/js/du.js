@@ -271,6 +271,32 @@
     return (err && err.message) || fallback || t("progress.failed", "Generation failed");
   }
 
+  function errorAction(code) {
+    const c = String(code || "");
+    if (c === "guest_limit" || c === "guest_lite_only") {
+      return { href: "/auth?mode=register", key: "err.action.signup", label: "Sign up for 10 credits" };
+    }
+    if (c === "auth_required" || c === "unauthorized") {
+      return { href: "/auth?mode=login", key: "err.action.login", label: "Log in" };
+    }
+    if (c === "insufficient_credits") {
+      return { href: "/pricing", key: "err.action.pricing", label: "View credit packs" };
+    }
+    return null;
+  }
+
+  function wireErrorAction(el, code) {
+    if (!el) return;
+    const act = errorAction(code);
+    if (!act) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.href = act.href;
+    el.textContent = t(act.key, act.label);
+  }
+
   async function likeGallery(id) {
     return api("/gallery/like", { method: "POST", body: JSON.stringify({ id: id }) });
   }
@@ -488,6 +514,8 @@
     publishGallery: publishGallery,
     likeGallery: likeGallery,
     errorMessage: errorMessage,
+    errorAction: errorAction,
+    wireErrorAction: wireErrorAction,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
     bindImageDrop: bindImageDrop,
