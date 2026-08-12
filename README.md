@@ -11,7 +11,8 @@
 | API | Cloudflare Pages Functions |
 | Database | Cloudflare D1 (SQLite at the edge) |
 | Sessions | Cloudflare KV |
-| File Storage | Cloudflare R2 (zero egress) |
+| Inference | [KIE](https://kie.ai) Market API (`KIE_API_KEY` secret) |
+| File Storage | Cloudflare R2 (**optional** — temp path uses public image URLs) |
 | Auth | Session token + KV + PBKDF2 (Web Crypto) |
 
 ## Project Structure
@@ -25,33 +26,37 @@
   health.ts        # GET /api/health
   auth/            # register / login / logout / me
   credits.ts       # GET /api/credits
-  generate.ts      # POST/GET /api/generate
+  generate.ts      # POST/GET /api/generate (KIE, no R2 required)
   gallery.ts       # GET /api/gallery
-  upload-ticket.ts # GET /api/upload-ticket
+  upload-ticket.ts # GET /api/upload-ticket (R2 readiness stub)
 /libs              # Shared backend logic
   utils.ts         # Env types, JSON helpers, randomId
+  kie.ts           # KIE createTask / recordInfo client
   auth.ts          # KV session management
   password.ts      # PBKDF2 hash/verify
 /schema.sql        # D1 database schema
+/migrations        # D1 ALTER scripts for existing DBs
 /wrangler.toml     # Cloudflare configuration
 ```
 
-## D1 Schema
+## Generate path (temporary, no MEDIA)
 
-- `users` — email, password_hash, credits (10 free on signup)
-- `generations` — prompt, model (lite/medium/pro), status, media_key, duration
-- `gallery` — public showcase of generated works
+1. User pastes a **public https image URL** in the workspace (file upload is preview-only until R2).
+2. `POST /api/generate` deducts credits, calls KIE `kling-2.6/image-to-video`, stores the job in D1.
+3. Client polls `GET /api/generate?id=…` until `status=done` and plays the provider `resultUrl`.
+4. Missing `KIE_API_KEY` → structured `kie_api_key_missing` (503), not a demo alert.
 
-## Backend (auth + credits)
+## Backend setup
 
-See **[BACKEND.md](./BACKEND.md)** for exact wrangler create commands, where to paste IDs in `wrangler.toml`, and Cloudflare Pages dashboard binding checklist (`DB`, `SESSIONS`, `MEDIA`).
+See **[BACKEND.md](./BACKEND.md)** for bindings, the `KIE_API_KEY` Pages secret, and D1 migration `001_generations_kie.sql`.
 
-**Needs Cloudflare auth** to provision live D1/KV/R2. Until then, `/api/health` works; auth returns 503; generate runs in demo mode without deducting credits.
+**Required for live generate:** `DB` + `SESSIONS` + `KIE_API_KEY`.  
+**Not required:** `MEDIA` / R2.
 
 ## Deploy
 
-1. Follow BACKEND.md to create D1/KV/R2 and run `schema.sql`
-2. Bind `DB` / `SESSIONS` / `MEDIA` in Pages Settings → Bindings
+1. Follow BACKEND.md (D1/KV + schema/migration + `KIE_API_KEY` secret)
+2. Bind `DB` / `SESSIONS` in Pages Settings (MEDIA optional)
 3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
 ## Cost
@@ -61,5 +66,5 @@ See **[BACKEND.md](./BACKEND.md)** for exact wrangler create commands, where to 
 | Cloudflare Pages | $0 (free tier) |
 | Cloudflare D1 | $0 (5GB free) |
 | Cloudflare KV | $0 (1GB free) |
-| Cloudflare R2 | $0 (10GB free) |
-| **Total** | **$0** |
+| Cloudflare R2 | $0 (optional) |
+| KIE API | usage-based (your KIE account) |
