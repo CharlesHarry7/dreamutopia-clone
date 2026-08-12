@@ -298,8 +298,12 @@ export async function settleGuestJob(
 
   if (next.status === "failed") {
     latest.used = Math.max(0, latest.used - 1);
-    const ipUsed = await loadIpUsed(env, ip);
-    await saveIpUsed(env, ip, Math.max(0, ipUsed - 1));
+    // Prefer request IP (browser poll); fall back to IP captured at create (webhook has no guest IP).
+    const refundIp = ip || still.sourceIp || null;
+    if (refundIp) {
+      const ipUsed = await loadIpUsed(env, refundIp);
+      await saveIpUsed(env, refundIp, Math.max(0, ipUsed - 1));
+    }
   }
   latest.jobs = latest.jobs.map((j) => (j.id === job.id ? next : j));
   await saveGuest(env, latest);

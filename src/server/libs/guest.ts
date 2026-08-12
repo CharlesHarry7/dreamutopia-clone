@@ -28,6 +28,8 @@ export type GuestJob = {
   resultUrl: string | null;
   errorMessage: string | null;
   createdAt: string;
+  /** Guest CF-Connecting-IP at create — used to refund IP quota on fail (webhook has no guest IP). */
+  sourceIp?: string | null;
 };
 
 export type GuestRecord = {
@@ -68,6 +70,7 @@ export function normalizeGuestJobs(raw: unknown): GuestJob[] {
         typeof j.createdAt === "string" && j.createdAt
           ? j.createdAt
           : new Date(0).toISOString(),
+      sourceIp: typeof j.sourceIp === "string" && j.sourceIp ? j.sourceIp.slice(0, 64) : null,
     });
   }
   out.sort((a, b) => {

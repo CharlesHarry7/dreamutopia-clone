@@ -25,6 +25,11 @@ export function formatGenerateError(err: unknown, fallback = "Generation failed"
       return KIE_INSUFFICIENT_BALANCE;
     case "kie_create_failed":
       return message || "KIE rejected the job. No demo output was invented.";
+    case "generation_timeout":
+      return (
+        message ||
+        "Timed out waiting for generation. Check My Creations — the job may still finish."
+      );
     case "insufficient_credits":
     case "insufficient credits":
       return (

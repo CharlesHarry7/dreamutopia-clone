@@ -12,7 +12,7 @@ import {
   settleAccountJob,
   settleGuestJob,
 } from "@/server/libs/settle";
-import { loadGuest, clientIp } from "@/server/libs/guest";
+import { loadGuest } from "@/server/libs/guest";
 
 /**
  * POST /api/webhooks/kie — KIE Market callBackUrl.
@@ -69,7 +69,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const rec = await loadGuest(env, pointer.guestId);
     const job = rec.jobs.find((j) => j.id === pointer.jobId);
     if (!job) return json({ ok: true, ignored: "guest_job_gone", taskId });
-    const synced = await settleGuestJob(env, rec, job, origin, clientIp(request), info);
+    // Null request IP (KIE → Worker). settleGuestJob refunds via job.sourceIp from create.
+    const synced = await settleGuestJob(env, rec, job, origin, null, info);
     return json({
       ok: true,
       guest: true,

@@ -85,7 +85,7 @@ Set Worker secrets in the dashboard (`wrangler secret` / Variables and Secrets).
 Do **not** start this until Daniel explicitly green-lights Pages → Workers. Until then keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` on the Worker.
 
 1. **Preflight (staging Worker still OK)**  
-   - `npm run lint && npm run build`  
+   - `npm run verify` (`lint && build`)  
    - Worker secrets set (`KIE_API_KEY`; Stripe/Resend if needed)  
    - `npm run check:health -- https://<worker-host> --expect-worker` → `degraded: false`  
    - Real generate on Worker (empty KIE wallet → honest `kie_insufficient_balance`, not a fake video)

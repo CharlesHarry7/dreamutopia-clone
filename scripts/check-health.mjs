@@ -104,6 +104,12 @@ async function main() {
     if (typeof health.guestTrialsReady !== "boolean") {
       problems.push("missing boolean guestTrialsReady");
     }
+    if (health.guestTrials !== true) {
+      problems.push(`expected guestTrials=true, got ${JSON.stringify(health.guestTrials)}`);
+    }
+    if (typeof health.guestLimit !== "number" || health.guestLimit < 1) {
+      problems.push(`expected guestLimit >= 1, got ${JSON.stringify(health.guestLimit)}`);
+    }
     if (typeof health.degraded !== "boolean") {
       problems.push("missing boolean degraded");
     }

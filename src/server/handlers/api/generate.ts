@@ -702,6 +702,7 @@ async function handleGuestPost(
     resultUrl: null,
     errorMessage: null,
     createdAt: new Date().toISOString(),
+    sourceIp: ip,
   };
   rec.used = quota.used + 1;
   rec.jobs.unshift(job);

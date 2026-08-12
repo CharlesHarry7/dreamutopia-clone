@@ -50,6 +50,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [guestRemaining, setGuestRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadGuestCredits = useCallback(async () => {
+    setUser(null);
+    try {
+      const credits = await api<{
+        guest?: boolean;
+        guestRemaining?: number;
+        credits?: number;
+      }>("/credits");
+      if (credits.guest) setGuestRemaining(Number(credits.guestRemaining ?? 0));
+      else setGuestRemaining(null);
+    } catch {
+      setGuestRemaining(null);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     captureReferral();
     const token = getToken();
@@ -58,17 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!token) {
       try {
-        const credits = await api<{
-          guest?: boolean;
-          guestRemaining?: number;
-          credits?: number;
-        }>("/credits");
-        setUser(null);
-        if (credits.guest) setGuestRemaining(Number(credits.guestRemaining ?? 0));
-        else setGuestRemaining(null);
-      } catch {
-        setUser(null);
-        setGuestRemaining(null);
+        await loadGuestCredits();
       } finally {
         setLoading(false);
       }
@@ -105,12 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Keep token on transient failures (same as prior fix).
       if (status === 401 || status === 403) {
         clearSession();
-        setUser(null);
+        // Fall through to guest credits so workspace is not stuck on "Checking…".
+        await loadGuestCredits();
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadGuestCredits]);
 
   // Session bootstrap: load /auth/me or guest credits once on mount.
   useEffect(() => {

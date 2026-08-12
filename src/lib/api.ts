@@ -132,5 +132,11 @@ export async function pollGeneration(
     if (status === "done" || status === "failed") return data;
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error("Timed out waiting for generation");
+  const err = new Error(
+    "Timed out waiting for generation. Check My Creations — the job may still finish."
+  ) as ApiError;
+  err.code = "generation_timeout";
+  err.status = 504;
+  err.payload = { code: "generation_timeout", fakeResult: false };
+  throw err;
 }

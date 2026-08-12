@@ -117,6 +117,9 @@ function WorkspaceInner() {
     (!user && guestRemaining === null) ||
     guestTrialExhausted;
 
+  // Guests always run 5s Lite I2V server-side — ignore a leftover 10s pick after logout.
+  const effectiveDurationSec = user ? durationSec : 5;
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -258,7 +261,7 @@ function WorkspaceInner() {
       };
       if (imageUrl.trim()) body.imageUrl = imageUrl.trim();
       if (mode === "video") {
-        body.durationSec = durationSec;
+        body.durationSec = effectiveDurationSec;
         if (!imageUrl.trim()) body.aspectRatio = aspectRatio;
         if (lastImageUrl.trim()) body.lastImageUrl = lastImageUrl.trim();
       } else {
@@ -627,19 +630,23 @@ function WorkspaceInner() {
                           Duration
                         </p>
                         <div className="flex gap-2" role="group" aria-labelledby="duration-label">
-                          {[5, 10].map((d) => (
+                          {/* Guests always run Lite I2V at 5s server-side — don't offer 10s. */}
+                          {(user ? [5, 10] : [5]).map((d) => (
                             <Button
                               key={d}
                               type="button"
                               size="sm"
-                              variant={durationSec === d ? "default" : "outline"}
-                              aria-pressed={durationSec === d}
+                              variant={effectiveDurationSec === d ? "default" : "outline"}
+                              aria-pressed={effectiveDurationSec === d}
                               onClick={() => setDurationSec(d)}
                             >
                               {d}s
                             </Button>
                           ))}
                         </div>
+                        {!user && (
+                          <p className="text-xs text-muted-foreground">Free trial is 5 seconds.</p>
+                        )}
                       </div>
                       {!imageUrl.trim() && (
                         <div className="space-y-1">
