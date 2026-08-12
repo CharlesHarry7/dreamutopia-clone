@@ -189,6 +189,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .gen-status .cap{font-size:13px;color:var(--text2)}
+.gen-status[aria-busy="false"] .spinner{display:none}
 .gen-cancel{margin-top:10px;font-size:12.5px;color:var(--primary2);text-decoration:underline}
 
 /* Save CTA */
@@ -208,6 +209,9 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .history-empty p{font-size:14px;color:var(--text2);margin-bottom:18px}
 .history-empty .btn-primary{display:inline-block;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600}
 .history-list{display:grid;gap:12px}
+.history-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}
+.history-toolbar[hidden]{display:none !important}
+.history-toolbar button{border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--primary2)}
 .history-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px}
 .history-item .h-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:center}
 .history-item .h-meta{font-size:13px;font-weight:600}
@@ -487,6 +491,9 @@ Image
 <p id="historyEmptyDesc" data-i18n="ws.history.signin.p">Your creations will appear here after you log in.</p>
 <button type="button" class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
 </div>
+<div class="history-toolbar" id="historyToolbar" hidden>
+<button type="button" id="historyRefresh" data-i18n="ws.history.refresh">Refresh</button>
+</div>
 <div class="history-list" id="historyList" hidden role="list" data-i18n-aria="a11y.history" aria-label="Your creations"></div>
 </section>
 
@@ -581,6 +588,8 @@ let lastResultUrl = "";
 let genPollAbort = null;
 let genBusy = false;
 let historyById = Object.create(null);
+let historyRefreshTimer = null;
+let historyRefreshLeft = 0;
 if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return genBusy; });
 
 const GEN_PREFS_KEY = "du_gen_prefs";
@@ -929,7 +938,12 @@ function switchPrimaryTab(tab) {
   tabHistory.tabIndex = create ? -1 : 0;
   createView.hidden = !create;
   historyView.hidden = create;
-  if (!create) loadHistory();
+  if (!create) {
+    historyRefreshLeft = 0;
+    loadHistory();
+  } else {
+    stopHistoryRefresh();
+  }
 }
 
 function syncVideoOptions() {
@@ -1362,6 +1376,38 @@ function resetGenBtn() {
   document.getElementById("genBtnLabel").textContent = token ? DU.t("ws.gen.go", "Generate") : DU.t("ws.gen.trial", "Generate Free Trial");
 }
 
+function stopHistoryRefresh() {
+  if (historyRefreshTimer) {
+    clearTimeout(historyRefreshTimer);
+    historyRefreshTimer = null;
+  }
+}
+
+function historyInFlight(gens) {
+  return (gens || []).filter(function (g) {
+    const s = String(g.status || "");
+    return s === "processing" || s === "pending";
+  });
+}
+
+function scheduleHistoryRefresh(gens) {
+  stopHistoryRefresh();
+  const historyView = document.getElementById("historyView");
+  if (!historyView || historyView.hidden) return;
+  if (typeof document.visibilityState === "string" && document.visibilityState === "hidden") return;
+  if (!historyInFlight(gens).length) {
+    historyRefreshLeft = 0;
+    return;
+  }
+  if (historyRefreshLeft <= 0) historyRefreshLeft = 24;
+  historyRefreshTimer = setTimeout(function () {
+    historyRefreshTimer = null;
+    if (historyRefreshLeft <= 0) return;
+    historyRefreshLeft -= 1;
+    loadHistory();
+  }, 5000);
+}
+
 function refreshHistoryEmpty() {
   const title = document.getElementById("historyEmptyTitle");
   const desc = document.getElementById("historyEmptyDesc");
@@ -1426,11 +1472,16 @@ async function loadHistory() {
     if (!gens.length) {
       empty.hidden = false;
       list.hidden = true;
+      const toolbar = document.getElementById("historyToolbar");
+      if (toolbar) toolbar.hidden = true;
+      stopHistoryRefresh();
       refreshHistoryEmpty();
       return;
     }
     empty.hidden = true;
     list.hidden = false;
+    const toolbar = document.getElementById("historyToolbar");
+    if (toolbar) toolbar.hidden = false;
     list.setAttribute("aria-busy", "true");
     list.innerHTML = gens.map((g) => {
       const url = g.result_url || g.resultUrl || "";
@@ -1483,9 +1534,9 @@ async function loadHistory() {
         } else if (act === "share") {
           btn.disabled = true;
           try {
-            const res = await DU.publishGallery(Number(id));
+            await DU.publishGallery(Number(id));
             btn.textContent = DU.t("ws.result.shared", "In gallery");
-            toast(res.already ? DU.t("ws.result.shared", "In gallery") : "Shared");
+            toast(DU.t("ws.result.shared", "In gallery"));
           } catch (err) {
             btn.disabled = false;
             toast(err.message || "Could not share", true);
@@ -1495,9 +1546,17 @@ async function loadHistory() {
         }
       });
     }
+    scheduleHistoryRefresh(gens);
   } catch (e) {
+    const cached = Object.keys(historyById);
+    if (cached.length) {
+      scheduleHistoryRefresh(cached.map(function (k) { return historyById[k]; }));
+      return;
+    }
     empty.hidden = false;
     list.hidden = true;
+    const toolbar = document.getElementById("historyToolbar");
+    if (toolbar) toolbar.hidden = true;
     refreshHistoryEmpty();
   }
 }
@@ -1592,6 +1651,21 @@ if (genCancelBtn) {
     if (genPollAbort) genPollAbort.abort();
   });
 }
+const historyRefreshBtn = document.getElementById("historyRefresh");
+if (historyRefreshBtn) {
+  historyRefreshBtn.addEventListener("click", function () {
+    historyRefreshLeft = 0;
+    loadHistory();
+  });
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "hidden") {
+    stopHistoryRefresh();
+    return;
+  }
+  const historyView = document.getElementById("historyView");
+  if (historyView && !historyView.hidden) loadHistory();
+});
 </script>
 </body>
 </html>
