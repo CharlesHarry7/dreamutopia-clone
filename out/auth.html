@@ -252,8 +252,12 @@ document.getElementById("authForm").onsubmit = async (e) => {
       location.replace(workspaceUrl());
       return;
     }
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(CREDITS_KEY);
+    // Only a real unauthorized response may wipe the session.
+    // Transient network/timeout/5xx failures keep the token so /workspace can hydrate.
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(CREDITS_KEY);
+    }
   } catch (e) {}
 })();
 </script>
