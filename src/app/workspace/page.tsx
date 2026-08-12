@@ -94,6 +94,7 @@ function WorkspaceInner() {
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [kieReady, setKieReady] = useState<boolean | null>(null);
 
   const activeModel = mode === "image" && model === "medium" ? "lite" : model;
@@ -106,13 +107,15 @@ function WorkspaceInner() {
 
   const canAfford = !user || user.credits >= cost;
   const guestNeedsImage = !user && mode === "video";
+  const guestTrialExhausted = !user && guestRemaining === 0;
   const generateDisabled =
     busy ||
     authLoading ||
     !prompt.trim() ||
     (guestNeedsImage && !imageUrl.trim()) ||
     (user != null && !canAfford) ||
-    (!user && (guestRemaining === null || guestRemaining === 0));
+    (!user && guestRemaining === null) ||
+    guestTrialExhausted;
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +138,11 @@ function WorkspaceInner() {
     if (authLoading) return;
     let cancelled = false;
 
-    async function loadHistory() {
+    void (async () => {
+      // Yield so we never sync-set loading inside the effect body (React Compiler lint).
+      await Promise.resolve();
+      if (cancelled) return;
+      setHistoryLoading(true);
       try {
         const data = await api<{
           generations?: unknown[];
@@ -151,10 +158,11 @@ function WorkspaceInner() {
         setHistory(list.map(asHistoryItem).filter((g): g is HistoryItem => Boolean(g)));
       } catch {
         // Keep last good history on transient failures (corrupt-row / settle blips).
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
       }
-    }
+    })();
 
-    void loadHistory();
     return () => {
       cancelled = true;
     };
@@ -162,7 +170,7 @@ function WorkspaceInner() {
 
   // Poll My Creations while any row is still processing (guest settle / account settle).
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || historyLoading) return;
     const inflight = history.some((h) => h.status === "processing" || h.status === "pending");
     if (!inflight) return;
     let cancelled = false;
@@ -189,7 +197,7 @@ function WorkspaceInner() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [history, authLoading, noteGuestRemaining]);
+  }, [history, authLoading, historyLoading, noteGuestRemaining]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -337,12 +345,32 @@ function WorkspaceInner() {
 
   return (
     <>
+      <a
+        href="#workspace-main"
+        className="absolute left-4 top-4 z-50 -translate-y-[120%] rounded-lg bg-background px-4 py-2 text-sm font-semibold shadow-md ring-2 ring-ring transition-transform focus:translate-y-0"
+      >
+        Skip to workspace
+      </a>
       <PromoBar />
       <SiteHeader active="workspace" />
-      <main className="relative mx-auto w-full max-w-[1120px] flex-1 px-5 py-7 pb-14">
+      <main
+        id="workspace-main"
+        tabIndex={-1}
+        className="relative mx-auto w-full max-w-[1120px] flex-1 px-5 py-7 pb-14 outline-none"
+      >
         <div className="pointer-events-none absolute inset-x-[10%] -top-10 h-72 bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,.14),transparent_70%)]" />
 
-        {!user && (
+        {authLoading && (
+          <div
+            className="relative mb-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            Loading your session…
+          </div>
+        )}
+
+        {!user && !authLoading && (
           <div className="relative mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[rgba(168,85,247,.28)] bg-gradient-to-br from-[rgba(168,85,247,.14)] to-[rgba(236,72,153,.08)] p-5">
             <div>
               <h2 className="mb-1 text-lg font-bold">
@@ -385,7 +413,10 @@ function WorkspaceInner() {
         )}
 
         {kieReady === false && (
-          <div className="relative mb-5 rounded-2xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]">
+          <div
+            className="relative mb-5 rounded-2xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
+            role="status"
+          >
             <b>Generate offline.</b>{" "}
             KIE or guest-trial bindings are not ready on this Worker — jobs return an honest error
             (no fake demo video). Live Pages may still be separate until cutover.
@@ -398,9 +429,20 @@ function WorkspaceInner() {
               <CardTitle className="text-base">Invite friends — earn 10%</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              <Input readOnly value={inviteUrl} className="min-w-[180px] flex-1" />
+              <Label htmlFor="invite-url" className="sr-only">
+                Invite URL
+              </Label>
+              <Input
+                id="invite-url"
+                readOnly
+                value={inviteUrl}
+                className="min-w-[180px] flex-1"
+                onFocus={(e) => e.currentTarget.select()}
+              />
               <Button
+                type="button"
                 variant="outline"
+                aria-label="Copy invite URL"
                 onClick={() => void navigator.clipboard.writeText(inviteUrl)}
               >
                 Copy
@@ -414,7 +456,7 @@ function WorkspaceInner() {
           onValueChange={(v) => setTab(v as "create" | "history")}
           className="relative"
         >
-          <TabsList>
+          <TabsList aria-label="Workspace sections">
             <TabsTrigger value="create">Create</TabsTrigger>
             <TabsTrigger value="history">My Creations</TabsTrigger>
           </TabsList>
@@ -422,10 +464,10 @@ function WorkspaceInner() {
           <TabsContent value="create" className="mt-5">
             <div className="mb-4 flex justify-center">
               <Tabs value={mode} onValueChange={(v) => switchMode(v as Mode)}>
-                <TabsList>
-                  <TabsTrigger value="video">{t("tab.video", "🎬 Video")}</TabsTrigger>
+                <TabsList aria-label="Generation mode">
+                  <TabsTrigger value="video">{t("tab.video", "Video")}</TabsTrigger>
                   <TabsTrigger value="image" disabled={!user}>
-                    {t("tab.image", "🖼 Image")}
+                    {t("tab.image", "Image")}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -442,258 +484,348 @@ function WorkspaceInner() {
 
             <Card className="mx-auto max-w-2xl">
               <CardHeader>
-                <CardTitle>
+                <CardTitle id="generate-title">
                   {mode === "video"
                     ? t("gen.videoTitle", "AI Video Generator")
                     : t("gen.imageTitle", "AI Image Generator")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="space-y-2">
-                  <Label>
-                    {t("gen.upload", "Upload Start Image")}
-                    {!user ? " (required for free trial)" : mode === "video" ? " (optional for text-to-video)" : " (optional)"}
-                  </Label>
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff"
-                    onChange={(e) => void onFile(e.target.files?.[0] || null, "first")}
-                  />
-                  <Input
-                    type="url"
-                    placeholder="https://example.com/start-frame.png"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                  />
-                  {imageUrl.trim() && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imageUrl}
-                      alt="Start frame preview"
-                      className="mt-1 max-h-40 rounded-lg border border-white/10 object-contain"
-                    />
-                  )}
-                </div>
-
-                {mode === "video" && (activeModel === "medium" || activeModel === "pro") && (
+              <CardContent>
+                <form
+                  className="space-y-5"
+                  aria-labelledby="generate-title"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!generateDisabled) void onGenerate();
+                  }}
+                >
                   <div className="space-y-2">
-                    <Label>Last frame (optional)</Label>
+                    <Label htmlFor="start-image-file">
+                      {t("gen.upload", "Upload Start Image")}
+                      {!user
+                        ? " (required for free trial)"
+                        : mode === "video"
+                          ? " (optional for text-to-video)"
+                          : " (optional)"}
+                    </Label>
                     <Input
+                      id="start-image-file"
                       type="file"
-                      accept="image/*"
-                      onChange={(e) => void onFile(e.target.files?.[0] || null, "last")}
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff"
+                      onChange={(e) => void onFile(e.target.files?.[0] || null, "first")}
                     />
+                    <Label htmlFor="start-image-url" className="sr-only">
+                      Start image URL
+                    </Label>
                     <Input
+                      id="start-image-url"
                       type="url"
-                      placeholder="https://example.com/end-frame.png"
-                      value={lastImageUrl}
-                      onChange={(e) => setLastImageUrl(e.target.value)}
+                      placeholder="https://example.com/start-frame.png"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
                     />
+                    {imageUrl.trim() && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={imageUrl}
+                        alt="Start frame preview"
+                        className="mt-1 max-h-40 rounded-lg border border-white/10 object-contain"
+                      />
+                    )}
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="prompt">
-                    {mode === "video" ? t("gen.prompt", "Describe Your Video") : "Describe your image"}
-                  </Label>
-                  <Textarea
-                    id="prompt"
-                    maxLength={8000}
-                    placeholder={t("gen.placeholder", "A futuristic city with flying cars...")}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label className="mb-2 block">Model</Label>
-                  <div className={`grid gap-2.5 ${mode === "video" ? "grid-cols-3" : "grid-cols-2"}`}>
-                    {(mode === "video" ? ["lite", "medium", "pro"] : ["lite", "pro"]).map((m) => {
-                      const c =
-                        mode === "video"
-                          ? VIDEO_COSTS[m as keyof typeof VIDEO_COSTS]
-                          : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
-                      const locked = !user && m !== "lite";
-                      return (
-                        <button
-                          key={m}
-                          type="button"
-                          disabled={locked}
-                          onClick={() => setModel(m)}
-                          className={`rounded-xl border px-2.5 py-3 text-center transition ${
-                            activeModel === m
-                              ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
-                              : "border-white/10 bg-black/20 hover:border-white/22"
-                          } ${locked ? "cursor-not-allowed opacity-40" : ""}`}
-                        >
-                          <div className="text-[13px] font-bold capitalize">{m}</div>
-                          <div className="mt-0.5 text-[11px] text-[var(--text3)]">
-                            {locked ? "sign in" : `${c} credits`}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {mode === "video" && (
-                  <div className="flex flex-wrap gap-4">
-                    <div className="space-y-1">
-                      <Label>Duration</Label>
-                      <div className="flex gap-2">
-                        {[5, 10].map((d) => (
-                          <Button
-                            key={d}
-                            type="button"
-                            size="sm"
-                            variant={durationSec === d ? "default" : "outline"}
-                            onClick={() => setDurationSec(d)}
-                          >
-                            {d}s
-                          </Button>
-                        ))}
-                      </div>
+                  {mode === "video" && (activeModel === "medium" || activeModel === "pro") && (
+                    <div className="space-y-2">
+                      <Label htmlFor="last-image-file">Last frame (optional)</Label>
+                      <Input
+                        id="last-image-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => void onFile(e.target.files?.[0] || null, "last")}
+                      />
+                      <Label htmlFor="last-image-url" className="sr-only">
+                        Last frame URL
+                      </Label>
+                      <Input
+                        id="last-image-url"
+                        type="url"
+                        placeholder="https://example.com/end-frame.png"
+                        value={lastImageUrl}
+                        onChange={(e) => setLastImageUrl(e.target.value)}
+                      />
                     </div>
-                    {!imageUrl.trim() && (
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="prompt">
+                      {mode === "video"
+                        ? t("gen.prompt", "Describe Your Video")
+                        : "Describe your image"}
+                    </Label>
+                    <Textarea
+                      id="prompt"
+                      maxLength={8000}
+                      placeholder={t("gen.placeholder", "A futuristic city with flying cars...")}
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                          e.preventDefault();
+                          if (!generateDisabled) void onGenerate();
+                        }
+                      }}
+                      aria-describedby="prompt-hint"
+                    />
+                    <p id="prompt-hint" className="text-xs text-muted-foreground">
+                      Tip: Ctrl/⌘ + Enter to generate
+                    </p>
+                  </div>
+
+                  <fieldset className="min-w-0 border-0 p-0">
+                    <legend className="mb-2 text-sm font-medium">Model</legend>
+                    <div
+                      className={`grid gap-2.5 ${mode === "video" ? "grid-cols-3" : "grid-cols-2"}`}
+                      role="radiogroup"
+                      aria-label="Model"
+                    >
+                      {(mode === "video" ? ["lite", "medium", "pro"] : ["lite", "pro"]).map((m) => {
+                        const c =
+                          mode === "video"
+                            ? VIDEO_COSTS[m as keyof typeof VIDEO_COSTS]
+                            : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
+                        const locked = !user && m !== "lite";
+                        const selected = activeModel === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            aria-label={`${m} model${locked ? ", sign in required" : `, ${c} credits`}`}
+                            disabled={locked}
+                            onClick={() => setModel(m)}
+                            className={`rounded-xl border px-2.5 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                              selected
+                                ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
+                                : "border-white/10 bg-black/20 hover:border-white/22"
+                            } ${locked ? "cursor-not-allowed opacity-40" : ""}`}
+                          >
+                            <div className="text-[13px] font-bold capitalize">{m}</div>
+                            <div className="mt-0.5 text-[11px] text-[var(--text3)]">
+                              {locked ? "sign in" : `${c} credits`}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  {mode === "video" && (
+                    <div className="flex flex-wrap gap-4">
                       <div className="space-y-1">
-                        <Label>Aspect</Label>
-                        <div className="flex gap-2">
-                          {["16:9", "9:16", "1:1"].map((a) => (
+                        <p className="text-sm font-medium" id="duration-label">
+                          Duration
+                        </p>
+                        <div className="flex gap-2" role="group" aria-labelledby="duration-label">
+                          {[5, 10].map((d) => (
                             <Button
-                              key={a}
+                              key={d}
                               type="button"
                               size="sm"
-                              variant={aspectRatio === a ? "default" : "outline"}
-                              onClick={() => setAspectRatio(a)}
+                              variant={durationSec === d ? "default" : "outline"}
+                              aria-pressed={durationSec === d}
+                              onClick={() => setDurationSec(d)}
                             >
-                              {a}
+                              {d}s
                             </Button>
                           ))}
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {mode === "image" && (
-                  <div className="space-y-1">
-                    <Label>Resolution</Label>
-                    <div className="flex gap-2">
-                      {["1K", "2K", "4K"].map((r) => (
-                        <Button
-                          key={r}
-                          type="button"
-                          size="sm"
-                          variant={resolution === r ? "default" : "outline"}
-                          onClick={() => setResolution(r)}
-                        >
-                          {r}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={user && !canAfford ? "warning" : "secondary"}>
-                      {user
-                        ? `${cost} credits · balance ${user.credits}`
-                        : guestRemaining === null
-                          ? "Checking free trial…"
-                          : guestRemaining === 0
-                            ? "Free trial used up"
-                            : `Free trial (Lite I2V) · ${guestRemaining} left`}
-                    </Badge>
-                    {user && !canAfford && (
-                      <Link
-                        href="/pricing"
-                        className="text-xs font-semibold text-[var(--primary2)] hover:underline"
-                      >
-                        Buy credits
-                      </Link>
-                    )}
-                  </div>
-                  <Button size="lg" disabled={generateDisabled} onClick={() => void onGenerate()}>
-                    {busy
-                      ? status || "…"
-                      : user
-                        ? t("ws.gen.go", "Generate")
-                        : guestRemaining === null
-                          ? "…"
-                          : guestRemaining === 0
-                            ? "Sign up for more"
-                            : t("gen.btn", "Generate Free Trial")}
-                  </Button>
-                </div>
-
-                {error && (
-                  <div className="space-y-2 rounded-xl border border-[var(--red)]/35 bg-[var(--red)]/10 px-3 py-3 text-sm text-[var(--red)]">
-                    <p>{error}</p>
-                    {(errorCode === "insufficient_credits" ||
-                      errorCode === "insufficient credits" ||
-                      errorCode === "guest_limit") && (
-                      <Link
-                        href={errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"}
-                        className="inline-block font-semibold text-[var(--primary2)] hover:underline"
-                      >
-                        {errorCode === "guest_limit" ? "Sign up for 10 credits" : "View credit packs"}
-                      </Link>
-                    )}
-                    {errorCode === "kie_insufficient_balance" && (
-                      <p className="text-xs text-muted-foreground">
-                        Provider wallet is empty — top up at kie.ai. Site credits were refunded when
-                        the create call failed. No demo video was invented.
-                      </p>
-                    )}
-                    {errorCode === "kie_api_key_missing" && (
-                      <p className="text-xs text-muted-foreground">
-                        Set the Workers secret KIE_API_KEY (Pages secrets are separate until cutover).
-                      </p>
-                    )}
-                  </div>
-                )}
-                {status && !error && <p className="text-sm text-[var(--primary2)]">{status}</p>}
-
-                {resultUrl && (
-                  <div className="space-y-3 rounded-xl border border-[var(--border)] bg-black/20 p-3">
-                    {resultKind === "image" || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(resultUrl) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={resultUrl} alt="Result" className="mx-auto max-h-[420px] rounded-lg" />
-                    ) : (
-                      <video src={resultUrl} controls className="mx-auto max-h-[420px] rounded-lg" />
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild variant="outline" size="sm">
-                        <a href={resultUrl} target="_blank" rel="noreferrer">
-                          {t("gen.open", "Open result")}
-                        </a>
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <a href={resultUrl} download>
-                          {t("gen.download", "Download")}
-                        </a>
-                      </Button>
-                      {user && (
-                        <Button size="sm" variant="secondary" onClick={() => void shareToGallery()}>
-                          Share to gallery
-                        </Button>
+                      {!imageUrl.trim() && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium" id="aspect-label">
+                            Aspect
+                          </p>
+                          <div className="flex gap-2" role="group" aria-labelledby="aspect-label">
+                            {["16:9", "9:16", "1:1"].map((a) => (
+                              <Button
+                                key={a}
+                                type="button"
+                                size="sm"
+                                variant={aspectRatio === a ? "default" : "outline"}
+                                aria-pressed={aspectRatio === a}
+                                onClick={() => setAspectRatio(a)}
+                              >
+                                {a}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {!user && (
-                  <p
-                    className="text-center text-sm text-muted-foreground"
-                    dangerouslySetInnerHTML={{
-                      __html: t(
-                        "gen.foot",
-                        'Free trial. <a href="/auth?mode=register">Sign up</a> for more.'
-                      ),
-                    }}
-                  />
-                )}
+                  {mode === "image" && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium" id="resolution-label">
+                        Resolution
+                      </p>
+                      <div className="flex gap-2" role="group" aria-labelledby="resolution-label">
+                        {["1K", "2K", "4K"].map((r) => (
+                          <Button
+                            key={r}
+                            type="button"
+                            size="sm"
+                            variant={resolution === r ? "default" : "outline"}
+                            aria-pressed={resolution === r}
+                            onClick={() => setResolution(r)}
+                          >
+                            {r}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={user && !canAfford ? "warning" : "secondary"}>
+                        {user
+                          ? `${cost} credits · balance ${user.credits}`
+                          : guestRemaining === null
+                            ? "Checking free trial…"
+                            : guestRemaining === 0
+                              ? "Free trial used up"
+                              : `Free trial (Lite I2V) · ${guestRemaining} left`}
+                      </Badge>
+                      {user && !canAfford && (
+                        <Link
+                          href="/pricing"
+                          className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                        >
+                          Buy credits
+                        </Link>
+                      )}
+                    </div>
+                    {guestTrialExhausted ? (
+                      <Button asChild size="lg">
+                        <Link href="/auth?mode=register">Sign up for more</Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={generateDisabled}
+                        aria-busy={busy}
+                      >
+                        {busy
+                          ? status || "Generating…"
+                          : user
+                            ? t("ws.gen.go", "Generate")
+                            : guestRemaining === null
+                              ? "Checking…"
+                              : t("gen.btn", "Generate Free Trial")}
+                      </Button>
+                    )}
+                  </div>
+
+                  {error && (
+                    <div
+                      className="space-y-2 rounded-xl border border-[var(--red)]/35 bg-[var(--red)]/10 px-3 py-3 text-sm text-[var(--red)]"
+                      role="alert"
+                      aria-live="assertive"
+                    >
+                      <p>{error}</p>
+                      {(errorCode === "insufficient_credits" ||
+                        errorCode === "insufficient credits" ||
+                        errorCode === "guest_limit") && (
+                        <Link
+                          href={errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"}
+                          className="inline-block font-semibold text-[var(--primary2)] hover:underline"
+                        >
+                          {errorCode === "guest_limit"
+                            ? "Sign up for 10 credits"
+                            : "View credit packs"}
+                        </Link>
+                      )}
+                      {errorCode === "kie_insufficient_balance" && (
+                        <p className="text-xs text-muted-foreground">
+                          Provider wallet is empty — top up at kie.ai. Site credits were refunded when
+                          the create call failed. No demo video was invented.
+                        </p>
+                      )}
+                      {errorCode === "kie_api_key_missing" && (
+                        <p className="text-xs text-muted-foreground">
+                          Set the Workers secret KIE_API_KEY (Pages secrets are separate until
+                          cutover).
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {status && !error && (
+                    <p className="text-sm text-[var(--primary2)]" role="status" aria-live="polite">
+                      {status}
+                    </p>
+                  )}
+
+                  {resultUrl && (
+                    <div
+                      className="space-y-3 rounded-xl border border-[var(--border)] bg-black/20 p-3"
+                      aria-label="Generation result"
+                    >
+                      {resultKind === "image" ||
+                      /\.(png|jpe?g|webp|gif)(\?|$)/i.test(resultUrl) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={resultUrl}
+                          alt="Generated result"
+                          className="mx-auto max-h-[420px] rounded-lg"
+                        />
+                      ) : (
+                        <video
+                          src={resultUrl}
+                          controls
+                          className="mx-auto max-h-[420px] rounded-lg"
+                        />
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <a href={resultUrl} target="_blank" rel="noreferrer">
+                            {t("gen.open", "Open result")}
+                          </a>
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <a href={resultUrl} download>
+                            {t("gen.download", "Download")}
+                          </a>
+                        </Button>
+                        {user && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void shareToGallery()}
+                          >
+                            Share to gallery
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {!user && (
+                    <p className="text-center text-sm text-muted-foreground">
+                      Free trial.{" "}
+                      <Link
+                        href="/auth?mode=register"
+                        className="font-semibold text-[var(--primary2)] hover:underline"
+                      >
+                        Sign up
+                      </Link>{" "}
+                      for more.
+                    </p>
+                  )}
+                </form>
               </CardContent>
             </Card>
           </TabsContent>
@@ -719,46 +851,67 @@ function WorkspaceInner() {
                       : ""}
                   </p>
                 )}
-                {history.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {user
-                      ? t("ws.history.empty.p", "Start creating to see your work here.")
-                      : "No guest jobs on this device yet — generate a free Lite video to see it here."}
-                  </p>
-                )}
-                {history.map((item) => (
+                {(authLoading || historyLoading) && (
                   <div
-                    key={String(item.id)}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
+                    className="space-y-2"
+                    role="status"
+                    aria-live="polite"
+                    aria-busy="true"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-muted-foreground">
-                        {item.prompt.trim() || t("ws.history.untitled", "Untitled job")}
-                      </div>
-                      <div className="mt-1 text-xs text-[var(--text3)]">
-                        {item.status} · {item.model || "lite"}
-                        {!user ? " · guest" : ""}
-                      </div>
-                      {item.status === "failed" && item.errorMessage ? (
-                        <p className="mt-1 text-xs text-destructive">{item.errorMessage}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex gap-2">
-                      {item.status === "processing" && (
-                        <Badge variant="secondary">rendering</Badge>
-                      )}
-                      {item.status === "failed" && <Badge variant="warning">failed</Badge>}
-                      {item.resultUrl && (
-                        <Button asChild size="sm" variant="outline">
-                          <a href={item.resultUrl} target="_blank" rel="noreferrer">
-                            Open
-                          </a>
-                        </Button>
-                      )}
-                    </div>
+                    <p className="text-sm text-muted-foreground">Loading creations…</p>
+                    <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+                    <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
                   </div>
-                ))}
-                {!user && history.length > 0 && (
+                )}
+                {!authLoading && !historyLoading && history.length === 0 && (
+                  <div className="space-y-3 rounded-xl border border-dashed border-white/15 bg-black/10 px-4 py-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {user
+                        ? t("ws.history.empty.p", "Start creating to see your work here.")
+                        : "No guest jobs on this device yet — generate a free Lite video to see it here."}
+                    </p>
+                    <Button type="button" variant="outline" onClick={() => setTab("create")}>
+                      Go to Create
+                    </Button>
+                  </div>
+                )}
+                {!authLoading && !historyLoading && history.length > 0 && (
+                  <ul className="space-y-3" aria-label="Creations list">
+                    {history.map((item) => (
+                      <li
+                        key={String(item.id)}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm text-muted-foreground">
+                            {item.prompt.trim() || t("ws.history.untitled", "Untitled job")}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--text3)]">
+                            {item.status} · {item.model || "lite"}
+                            {!user ? " · guest" : ""}
+                          </div>
+                          {item.status === "failed" && item.errorMessage ? (
+                            <p className="mt-1 text-xs text-destructive">{item.errorMessage}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex gap-2">
+                          {item.status === "processing" && (
+                            <Badge variant="secondary">rendering</Badge>
+                          )}
+                          {item.status === "failed" && <Badge variant="warning">failed</Badge>}
+                          {item.resultUrl && (
+                            <Button asChild size="sm" variant="outline">
+                              <a href={item.resultUrl} target="_blank" rel="noreferrer">
+                                Open
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!user && !historyLoading && history.length > 0 && (
                   <Button asChild variant="outline" className="w-full">
                     <Link href="/auth?mode=register">
                       Sign up to keep these jobs in your account
@@ -777,7 +930,17 @@ function WorkspaceInner() {
 
 export default function WorkspacePage() {
   return (
-    <Suspense fallback={<div className="p-10 text-center text-muted-foreground">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div
+          className="flex min-h-[40vh] items-center justify-center p-10 text-center text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          Loading workspace…
+        </div>
+      }
+    >
       <WorkspaceInner />
     </Suspense>
   );

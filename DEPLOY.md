@@ -80,18 +80,37 @@ Next Worker health includes `"runtime": "next-opennext-workers"`, `"productionSu
 
 Set Worker secrets in the dashboard (`wrangler secret` / Variables and Secrets). Build env vars do not replace secrets.
 
-## Manual cutover checklist (when ready — not automatic)
+## CUTOVER — when Daniel says go
+
+Do **not** start this until Daniel explicitly green-lights Pages → Workers. Until then keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` on the Worker.
+
+1. **Preflight (staging Worker still OK)**  
+   - `npm run lint && npm run build`  
+   - Worker secrets set (`KIE_API_KEY`; Stripe/Resend if needed)  
+   - `npm run check:health -- https://<worker-host> --expect-worker` → `degraded: false`  
+   - Real generate on Worker (empty KIE wallet → honest `kie_insufficient_balance`, not a fake video)
+
+2. **Switch traffic**  
+   - Point custom domain / routes at the **Worker** (not Pages)  
+   - Pause or disconnect **Pages** git deploy so `main` merges cannot overwrite production with legacy `out/`
+
+3. **Confirm live**  
+   - `npm run check:health -- https://<live-host> --expect-worker`  
+   - Spot-check: guest Lite try, signed-in generate, checkout **503** until Stripe is set
+
+4. **After traffic is on Workers** (only then)  
+   - Flip health tags in code: `productionSurface` away from `pages-until-cutover`, `cutoverComplete: true`  
+   - Optionally retire [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev)
+
+**Warning:** Merging this Next.js tree into `main` while Pages still expects top-level `out/` will break Pages (snapshot is `legacy/out`). Cut over first, or keep Pages on a legacy branch until go.
+
+### Pre-go staging checklist (safe anytime)
 
 1. Branch green: `npm run lint`, `npm run build`, `npm run cf:preview` smoke OK  
 2. `npm run cf:deploy` → Worker healthy (`runtime: next-opennext-workers`)  
-3. Worker secrets set (`KIE_API_KEY`, optional Stripe/Resend)  
-4. `npm run check:health -- https://<worker-host> --expect-worker` — checkout still **503** if Stripe unset; `degraded` must be false
-5. Funded KIE wallet for a real generate (empty wallet → `kie_insufficient_balance`, expected)  
-6. Point custom domain / traffic at the Worker  
-7. Pause or disconnect **Pages** git deploy so `main` merges don’t fight the Worker  
-8. Only then consider retiring [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev)
-
-**Warning:** Merging this Next.js tree into `main` while Pages is still configured for `out/` (no build, output `out`) will break the Pages deploy (there is no top-level `out/` anymore — snapshot is `legacy/out`). Either cut over to Workers first, or keep Pages on a legacy branch until cutover.
+3. Worker secrets set  
+4. `check:health --expect-worker` — checkout **503** if Stripe unset; `degraded` false  
+5. Funded KIE smoke generate on the Worker only (Pages stays live)
 
 ## Verify
 
