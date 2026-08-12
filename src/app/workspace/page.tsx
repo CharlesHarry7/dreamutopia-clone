@@ -275,12 +275,19 @@ function WorkspaceInner() {
 
       setStatus(t("progress.rendering", "Rendering…"));
       const settled = await pollGeneration(created.generationId, (tick) => {
+        if (typeof tick.guestRemaining === "number") {
+          noteGuestRemaining(tick.guestRemaining);
+        }
         const provider = String(tick.providerState || tick.status || "");
         if (/queue/i.test(provider)) setStatus(t("progress.queue", "Queued…"));
         else if (/render|run|process/i.test(provider))
           setStatus(t("progress.rendering", "Rendering…"));
         else setStatus(t("progress.generating", "Generating…"));
       });
+
+      if (typeof settled.guestRemaining === "number") {
+        noteGuestRemaining(settled.guestRemaining);
+      }
 
       if (String(settled.status) === "failed") {
         const failMsg = String(
@@ -592,11 +599,11 @@ function WorkspaceInner() {
                     <Badge variant={user && !canAfford ? "warning" : "secondary"}>
                       {user
                         ? `${cost} credits · balance ${user.credits}`
-                        : guestRemaining === 0
-                          ? "Free trial used up"
-                          : `Free trial (Lite I2V)${
-                              guestRemaining != null ? ` · ${guestRemaining} left` : ""
-                            }`}
+                        : guestRemaining === null
+                          ? "Checking free trial…"
+                          : guestRemaining === 0
+                            ? "Free trial used up"
+                            : `Free trial (Lite I2V) · ${guestRemaining} left`}
                     </Badge>
                     {user && !canAfford && (
                       <Link
@@ -612,7 +619,11 @@ function WorkspaceInner() {
                       ? status || "…"
                       : user
                         ? t("ws.gen.go", "Generate")
-                        : t("gen.btn", "Generate Free Trial")}
+                        : guestRemaining === null
+                          ? "…"
+                          : guestRemaining === 0
+                            ? "Sign up for more"
+                            : t("gen.btn", "Generate Free Trial")}
                   </Button>
                 </div>
 
@@ -632,7 +643,12 @@ function WorkspaceInner() {
                     {errorCode === "kie_insufficient_balance" && (
                       <p className="text-xs text-muted-foreground">
                         Provider wallet is empty — top up at kie.ai. Site credits were refunded when
-                        the create call failed.
+                        the create call failed. No demo video was invented.
+                      </p>
+                    )}
+                    {errorCode === "kie_api_key_missing" && (
+                      <p className="text-xs text-muted-foreground">
+                        Set the Workers secret KIE_API_KEY (Pages secrets are separate until cutover).
                       </p>
                     )}
                   </div>

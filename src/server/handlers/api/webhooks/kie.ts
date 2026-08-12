@@ -1,5 +1,5 @@
-import { json, hasDb, hasKieKey, hasSessions, type Env } from "@/server/libs/utils";
-import { getTaskInfo } from "@/server/libs/kie";
+import { json, structuredError, hasDb, hasKieKey, hasSessions, type Env } from "@/server/libs/utils";
+import { getTaskInfo, KIE_API_KEY_MISSING_MESSAGE } from "@/server/libs/kie";
 import {
   extractKieTaskId,
   hasKieWebhookHmac,
@@ -22,7 +22,10 @@ import { loadGuest, clientIp } from "@/server/libs/guest";
  */
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!hasKieKey(env)) {
-    return json({ error: "kie_api_key_missing" }, 503);
+    return structuredError("kie_api_key_missing", KIE_API_KEY_MISSING_MESSAGE, 503, {
+      kieConfigured: false,
+      fakeResult: false,
+    });
   }
   if (!hasSessions(env)) {
     return json({ error: "sessions_missing" }, 503);

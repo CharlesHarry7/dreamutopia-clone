@@ -113,6 +113,11 @@ async function main() {
         `expected productionSurface=pages-until-cutover, got ${JSON.stringify(health.productionSurface)}`
       );
     }
+    if (health.cutoverComplete !== false) {
+      problems.push(
+        `expected cutoverComplete=false while Pages is live, got ${JSON.stringify(health.cutoverComplete)}`
+      );
+    }
     if (health.livePagesHint !== "https://dreamutopia-clone.pages.dev") {
       problems.push(
         `expected livePagesHint=https://dreamutopia-clone.pages.dev, got ${JSON.stringify(health.livePagesHint)}`

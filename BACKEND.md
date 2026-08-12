@@ -215,7 +215,7 @@ curl -s https://<worker-host>/api/health | jq
 Expect:
 
 - `runtime: "next-opennext-workers"` (Worker only; live Pages today has no this value)
-- `productionSurface: "pages-until-cutover"` until you finish **DEPLOY.md** cutover
+- `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` until you finish **DEPLOY.md** cutover
 - `authReady: true` (D1 + KV bound **and** soft probes OK)
 - `guestTrialsReady: true` (KV probe OK — guest cookie/IP trials)
 - `kieConfigured: true` (after Workers secret is set)

@@ -82,9 +82,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     runtime: "next-opennext-workers",
     /**
      * Live production is still Cloudflare Pages until the manual cutover in DEPLOY.md.
-     * Do not change this string while dreamutopia-clone.pages.dev remains the live surface.
+     * Do not change this string (or cutoverComplete) while dreamutopia-clone.pages.dev remains live.
      */
     productionSurface: "pages-until-cutover" as const,
+    cutoverComplete: false as const,
     livePagesHint: "https://dreamutopia-clone.pages.dev",
     time: Date.now(),
     bindings,

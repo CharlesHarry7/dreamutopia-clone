@@ -63,7 +63,7 @@ curl -s https://dreamutopia-clone.pages.dev/api/health | jq '{service,runtime,ki
 npm run check:health -- https://dreamutopia-clone.pages.dev --expect-pages
 
 # Next Worker (after cf:deploy) — staging only until cutover
-curl -s https://<worker>.workers.dev/api/health | jq '{service,runtime,productionSurface,degraded,guestTrialsReady,kieConfigured}'
+curl -s https://<worker>.workers.dev/api/health | jq '{service,runtime,productionSurface,cutoverComplete,degraded,guestTrialsReady,kieConfigured}'
 npm run check:health -- https://<worker>.workers.dev --expect-worker
 ```
 
