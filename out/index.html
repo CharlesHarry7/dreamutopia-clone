@@ -193,6 +193,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gallery-head{text-align:center;margin-bottom:36px}
 .gallery-head h2{font-size:30px;font-weight:800;margin-bottom:10px}
 .gallery-head p{font-size:14.5px;color:var(--text2)}
+.gallery-note{margin-top:10px;font-size:12.5px;color:var(--text3);font-weight:600;letter-spacing:.02em}
 .gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .gallery-item{aspect-ratio:3/4;background:var(--bg2);border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:transform .3s}
 .gallery-item:hover{transform:scale(1.03)}
@@ -405,7 +406,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <p data-i18n="feat1.p">Choose from Lite, Medium, and Pro tiers — each optimized for different styles, quality levels, and motion types.</p>
 </div>
 </a>
-<a class="feat-card" href="/#get-started">
+<a class="feat-card" href="/workspace">
 <div class="feat-img"><img src="/assets/images/feature-image-to-video.webp" alt="Ready in Seconds" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat2.h">Ready in Seconds</h3>
@@ -462,8 +463,9 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <!-- Gallery -->
 <section class="gallery" id="gallery">
 <div class="gallery-head">
-<h2 data-i18n="gallery.h">Crafted with DreamUtopia</h2>
-<p data-i18n="gallery.p">A gallery of stunning visuals our creators have made</p>
+<h2 data-i18n="gallery.h">Sample looks</h2>
+<p data-i18n="gallery.p">Placeholders to show the style — not community posts. Shared creations appear here when people publish.</p>
+<p class="gallery-note" id="galleryNote" data-i18n="gallery.note">Sample placeholders — not community posts.</p>
 </div>
 <div class="gallery-grid" id="galleryGrid">
 <div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g1.webp"><img src="/assets/images/g1.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
@@ -940,6 +942,20 @@ async function homeGenerate() {
     const errWs = document.getElementById("homeStatusWorkspace");
     if (errWs) errWs.hidden = false;
     if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("homeStatusAction"), code);
+    if (code === "insufficient_credits" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("err.insufficient_credits", "Not enough credits for this generation."),
+        body: DU.t("err.insufficient_credits.p", "This generation costs more credits than you have."),
+        href: "/pricing",
+        action: DU.t("err.action.pricing", "View credit packs"),
+      });
+    } else if (code === "guest_lite_only" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("err.guest_lite_only", "Free trial is Lite image-to-video only. Sign up for 10 credits and every model."),
+        href: "/auth?mode=register",
+      });
+    }
   }
   if (card) card.setAttribute("aria-busy", "false");
   if (cancel) cancel.hidden = true;
@@ -1023,7 +1039,13 @@ if (homeCancelBtn) {
     .then(function (r) { return r.json(); })
     .then(function (data) {
       const items = (data && data.items) || [];
-      if (!items.length) return;
+      const note = document.getElementById("galleryNote");
+      const headH = document.querySelector(".gallery-head h2");
+      const headP = document.querySelector(".gallery-head p");
+      if (!items.length) {
+        if (note) note.hidden = false;
+        return;
+      }
       const esc = DU.escapeHtml || function (s) {
         return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
       };
@@ -1037,8 +1059,15 @@ if (homeCancelBtn) {
         }
         return '<div class="gallery-item" tabindex="0" data-id="' + esc(item.id || "") + '" data-kind="image" data-url="' + url + '" data-prompt="' + prompt + '"><img src="' + url + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div>' + like + "</div>";
       }).join("");
-      if (items.length >= 6) grid.innerHTML = live;
-      else grid.insertAdjacentHTML("afterbegin", live);
+      if (items.length >= 6) {
+        grid.innerHTML = live;
+        if (headH) headH.textContent = DU.t("gallery.live.h", "From the community");
+        if (headP) headP.textContent = DU.t("gallery.live.p", "Creations people chose to share.");
+        if (note) note.hidden = true;
+      } else {
+        grid.insertAdjacentHTML("afterbegin", live);
+        if (note) note.hidden = false;
+      }
       bindBrokenMedia(grid);
       markGalleryItems();
     })

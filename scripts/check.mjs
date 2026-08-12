@@ -87,6 +87,10 @@ function extractI18nKeys(src) {
     "err.kie_insufficient_balance",
     "err.kie_file_type_unsupported",
     "gallery.sample",
+    "auth.gate.h",
+    "err.network",
+    "gallery.note",
+    "ws.upload.empty",
     "ws.quota.h",
     "price.cta.free",
     "ws.history.error.h",
@@ -137,7 +141,17 @@ function extractI18nKeys(src) {
   mustContain("out/pricing.html", 'class="checkout-note show"', "paused checkout note visible before JS");
   mustContain("out/pricing.html", "Paid checkout not configured", "CTA title says no charge");
   mustContain("out/index.html", "gallery-item sample", "gallery sample placeholders");
+  mustContain("out/index.html", "gallery.note", "gallery honest sample note");
   mustContain("out/index.html", 'class="feat-card" href="/workspace"', "features card is a real link");
+  if (/class="feat-card"[^>]*href="#"/.test(read("out/index.html"))) {
+    fail.push("feat-card must not use href=# dead link");
+  } else ok.push("feat-cards are not href=#");
+  mustContain("out/assets/js/du.js", "openAlert", "AlertDialog for unauth Medium/Pro");
+  mustContain("out/assets/js/du.js", "network_error", "network failures are JSON-coded");
+  mustContain("out/workspace.html", "credits-skel", "header credits skeleton not em dash");
+  mustContain("out/workspace.html", "gen-sticky", "mobile sticky Generate");
+  mustContain("out/workspace.html", "uploadEmptyHint", "empty upload hint near dropzone");
+  mustContain("out/workspace.html", "auth.gate.medium", "unauth Medium/Pro opens register dialog");
   mustContain("out/assets/js/du.js", "function errorAction", "generate fail has a next-step CTA");
   mustContain("out/workspace.html", "guestQuotaBanner", "guest quota empty state");
   mustContain("out/workspace.html", "ws.history.error.h", "history load error is not fake-empty");
@@ -288,7 +302,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v21", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v22", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

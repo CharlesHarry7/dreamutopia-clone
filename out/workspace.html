@@ -52,13 +52,12 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.45);z-index:60}
 .nav-menu a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--text2)}
 .nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
-.header-right{display:flex;gap:10px;align-items:center}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .credits-pill{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2)}
 .credits-pill a{color:inherit;margin-left:6px;opacity:.85;font-weight:500}
 .credits-pill a:hover{opacity:1;text-decoration:underline}
 .credits-pill #creditsBadge{display:inline-block;min-width:1.25ch;text-align:center;vertical-align:baseline}
-.credits-pill #creditsBadge.loading{min-width:2ch;opacity:.45}
-.credits-pill #creditsBadge.loading::after{content:"···"}
+.credits-pill #creditsBadge.loading{min-width:2.4em}
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
 .lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
@@ -125,6 +124,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .upload-area.has-img .remove-btn{display:flex;align-items:center;justify-content:center}
 .upload-area.drag{border-color:rgba(168,85,247,.7);background:rgba(168,85,247,.08)}
 .upload-grid{display:grid;grid-template-columns:1fr;gap:12px;max-width:420px;margin:0 auto 10px}
+.upload-empty-hint{max-width:420px;margin:0 auto 12px;font-size:12.5px;color:rgba(255,255,255,.55);text-align:center;line-height:1.45}
+.upload-empty-hint[hidden]{display:none !important}
 .upload-grid.two{grid-template-columns:1fr 1fr;max-width:820px}
 .upload-grid .upload-area{max-width:none;margin:0;min-height:180px}
 .opt-row{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;justify-content:center}
@@ -183,6 +184,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .model-opt .c{font-size:11px;color:var(--text3);margin-top:3px}
 .model-opt .t{font-size:10px;color:var(--primary2);font-weight:600;margin-top:3px}
 
+.gen-sticky{width:100%}
 .gen-btn{width:100%;padding:15px;border-radius:12px;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(107,114,128,.4);color:rgba(255,255,255,.45);cursor:not-allowed;transition:opacity .2s,background .2s}
 .gen-btn.ready{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;cursor:pointer;box-shadow:0 10px 28px rgba(168,85,247,.25)}
 .gen-btn.ready:hover{opacity:.92}
@@ -253,6 +255,18 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 .gen-card{padding:18px 16px}
 .welcome{padding:18px}
 .upload-grid.two{grid-template-columns:1fr}
+.header-right{flex-wrap:wrap}
+.model-row{grid-template-columns:1fr 1fr}
+.gen-sticky{
+  position:sticky;
+  bottom:0;
+  z-index:40;
+  width:100%;
+  margin:0 -16px;
+  padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(to top, rgba(28,28,38,.97) 62%, rgba(28,28,38,.55) 88%, transparent);
+}
+.gen-sticky .gen-btn{width:100%}
 }
 </style>
 <link rel="stylesheet" href="/assets/css/chrome.css">
@@ -288,7 +302,7 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 </details>
 </nav>
 <div class="header-right">
-<span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
+<span class="credits-pill" id="creditsPill" hidden>⚡ <span id="creditsBadge" class="loading"><span class="credits-skel" aria-hidden="true"></span></span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
 <a href="/auth?mode=login" class="btn-login" id="loginBtn" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="signupBtn" data-i18n="hdr.signup">Sign Up</a>
 <script>
@@ -297,6 +311,8 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
   try {
     var token = localStorage.getItem("dreamutopia_token");
     if (!token) return;
+    var pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = false;
     var badge = document.getElementById("creditsBadge");
     var buy = document.getElementById("buyCreditsLink");
     if (buy) buy.hidden = false;
@@ -306,8 +322,8 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
       badge.textContent = String(n);
       badge.classList.remove("loading");
     } else {
-      badge.textContent = "";
       badge.classList.add("loading");
+      badge.innerHTML = '<span class="credits-skel" aria-hidden="true"></span>';
     }
     var loginBtn = document.getElementById("loginBtn");
     var signupBtn = document.getElementById("signupBtn");
@@ -411,6 +427,7 @@ Image
 <button type="button" class="remove-btn" onclick="event.stopPropagation(); clearLastUpload()" aria-label="Remove last frame">✕</button>
 </div>
 </div>
+<p class="upload-empty-hint" id="uploadEmptyHint" data-i18n="ws.upload.empty">No image yet — drop a file on the box, or paste a public https URL below.</p>
 <p class="url-hint" id="urlHint">Start image optional — skip it for text-to-video. Or paste a public https URL.</p>
 <input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/start-frame.png" autocomplete="off" data-i18n-aria="a11y.startUrl" aria-label="Start image URL">
 <input class="url-input last-slot" type="url" id="lastImageUrlInput" placeholder="https://example.com/last-frame.png" autocomplete="off" style="margin-top:-8px" data-i18n-aria="a11y.lastUrl" aria-label="Last frame URL">
@@ -465,10 +482,12 @@ Image
 <button type="button" class="opt-chip" data-ar="1:1" aria-pressed="false" onclick="pickAspect('1:1')">1:1</button>
 </div>
 
+<div class="gen-sticky">
 <button type="button" class="gen-btn" id="genBtn" disabled onclick="generate()">
 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 <span id="genBtnLabel">Generate Free Trial</span>
 </button>
+</div>
 <p class="gen-foot" id="genFoot">2 free Lite videos. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for 10 credits.</p>
 
 <div class="gen-status" id="genStatus" role="status" aria-live="polite">
@@ -658,6 +677,20 @@ function writeCachedCredits(credits) {
     return;
   }
   localStorage.setItem(CREDITS_KEY, String(credits));
+}
+
+function setCreditsBadge(value) {
+  const badge = document.getElementById("creditsBadge");
+  if (!badge) return;
+  if (value === null || value === undefined || value === "") {
+    badge.classList.add("loading");
+    badge.innerHTML = '<span class="credits-skel" aria-hidden="true"></span>';
+    badge.setAttribute("aria-busy", "true");
+    return;
+  }
+  badge.classList.remove("loading");
+  badge.removeAttribute("aria-busy");
+  badge.textContent = String(value);
 }
 
 function clearAuthLocal() {
@@ -907,7 +940,6 @@ function updateAuthUI(credits) {
       writeCachedCredits(userCredits);
     }
   }
-  const badge = document.getElementById("creditsBadge");
   const buy = document.getElementById("buyCreditsLink");
   const welcome = document.getElementById("welcomeBanner");
   const save = document.getElementById("saveCard");
@@ -915,13 +947,12 @@ function updateAuthUI(credits) {
   const btnLabel = document.getElementById("genBtnLabel");
 
   if (token) {
-    // Never show "—" while a session exists — use cache or a subtle loading state.
+    const pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = false;
     if (userCredits !== null && userCredits !== undefined) {
-      badge.textContent = userCredits;
-      badge.classList.remove("loading");
+      setCreditsBadge(userCredits);
     } else {
-      badge.textContent = "";
-      badge.classList.add("loading");
+      setCreditsBadge(null);
     }
     buy.hidden = false;
     welcome.classList.remove("show");
@@ -947,8 +978,9 @@ function updateAuthUI(credits) {
     signupBtn.href = "/pricing";
     signupBtn.onclick = null;
   } else {
-    badge.textContent = "—";
-    badge.classList.remove("loading");
+    const pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = true;
+    setCreditsBadge(null);
     buy.hidden = true;
     writeCachedCredits(null);
     const usedUp = guestRemaining !== null && guestRemaining <= 0;
@@ -1061,7 +1093,19 @@ function switchMode(mode) {
   saveGenPrefs();
 }
 
-function pickModel(v) {
+async function pickModel(v) {
+  if (!token && (v === "medium" || v === "pro")) {
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: currentMode === "image"
+          ? DU.t("auth.gate.image", "Image generation needs a free account (10 credits).")
+          : DU.t("auth.gate.medium", "Medium and Pro need a free account. You get 10 credits — no card required."),
+        href: authHref("register"),
+      });
+    }
+    return;
+  }
   currentModel = v;
   const row = document.getElementById(currentMode === "image" ? "imageModels" : "videoModels");
   if (!row) return;
@@ -1149,6 +1193,14 @@ function acceptImageFile(file) {
   return file;
 }
 
+function syncUploadEmptyHint() {
+  const hint = document.getElementById("uploadEmptyHint");
+  if (!hint) return;
+  const urlEl = document.getElementById("imageUrlInput");
+  const has = !!(uploadedImage || (urlEl && urlEl.value.trim()));
+  hint.hidden = has;
+}
+
 function handleFile(input) {
   const file = acceptImageFile(input.files && input.files[0]);
   if (!file) return;
@@ -1159,6 +1211,7 @@ function handleFile(input) {
   if (startArea) startArea.removeAttribute("aria-invalid");
   previewOnArea(document.getElementById("uploadArea"), file);
   syncVideoOptions();
+  syncUploadEmptyHint();
 }
 
 function clearUpload() {
@@ -1168,6 +1221,7 @@ function clearUpload() {
   resetArea(document.getElementById("uploadArea"));
   document.getElementById("fileInput").value = "";
   syncVideoOptions();
+  syncUploadEmptyHint();
 }
 
 function handleLastFile(input) {
@@ -1275,10 +1329,24 @@ async function generate() {
   lastUrl = String(lastUrl).trim();
 
   if (!token && currentMode === "video" && currentModel !== "lite") {
-    return toast(DU.t("err.guest_lite_only", "Free trial is Lite only — sign up for Medium and Pro."), true);
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("auth.gate.medium", "Medium and Pro need a free account. You get 10 credits — no card required."),
+        href: authHref("register"),
+      });
+    }
+    return;
   }
   if (!token && currentMode === "image") {
-    return toast(DU.t("err.guest_lite_only", "Image generation needs a free account (10 credits)."), true);
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("auth.gate.image", "Image generation needs a free account (10 credits)."),
+        href: authHref("register"),
+      });
+    }
+    return;
   }
   if (!token && currentMode === "video" && !uploadedImage && !imageUrl) {
     const msg = DU.t("err.image_url_required", "Free trial needs a start image.");
@@ -1418,7 +1486,25 @@ async function generate() {
     statusText.textContent = msg;
     if (DU.setLiveStatus) DU.setLiveStatus(status, statusText, { error: true, text: msg });
     if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("genStatusAction"), code);
-    toast(msg, true);
+    if (code === "insufficient_credits" && DU.openAlert) {
+      toast(msg, true);
+      DU.openAlert({
+        title: DU.t("err.insufficient_credits", "Not enough credits for this generation."),
+        body: DU.t("err.insufficient_credits.p", "This generation costs more credits than you have."),
+        href: "/pricing",
+        action: DU.t("err.action.pricing", "View credit packs"),
+      });
+    } else if (code === "network_error" || (e && !e.status && code !== "poll_cancelled")) {
+      toast(DU.t("err.network", "Network error. Check your connection and try again."), true);
+    } else if (code === "guest_lite_only" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("err.guest_lite_only", "Free trial is Lite image-to-video only. Sign up for 10 credits and every model."),
+        href: authHref("register"),
+      });
+    } else {
+      toast(msg, true);
+    }
     loadHistory();
   }
   if (card) card.setAttribute("aria-busy", "false");
@@ -1696,7 +1782,13 @@ function escapeHtml(s) {
     onPromptInput();
   }
   const urlInput = document.getElementById("imageUrlInput");
-  if (urlInput) urlInput.addEventListener("input", syncVideoOptions);
+  if (urlInput) {
+    urlInput.addEventListener("input", function () {
+      syncVideoOptions();
+      syncUploadEmptyHint();
+    });
+  }
+  syncUploadEmptyHint();
   if (token) {
     try {
       // Only a real unauthorized response may wipe the session. Transient

@@ -45,6 +45,13 @@
     return fallback || key;
   }
 
+  function networkFailError() {
+    const err = new Error(t("err.network", "Network error. Check your connection and try again."));
+    err.code = "network_error";
+    err.status = 0;
+    return err;
+  }
+
   function isAllowedImageFile(file) {
     if (!file) return false;
     const type = (file.type || "").toLowerCase();
@@ -63,7 +70,12 @@
       headers["content-type"] = "application/json";
     }
     if (token) headers.authorization = "Bearer " + token;
-    const res = await fetch("/api" + path, Object.assign({}, options, { headers, credentials: "same-origin" }));
+    let res;
+    try {
+      res = await fetch("/api" + path, Object.assign({}, options, { headers, credentials: "same-origin" }));
+    } catch (e) {
+      throw networkFailError();
+    }
     const ct = (res.headers.get("content-type") || "").toLowerCase();
     if (ct.includes("text/html")) {
       const err = new Error("not found");
@@ -97,12 +109,17 @@
     if (token) headers.authorization = "Bearer " + token;
     if (file.type && file.type !== "application/octet-stream") headers["content-type"] = file.type;
     else if (/\.tiff?$/i.test(file.name || "")) headers["content-type"] = "image/tiff";
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers: headers,
-      body: file,
-      credentials: "same-origin",
-    });
+    let res;
+    try {
+      res = await fetch("/api/upload", {
+        method: "POST",
+        headers: headers,
+        body: file,
+        credentials: "same-origin",
+      });
+    } catch (e) {
+      throw networkFailError();
+    }
     const data = await res.json().catch(function () { return {}; });
     if (!res.ok) {
       const err = new Error(data.message || data.error || "upload failed");
@@ -296,6 +313,7 @@
     if (c === "insufficient_credits") {
       return { href: "/pricing", key: "err.action.pricing", label: "View credit packs" };
     }
+    if (c === "network_error") return null;
     return null;
   }
 
@@ -513,6 +531,83 @@
     });
   }
 
+  let alertUntrap = null;
+  function ensureAlertDialog() {
+    let dlg = document.getElementById("appDialog");
+    if (dlg) return dlg;
+    dlg = document.createElement("dialog");
+    dlg.id = "appDialog";
+    dlg.className = "alert-dialog";
+    dlg.setAttribute("aria-modal", "true");
+    dlg.setAttribute("aria-labelledby", "appDialogTitle");
+    dlg.setAttribute("aria-describedby", "appDialogBody");
+    dlg.innerHTML =
+      '<h2 class="alert-title" id="appDialogTitle"></h2>' +
+      '<p class="alert-body" id="appDialogBody"></p>' +
+      '<div class="alert-actions">' +
+      '<button type="button" class="alert-cancel" id="appDialogCancel"></button>' +
+      '<a class="alert-go" id="appDialogGo"></a>' +
+      "</div>";
+    document.body.appendChild(dlg);
+    return dlg;
+  }
+
+  function openAlert(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      const dlg = ensureAlertDialog();
+      const title = document.getElementById("appDialogTitle");
+      const body = document.getElementById("appDialogBody");
+      const go = document.getElementById("appDialogGo");
+      const cancel = document.getElementById("appDialogCancel");
+      if (title) title.textContent = opts.title || t("auth.gate.h", "Sign up to continue");
+      if (body) body.textContent = opts.body || t("auth.gate.medium", "Medium and Pro need a free account (10 credits).");
+      if (go) {
+        go.href = opts.href || "/auth?mode=register";
+        go.textContent = opts.action || t("err.action.signup", "Sign up for 10 credits");
+      }
+      if (cancel) cancel.textContent = opts.cancel || t("auth.gate.later", "Not now");
+      let settled = false;
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        if (alertUntrap) {
+          alertUntrap();
+          alertUntrap = null;
+        }
+        if (cancel) cancel.removeEventListener("click", onCancel);
+        dlg.removeEventListener("cancel", onEsc);
+        try {
+          if (dlg.open) dlg.close();
+        } catch (e) {}
+        resolve(!!ok);
+      }
+      function onCancel() {
+        finish(false);
+      }
+      function onEsc(e) {
+        e.preventDefault();
+        finish(false);
+      }
+      if (cancel) cancel.addEventListener("click", onCancel);
+      dlg.addEventListener("cancel", onEsc);
+      if (typeof dlg.showModal === "function") {
+        try {
+          dlg.showModal();
+        } catch (e) {
+          location.href = (go && go.href) || "/auth?mode=register";
+          finish(true);
+          return;
+        }
+        alertUntrap = trapFocus(dlg);
+        if (go) focusEl(go);
+      } else {
+        location.href = (go && go.href) || "/auth?mode=register";
+        finish(true);
+      }
+    });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -540,6 +635,7 @@
     bindTablist: bindTablist,
     bindActivate: bindActivate,
     bindBusyLeave: bindBusyLeave,
+    openAlert: openAlert,
     prefersReducedMotion: prefersReducedMotion,
     trapFocus: trapFocus,
     bindPasswordToggle: bindPasswordToggle,

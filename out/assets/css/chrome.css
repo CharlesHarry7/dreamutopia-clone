@@ -199,7 +199,71 @@ html.lightbox-lock body {
   background: rgba(168, 85, 247, 0.08);
 }
 
+.alert-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 22px 20px 18px;
+  border: 1px solid var(--border, #2a2a38);
+  border-radius: 16px;
+  background: var(--card, #1c1c26);
+  color: var(--text, #fff);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+.alert-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+.alert-dialog .alert-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+.alert-dialog .alert-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text2, #a8a8b8);
+  margin: 0 0 18px;
+}
+.alert-dialog .alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.alert-dialog .alert-cancel {
+  border: 1px solid var(--border2, #3a3a4a);
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #fff);
+  background: transparent;
+}
+.alert-dialog .alert-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary, #a855f7), var(--accent, #ec4899));
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.credits-skel {
+  display: inline-block;
+  width: 2.2em;
+  height: 0.85em;
+  border-radius: 4px;
+  vertical-align: middle;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+  background-size: 200% 100%;
+  animation: credits-skel 1.2s ease-in-out infinite;
+}
+@keyframes credits-skel {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .credits-skel { animation: none; }
   .nav-toggle-bars,
   .nav-toggle-bars::before,
   .nav-toggle-bars::after {
