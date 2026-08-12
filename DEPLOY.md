@@ -52,12 +52,17 @@ Empty KIE wallet → honest `kie_insufficient_balance` (502). No fake success vi
 ## Local / staging Worker (safe while Pages stays live)
 
 ```bash
+npm run verify       # lint + Next build
+npm run cf:build     # OpenNext → .open-next/worker.js (CI proves this; not Pages)
 npm run cf:preview   # OpenNext build + local Workers runtime
-npm run cf:deploy    # deploy Worker (workers.dev / Worker routes) — does not change Pages
-npm run check:health -- https://<worker-host>
+npm run cf:deploy    # publish Worker (workers.dev) — does not change Pages
+npm run check:health -- https://<worker-host> --expect-worker
 ```
 
-Aliases: `npm run preview` / `npm run deploy` → same as `cf:*`.
+Aliases: `npm run preview` / `npm run deploy` → same as `cf:*`.  
+`npm run verify:worker` = `verify` + `cf:build`.
+
+**Auth for preview URL:** `npx wrangler login` or `CLOUDFLARE_API_TOKEN` (+ optional `CLOUDFLARE_ACCOUNT_ID`). Without auth, `cf:build` / `wrangler deploy --dry-run` still validate the bundle; `cf:deploy` cannot print a `*.workers.dev` URL.
 
 ### Tell Pages vs Worker apart
 

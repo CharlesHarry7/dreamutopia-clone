@@ -1,6 +1,7 @@
 # B-line quality gate for the Next + OpenNext Workers experiment.
 # Authoritative CI for this branch. Cloudflare Pages failing on this PR is expected
 # (A-line out/ layout) — see B-LINE.md. Do not treat Pages red as a reason to cut over.
+# Worker publish path is `npm run cf:deploy` (needs Wrangler auth) — not Pages git build.
 name: B-line verify
 
 on:
@@ -36,3 +37,27 @@ jobs:
 
       - name: Lint + Next build
         run: npm run verify
+
+  # Proves OpenNext → Workers bundle (does not publish; does not touch Pages).
+  opennext:
+    name: npm run cf:build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: OpenNext Workers bundle
+        run: npm run cf:build
+
+      - name: Confirm worker entry
+        run: test -f .open-next/worker.js && test -d .open-next/assets

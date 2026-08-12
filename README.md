@@ -85,12 +85,16 @@ Use `npm run check:health -- <url> --expect-worker` (or `--expect-pages`) to tel
 `cf:deploy` does **not** replace Pages. Pages CI red on this PR is expected (see B-LINE.md).
 
 ```bash
+npm run verify       # lint + Next build (CI)
+npm run cf:build     # OpenNext Workers bundle (CI) — not the Pages git build
 npm run cf:preview   # OpenNext build + local Workers runtime
-npm run cf:deploy    # deploy Worker only (Pages stays live)
+npm run cf:deploy    # publish Worker staging URL (needs wrangler login / API token)
 npm run cf:secret:kie
-npm run check:health -- https://<your-worker-host>
-# Worker health should show: "runtime": "next-opennext-workers"
+npm run check:health -- https://<your-worker-host> --expect-worker
+# Worker health should show: "runtime": "next-opennext-workers", cutoverComplete: false
 ```
+
+Pages git build failing on this PR is expected. Worker path ≠ Pages. See **[B-LINE.md](./B-LINE.md)**.
 
 | Binding / secret | Required for |
 |---|---|

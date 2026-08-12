@@ -20,22 +20,41 @@ Health tags on the Worker must stay:
 
 | Check | Meaning |
 |---|---|
-| **GitHub Actions `B-line verify`** | Authoritative for this branch: `npm run verify` (`lint && build`). Must stay green. |
-| **Cloudflare Pages** | **Expected FAILURE** on this branch. The Pages project still looks for A-line `out/` (+ Functions layout). This tree has Next at the root and snapshots A-line under `legacy/`. That red check is **not** a B-line build failure and must **not** be “fixed” by cutting production over to Workers. |
+| **GitHub Actions `B-line verify` → `npm run verify`** | Next lint + build. Must stay green. |
+| **GitHub Actions `B-line verify` → `npm run cf:build`** | OpenNext Workers bundle (`.open-next/worker.js`). Must stay green. **This is the Workers build path.** |
+| **Cloudflare Pages (git)** | **Expected FAILURE** on this branch. Pages still looks for A-line `out/` (+ Functions). Red here is **not** a Workers failure. |
 
-Do not change the Cloudflare Pages project to deploy OpenNext as a way to green that check. Keep Pages on the A-line layout until a separate, explicit cutover decision (out of scope for B-line).
+Do **not** “fix” the Pages check by pointing Pages at OpenNext or cutting over production. Production product loop stays on Pages (#13). B-line publishes only via Workers:
+
+```bash
+npm run cf:build     # OpenNext bundle (CI + local)
+npm run cf:deploy    # publish Worker staging (Wrangler auth required)
+# equivalent: npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy
+```
+
+## Worker preview URL
+
+| Status | Detail |
+|---|---|
+| **Preview URL** | **Not published from this agent environment** |
+| **Command** | `npm run cf:deploy` then open the printed `*.workers.dev` URL |
+| **Blocker** | No `CLOUDFLARE_API_TOKEN` / `wrangler login` in the cloud agent. `wrangler whoami` → not authenticated. MCP Workers list on the bound account has no `dreamutopia-clone` Worker yet. |
+| **Proven locally** | `npm run cf:build` OK; `wrangler deploy --dry-run` OK (bindings: D1/KV/R2/ASSETS; ~6MB upload). |
+| **After someone deploys** | `npm run check:health -- https://<worker>.workers.dev --expect-worker` — expect `cutoverComplete: false`, `productionSurface: "pages-until-cutover"`. |
+
+Deploying the Worker for smoke tests does **not** replace [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).
 
 ## Local / branch quality gate
 
 ```bash
 npm run verify          # lint && build — required green
+npm run cf:build        # OpenNext Workers bundle — required green in CI
 npm run cf:preview      # optional OpenNext + local Workers runtime
 npm run check:health -- https://dreamutopia-clone.pages.dev --expect-pages   # A-line live
-# After staging deploy only:
+# After staging deploy only (needs Wrangler auth):
+npm run cf:deploy
 npm run check:health -- https://<worker-host> --expect-worker
 ```
-
-Staging Worker smoke (funded KIE, empty-wallet honesty) is still a manual gap until a Worker host is deployed and checked. That does **not** authorize production cutover.
 
 ## Auth / credits / generate — A vs B
 
