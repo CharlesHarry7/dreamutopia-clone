@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordField } from "@/components/password-field";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { api, type ApiError } from "@/lib/api";
 
 function ResetForm() {
@@ -72,11 +73,7 @@ function ResetForm() {
               value={confirm}
               onChange={setConfirm}
             />
-            {error && (
-              <p className="text-sm text-[var(--red)]" role="alert">
-                {error}
-              </p>
-            )}
+            {error && <InlineAlert variant="error">{error}</InlineAlert>}
             <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
               {busy ? "Updating…" : "Update password"}
             </Button>

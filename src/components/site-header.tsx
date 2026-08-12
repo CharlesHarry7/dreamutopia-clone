@@ -89,7 +89,8 @@ export function SiteHeader({ active }: { active?: string }) {
             </Badge>
           ) : user ? (
             <>
-              <Badge className="hidden sm:inline-flex">
+              {/* md+ matches primary nav; below md auth CTAs live in the Menu drawer */}
+              <Badge className="hidden md:inline-flex">
                 <span className="tabular-nums">{user.credits}</span> credits
                 <Link href="/pricing" className="ml-1.5 opacity-85 hover:underline">
                   {t("hdr.buy", "Buy Credits")}
@@ -98,26 +99,26 @@ export function SiteHeader({ active }: { active?: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="hidden sm:inline-flex"
+                className="hidden md:inline-flex"
                 onClick={() => void logout()}
               >
                 {t("hdr.logout", "Log Out")}
               </Button>
-              <Button asChild size="sm" className="hidden sm:inline-flex">
+              <Button asChild size="sm" className="hidden md:inline-flex">
                 <Link href="/workspace">{t("nav.workspace", "Workspace")}</Link>
               </Button>
             </>
           ) : (
             <>
               {guestRemaining !== null && (
-                <Badge variant="secondary" className="hidden sm:inline-flex">
+                <Badge variant="secondary" className="hidden md:inline-flex">
                   {guestRemaining} free left
                 </Badge>
               )}
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
                 <Link href="/auth?mode=login">{t("hdr.login", "Log In")}</Link>
               </Button>
-              <Button asChild size="sm" className="hidden sm:inline-flex">
+              <Button asChild size="sm" className="hidden md:inline-flex">
                 <Link href="/auth?mode=register">{t("hdr.signup", "Sign Up")}</Link>
               </Button>
             </>

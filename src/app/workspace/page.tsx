@@ -24,7 +24,12 @@ import {
   type ApiError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatGenerateError, guestRemainingFromError } from "@/lib/generate-errors";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import {
+  formatGenerateError,
+  formatStoredJobError,
+  guestRemainingFromError,
+} from "@/lib/generate-errors";
 import { useI18n } from "@/lib/i18n";
 import { packLabel } from "@/lib/packs";
 
@@ -99,6 +104,7 @@ function WorkspaceInner() {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [kieReady, setKieReady] = useState<boolean | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
@@ -171,8 +177,12 @@ function WorkspaceInner() {
         }
         const list = Array.isArray(data.generations) ? data.generations : [];
         setHistory(list.map(asHistoryItem).filter((g): g is HistoryItem => Boolean(g)));
+        setHistoryError("");
       } catch {
-        // Keep last good history on transient failures (corrupt-row / settle blips).
+        // Keep last good history on transient failures; surface load error so empty ≠ failed.
+        if (!cancelled) {
+          setHistoryError("Couldn’t load creations. Showing the last list if we have one.");
+        }
       } finally {
         if (!cancelled) setHistoryLoading(false);
       }
@@ -580,16 +590,18 @@ function WorkspaceInner() {
                             : " (optional)"}
                       </Label>
                       {imageUrl.trim() ? (
-                        <button
+                        <Button
                           type="button"
-                          className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                          variant="link"
+                          size="sm"
+                          className="h-auto px-0 text-xs"
                           onClick={() => {
                             setImageUrl("");
                             if (startFileRef.current) startFileRef.current.value = "";
                           }}
                         >
                           Clear
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                     <Input
@@ -624,16 +636,18 @@ function WorkspaceInner() {
                       <div className="flex items-center justify-between gap-2">
                         <Label htmlFor="last-image-file">Last frame (optional)</Label>
                         {lastImageUrl.trim() ? (
-                          <button
+                          <Button
                             type="button"
-                            className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                            variant="link"
+                            size="sm"
+                            className="h-auto px-0 text-xs"
                             onClick={() => {
                               setLastImageUrl("");
                               if (lastFileRef.current) lastFileRef.current.value = "";
                             }}
                           >
                             Clear
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                       <Input
@@ -852,11 +866,7 @@ function WorkspaceInner() {
                   </div>
 
                   {error && (
-                    <div
-                      className="space-y-2 rounded-xl border border-[var(--red)]/35 bg-[var(--red)]/10 px-3 py-3 text-sm text-[var(--red)]"
-                      role="alert"
-                      aria-live="assertive"
-                    >
+                    <InlineAlert variant="error">
                       <p>{error}</p>
                       {(errorCode === "insufficient_credits" ||
                         errorCode === "insufficient credits" ||
@@ -882,7 +892,7 @@ function WorkspaceInner() {
                           the Worker.
                         </p>
                       )}
-                    </div>
+                    </InlineAlert>
                   )}
                   {status && !error && (
                     <p className="text-sm text-[var(--primary2)]" role="status" aria-live="polite">
@@ -1003,8 +1013,16 @@ function WorkspaceInner() {
                     <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
                   </div>
                 )}
+                {!authLoading && !historyLoading && historyError && (
+                  <InlineAlert variant="error" className="mb-3">
+                    {historyError}
+                  </InlineAlert>
+                )}
                 {!authLoading && !historyLoading && history.length === 0 && (
                   <div className="space-y-3 rounded-xl border border-dashed border-white/15 bg-black/10 px-4 py-6 text-center">
+                    <p className="text-base font-semibold text-foreground">
+                      {t("ws.history.empty.h", "No creations yet")}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {user
                         ? t("ws.history.empty.p", "Start creating to see your work here.")
@@ -1031,7 +1049,9 @@ function WorkspaceInner() {
                             {!user ? " · guest" : ""}
                           </div>
                           {item.status === "failed" && item.errorMessage ? (
-                            <p className="mt-1 text-xs text-destructive">{item.errorMessage}</p>
+                            <p className="mt-1 text-xs text-destructive">
+                              {formatStoredJobError(item.errorMessage)}
+                            </p>
                           ) : null}
                         </div>
                         <div className="flex gap-2">

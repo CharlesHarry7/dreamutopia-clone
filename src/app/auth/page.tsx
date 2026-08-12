@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordField } from "@/components/password-field";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, getStoredReferral, type ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -167,21 +168,9 @@ function AuthForm() {
             onChange={setPassword}
           />
 
-          {infoMsg && (
-            <p className="text-sm text-[var(--green)]" role="status">
-              {infoMsg}
-            </p>
-          )}
-          {error && (
-            <p className="text-sm text-[var(--red)]" role="alert">
-              {error}
-            </p>
-          )}
-          {forgotMsg && (
-            <p className="text-sm text-[var(--green)]" role="status">
-              {forgotMsg}
-            </p>
-          )}
+          {infoMsg && <InlineAlert variant="success">{infoMsg}</InlineAlert>}
+          {error && <InlineAlert variant="error">{error}</InlineAlert>}
+          {forgotMsg && <InlineAlert variant="success">{forgotMsg}</InlineAlert>}
 
           <Button type="submit" className="w-full" disabled={busy}>
             {busy
@@ -193,15 +182,16 @@ function AuthForm() {
         </form>
 
         {mode === "login" && (
-          <button
+          <Button
             type="button"
-            className="mt-3 text-sm text-[var(--primary2)] hover:underline disabled:opacity-50"
+            variant="link"
+            className="mt-3 h-auto px-0"
             disabled={forgotBusy || busy}
             aria-busy={forgotBusy}
             onClick={() => void onForgot()}
           >
             {forgotBusy ? "Sending reset link…" : "Forgot password?"}
-          </button>
+          </Button>
         )}
 
         <p

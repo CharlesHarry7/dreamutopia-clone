@@ -61,3 +61,23 @@ export function guestRemainingFromError(err: unknown): number | null {
   const n = payload?.guestRemaining;
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
 }
+
+/** Map stored job errorMessage (history rows) to the same honest KIE copy as create. */
+export function formatStoredJobError(message: string | null | undefined): string {
+  if (!message || !message.trim()) return "Generation failed";
+  const m = message.toLowerCase();
+  if (m.includes("kie_api_key_missing") || m.includes("kie_api_key is not configured")) {
+    return KIE_API_KEY_MISSING_MESSAGE;
+  }
+  if (
+    m.includes("kie_insufficient_balance") ||
+    /insufficient\s+(account\s+)?(balance|credit|funds)/i.test(message) ||
+    m.includes("wallet has insufficient")
+  ) {
+    return KIE_INSUFFICIENT_BALANCE_MESSAGE;
+  }
+  if (m.includes("kie_create_failed") || m.includes("failed to create kie")) {
+    return message.includes("demo") ? message : `${message} No demo output was invented.`;
+  }
+  return message;
+}

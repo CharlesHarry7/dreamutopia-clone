@@ -50,10 +50,10 @@ export default function HomePage() {
     };
   }, []);
 
-  const items =
-    gallery.length > 0
-      ? gallery.slice(0, 12)
-      : FALLBACK_GALLERY.map((url, i) => ({ id: i, url }));
+  const usingFallbackGallery = !galleryLoading && gallery.length === 0;
+  const items = usingFallbackGallery
+    ? FALLBACK_GALLERY.map((url, i) => ({ id: i, url }))
+    : gallery.slice(0, 12);
 
   return (
     <>
@@ -173,6 +173,11 @@ export default function HomePage() {
             <p className="text-muted-foreground">
               {t("gallery.p", "A gallery of stunning visuals our creators have made")}
             </p>
+            {usingFallbackGallery && (
+              <p className="mt-2 text-xs text-muted-foreground" role="status">
+                Showing sample visuals — no community publishes yet.
+              </p>
+            )}
           </div>
           {galleryLoading && (
             <p className="mb-4 text-center text-xs text-muted-foreground" role="status">

@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { api, getToken, type ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -30,6 +31,7 @@ export default function PricingPage() {
   const [configured, setConfigured] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +41,7 @@ export default function PricingPage() {
         if (cancelled) return;
         setConfigured(!!data.configured);
         if (Array.isArray(data.packs) && data.packs.length) setPacks(data.packs);
+        setError("");
         setNote(
           data.configured
             ? user
@@ -54,6 +57,7 @@ export default function PricingPage() {
         const payload = (e.payload || {}) as { packs?: Pack[] };
         if (Array.isArray(payload.packs) && payload.packs.length) setPacks(payload.packs);
         setConfigured(false);
+        setError("");
         setNote(
           user
             ? "Stripe isn’t configured — nothing will be charged. Continue opens workspace and remembers the pack."
@@ -77,6 +81,7 @@ export default function PricingPage() {
       return;
     }
     setBusy(packId);
+    setError("");
     try {
       const res = await api<{ url?: string }>("/checkout", {
         method: "POST",
@@ -91,7 +96,7 @@ export default function PricingPage() {
         router.push(`/workspace?pack=${encodeURIComponent(packId)}`);
         return;
       }
-      setNote(e.message || "Checkout failed");
+      setError(e.message || "Checkout failed — nothing was charged.");
     } finally {
       setBusy(null);
     }
@@ -110,10 +115,7 @@ export default function PricingPage() {
               "Buy credits and use them across every video and image model. No subscriptions."
             )}
           </p>
-          <p
-            className="mx-auto mt-5 max-w-2xl rounded-xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
-            role="status"
-          >
+          <InlineAlert variant="info" className="mx-auto mt-5 max-w-2xl px-4">
             {note ? (
               <>
                 <b>{configured ? "Checkout is live." : "No fake charge."}</b> {note}
@@ -121,7 +123,12 @@ export default function PricingPage() {
             ) : (
               "Checking checkout…"
             )}
-          </p>
+          </InlineAlert>
+          {error && (
+            <InlineAlert variant="error" className="mx-auto mt-3 max-w-2xl px-4">
+              {error}
+            </InlineAlert>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
