@@ -348,7 +348,7 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 <p>Share your link. When they buy a credit pack, you receive 10% of that pack’s credits.</p>
 <div class="invite-row">
 <input id="inviteUrl" readonly aria-label="Invite URL">
-<button type="button" id="inviteCopy">Copy link</button>
+<button type="button" id="inviteCopy" data-i18n="ws.invite.copy">Copy link</button>
 </div>
 </section>
 
@@ -445,7 +445,7 @@ Image
 <button type="button" class="opt-chip" data-ar="1:1" aria-pressed="false" onclick="pickAspect('1:1')">1:1</button>
 </div>
 
-<button class="gen-btn" id="genBtn" disabled onclick="generate()">
+<button type="button" class="gen-btn" id="genBtn" disabled onclick="generate()">
 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 <span id="genBtnLabel">Generate Free Trial</span>
 </button>
@@ -578,6 +578,45 @@ let guestRemaining = 2;
 let lastGenerationId = null;
 let lastResultUrl = "";
 let genPollAbort = null;
+let genBusy = false;
+if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return genBusy; });
+
+const GEN_PREFS_KEY = "du_gen_prefs";
+
+function saveGenPrefs() {
+  try {
+    localStorage.setItem(GEN_PREFS_KEY, JSON.stringify({
+      mode: currentMode,
+      model: currentModel,
+      duration: durationSec,
+      aspect: aspectRatio,
+    }));
+  } catch (e) {}
+}
+
+function loadGenPrefs() {
+  try {
+    const raw = localStorage.getItem(GEN_PREFS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || typeof p !== "object") return null;
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyGenPrefs(prefs) {
+  if (!prefs) return;
+  const model = prefs.model;
+  if (currentMode === "image") {
+    if (model === "lite" || model === "pro") pickModel(model);
+  } else if (model === "lite" || model === "medium" || model === "pro") {
+    pickModel(model);
+  }
+  if (prefs.duration === 10 || prefs.duration === 5) pickDuration(Number(prefs.duration));
+  if (prefs.aspect === "9:16" || prefs.aspect === "1:1" || prefs.aspect === "16:9") pickAspect(prefs.aspect);
+}
 
 function readCachedCredits() {
   const raw = localStorage.getItem(CREDITS_KEY);
@@ -777,8 +816,10 @@ function showInviteCard(user) {
     copy.onclick = async function () {
       try {
         await navigator.clipboard.writeText(url);
-        copy.textContent = "Copied";
-        setTimeout(function () { copy.textContent = "Copy link"; }, 1500);
+        copy.textContent = DU.t("ws.invite.copied", "Copied");
+        setTimeout(function () {
+          copy.textContent = DU.t("ws.invite.copy", "Copy link");
+        }, 1500);
       } catch (e) {
         input.select();
         toast("Copy the invite link from the field");
@@ -943,6 +984,7 @@ function switchMode(mode) {
     note.textContent = "";
   }
   syncVideoOptions();
+  saveGenPrefs();
 }
 
 function pickModel(v) {
@@ -955,6 +997,7 @@ function pickModel(v) {
     el.setAttribute("aria-pressed", on ? "true" : "false");
   });
   syncVideoOptions();
+  saveGenPrefs();
 }
 
 function pickDuration(n) {
@@ -964,6 +1007,7 @@ function pickDuration(n) {
     el.classList.toggle("active", on);
     el.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  saveGenPrefs();
 }
 
 function pickAspect(v) {
@@ -973,6 +1017,7 @@ function pickAspect(v) {
     el.classList.toggle("active", on);
     el.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  saveGenPrefs();
 }
 
 function onPromptInput() {
@@ -1147,6 +1192,7 @@ async function uploadImageFile(file) {
 }
 
 async function generate() {
+  if (genBusy) return;
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return toast(DU.t("ws.prompt.required", "Please enter a prompt."), true);
 
@@ -1171,6 +1217,7 @@ async function generate() {
     return toast(msg, true);
   }
 
+  genBusy = true;
   const btn = document.getElementById("genBtn");
   const status = document.getElementById("genStatus");
   const statusText = document.getElementById("genStatusText");
@@ -1290,6 +1337,7 @@ async function generate() {
   if (card) card.setAttribute("aria-busy", "false");
   const cancelBtn = document.getElementById("genCancel");
   if (cancelBtn) cancelBtn.hidden = true;
+  genBusy = false;
   resetGenBtn();
 }
 
@@ -1438,8 +1486,11 @@ function escapeHtml(s) {
     history.replaceState(null, "", next);
   }
   const modeParam = params.get("mode");
-  if (modeParam === "image") switchMode("image");
+  const prefs = loadGenPrefs();
+  if (modeParam === "image" || modeParam === "video") switchMode(modeParam);
+  else if (prefs && prefs.mode === "image") switchMode("image");
   else switchMode("video");
+  applyGenPrefs(prefs);
   const qPrompt = params.get("prompt");
   if (qPrompt) {
     const ta = document.getElementById("promptInput");
@@ -1473,6 +1524,7 @@ function escapeHtml(s) {
     } catch (e) {}
     loadHistory();
   }
+  if (params.get("tab") === "history") switchPrimaryTab("history");
 })();
 
 document.addEventListener("du:i18n", function () {

@@ -358,7 +358,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 </div>
 <textarea class="prompt-input" id="homePrompt" maxlength="8000" required aria-required="true" aria-describedby="homeCounter" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
 
-<button class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
+<button type="button" class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
 <p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
 <div class="gen-status" id="homeStatus" role="status" aria-live="polite">
@@ -370,6 +370,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <video id="homeVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
 <div class="result-actions">
 <a id="homeResultLink" href="#" target="_blank" rel="noopener" data-i18n="gen.open">Open result</a>
+<a id="homeWorkspaceLink" href="/workspace?tab=history" hidden data-i18n="gen.workspace">View in Workspace</a>
 <button type="button" id="homeDownload" data-i18n="gen.download">Download</button>
 </div>
 </div>
@@ -633,6 +634,7 @@ let homeFile = null;
 let homeImageUrl = "";
 let homeBusy = false;
 let homePollAbort = null;
+if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return homeBusy; });
 
 function isImageTab() {
   const tab = document.querySelector(".gen-tab.active");
@@ -832,6 +834,8 @@ async function homeGenerate() {
   btn.disabled = true;
   if (card) card.setAttribute("aria-busy", "true");
   result.classList.remove("show");
+  const wsLink = document.getElementById("homeWorkspaceLink");
+  if (wsLink) wsLink.hidden = true;
   if (cancel) cancel.hidden = false;
   if (DU.setLiveStatus) {
     DU.setLiveStatus(status, text, { busy: true, text: DU.t("progress.starting", "Starting…") });
@@ -862,6 +866,8 @@ async function homeGenerate() {
     document.getElementById("homeDownload").onclick = function () {
       DU.downloadResult(done.resultUrl, "dreamutopia-" + (data.generationId || "video"));
     };
+    const doneWs = document.getElementById("homeWorkspaceLink");
+    if (doneWs) doneWs.hidden = false;
     result.classList.add("show");
     if (DU.setLiveStatus) {
       DU.setLiveStatus(status, text, {

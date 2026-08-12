@@ -463,6 +463,16 @@
     });
   }
 
+  // Browser shows a generic leave prompt; custom strings are ignored.
+  function bindBusyLeave(isBusy) {
+    if (typeof isBusy !== "function") return;
+    window.addEventListener("beforeunload", function (e) {
+      if (!isBusy()) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -487,6 +497,7 @@
     focusEl: focusEl,
     bindTablist: bindTablist,
     bindActivate: bindActivate,
+    bindBusyLeave: bindBusyLeave,
     prefersReducedMotion: prefersReducedMotion,
     trapFocus: trapFocus,
     bindPasswordToggle: bindPasswordToggle,
