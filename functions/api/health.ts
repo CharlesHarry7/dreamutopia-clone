@@ -23,6 +23,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     authReady,
     kieConfigured,
     generateReady,
+    checkoutConfigured: false,
     mediaRequiredForGenerate: false,
     message: !authReady
       ? "Functions up; bind DB + SESSIONS for auth/credits (see BACKEND.md)"

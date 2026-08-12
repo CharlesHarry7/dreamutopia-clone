@@ -39,6 +39,11 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .page-head p{font-size:15.5px;color:var(--text2);max-width:560px;margin:0 auto 18px;line-height:1.55}
 .cost-legend{display:inline-flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-size:13px;color:var(--text2);background:var(--card);border:1px solid var(--border);padding:10px 18px;border-radius:30px}
 .cost-legend b{color:#fff;font-weight:600}
+.checkout-note{display:none;max-width:640px;margin:18px auto 0;padding:12px 16px;border-radius:12px;border:1px solid rgba(251,146,60,.4);background:rgba(251,146,60,.08);color:var(--text2);font-size:13.5px;line-height:1.5;text-align:center}
+.checkout-note.show{display:block}
+.checkout-note b{color:var(--orange);font-weight:700}
+.checkout-note a{color:var(--primary2);font-weight:600}
+.checkout-note a:hover{text-decoration:underline}
 
 .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-bottom:72px}
 .plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px 24px;position:relative;display:flex;flex-direction:column;transition:transform .3s,border-color .3s}
@@ -62,6 +67,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .plan .btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
 .plan .btn.outline{background:var(--bg2);border:1px solid var(--border2);color:var(--text)}
 .plan .btn:hover{opacity:.88}
+.plan .btn.is-disabled,.plan .btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;pointer-events:none}
+.plan .btn-caption{display:block;margin-top:8px;font-size:11.5px;color:var(--text3);text-align:center;line-height:1.4;min-height:2.6em}
 .best-value{display:inline-block;font-size:11px;font-weight:700;color:#000;background:var(--orange);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle}
 
 .section{padding:0 0 72px}
@@ -154,6 +161,7 @@ nav{display:none}
 <span><b>Video:</b> Lite 3 · Med 5 · Pro 16</span>
 <span><b>Image:</b> Lite 1 · Pro 2</span>
 </div>
+<p class="checkout-note" id="checkoutNote" role="status" aria-live="polite"></p>
 </section>
 
 <div class="container">
@@ -173,7 +181,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter">Select</a>
+<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="starter"></span>
 </div>
 
 <div class="plan">
@@ -191,7 +200,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus">Select</a>
+<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="plus"></span>
 </div>
 
 <div class="plan popular">
@@ -210,7 +220,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro">Select</a>
+<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="pro"></span>
 </div>
 
 <div class="plan">
@@ -228,7 +239,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium">Select</a>
+<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="premium"></span>
 </div>
 
 </div>
@@ -317,7 +329,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">We accept cryptocurrency and Telegram Stars. If you pay with Telegram Stars you can buy them during checkout with Apple Pay, Google Pay, or a card.</div>
+<div class="faq-a">Paid checkout is not live yet on this site — no card, crypto, or Stars charges are processed today. You can still create a free account (10 credits on signup) and keep your chosen pack as intent until checkout ships.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -374,16 +386,94 @@ nav{display:none}
 <script>
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) return;
-  fetch("/api/auth/me", { headers: { authorization: "Bearer " + token } })
-    .then((res) => {
-      if (!res.ok) return;
-      document.querySelectorAll("a[data-pack]").forEach((a) => {
-        a.href = "/workspace?pack=" + encodeURIComponent(a.getAttribute("data-pack"));
+  const note = document.getElementById("checkoutNote");
+  const ctas = Array.prototype.slice.call(document.querySelectorAll("[data-checkout-cta]"));
+
+  function packAuthHref(pack) {
+    return "/auth?mode=register&pack=" + encodeURIComponent(pack);
+  }
+  function packWorkspaceHref(pack) {
+    return "/workspace?pack=" + encodeURIComponent(pack);
+  }
+
+  function applyUnavailableCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Paid checkout isn’t live yet.</b> No payment will be charged. Select continues into your workspace and remembers the pack until checkout ships."
+        : "<b>Paid checkout isn’t live yet.</b> No payment will be charged. Select opens free sign-up and remembers your pack intent — new accounts still get 10 free credits.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Continue" : "Continue free";
+      a.setAttribute(
+        "title",
+        "Paid checkout not configured — continues without charging"
+      );
+      a.setAttribute(
+        "aria-label",
+        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (checkout not live)"
+      );
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn
+          ? "Checkout coming soon · no charge"
+          : "Free account · pack saved · no charge";
+      }
+    });
+  }
+
+  function wireFallbackHrefs(signedIn) {
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.href = signedIn ? packWorkspaceHref(pack) : packAuthHref(pack);
+      a.onclick = null;
+    });
+  }
+
+  async function checkoutAvailable() {
+    try {
+      const res = await fetch("/api/checkout", { method: "GET" });
+      const data = await res.json().catch(function () { return {}; });
+      return res.ok && data && data.ok === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function isSignedIn() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return false;
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { authorization: "Bearer " + token },
       });
-    })
-    .catch(function () {});
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  (async function init() {
+    // Default hrefs already point at /auth?mode=register&pack=… (never "#").
+    const signedIn = await isSignedIn();
+    const live = await checkoutAvailable();
+    if (live) {
+      // Future: real checkout path. Until then this branch is unused.
+      if (note) {
+        note.classList.add("show");
+        note.innerHTML = "<b>Checkout ready.</b> Select starts the paid credit pack flow.";
+      }
+      ctas.forEach(function (a) {
+        a.textContent = "Select";
+        const pack = a.getAttribute("data-pack");
+        a.href = signedIn ? packWorkspaceHref(pack) : packAuthHref(pack);
+      });
+      return;
+    }
+    applyUnavailableCopy(signedIn);
+    wireFallbackHrefs(signedIn);
+  })();
 })();
 </script>
 </body>
