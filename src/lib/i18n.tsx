@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { STRINGS, type Locale } from "@/lib/i18n-strings";
@@ -27,34 +27,41 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function readLocale(): Locale {
-  try {
-    const v = localStorage.getItem(KEY);
-    if (v === "en" || v === "zh" || v === "ja" || v === "es") return v;
-  } catch {
-    /* ignore */
-  }
+function parseLocale(v: string | null): Locale {
+  if (v === "en" || v === "zh" || v === "ja" || v === "es") return v;
   return "en";
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
+function subscribeLocale(onChange: () => void) {
+  const handler = (e: StorageEvent) => {
+    if (e.key === null || e.key === KEY) onChange();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
 
-  useEffect(() => {
-    setLocaleState(readLocale());
-  }, []);
+function getLocaleSnapshot(): Locale {
+  try {
+    return parseLocale(localStorage.getItem(KEY));
+  } catch {
+    return "en";
+  }
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const locale = useSyncExternalStore(subscribeLocale, getLocaleSnapshot, () => "en" as Locale);
 
   useEffect(() => {
     document.documentElement.lang = HTML_LANG[locale] || "en";
   }, [locale]);
 
   const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
     try {
       localStorage.setItem(KEY, next);
     } catch {
       /* ignore */
     }
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
   }, []);
 
   const t = useCallback(

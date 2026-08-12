@@ -23,6 +23,7 @@ import {
   type ApiError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { formatGenerateError } from "@/lib/generate-errors";
 import { useI18n } from "@/lib/i18n";
 
 type Mode = "video" | "image";
@@ -40,7 +41,7 @@ const IMAGE_COSTS = { lite: 1, pro: 2 } as const;
 
 function WorkspaceInner() {
   const { t } = useI18n();
-  const { user, guestRemaining, refresh } = useAuth();
+  const { user, guestRemaining, loading: authLoading, refresh } = useAuth();
   const params = useSearchParams();
   const pack = params.get("pack") || "";
 
@@ -59,26 +60,52 @@ function WorkspaceInner() {
   const [resultKind, setResultKind] = useState<Mode>("video");
   const [resultId, setResultId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [inviteUrl, setInviteUrl] = useState("");
+  const [kieReady, setKieReady] = useState<boolean | null>(null);
+
+  const activeModel = mode === "image" && model === "medium" ? "lite" : model;
+  const inviteUrl = user?.referralUrl || "";
 
   const cost = useMemo(() => {
-    if (mode === "video") return VIDEO_COSTS[model as keyof typeof VIDEO_COSTS] || 3;
-    return IMAGE_COSTS[model as keyof typeof IMAGE_COSTS] || 1;
-  }, [mode, model]);
+    if (mode === "video") return VIDEO_COSTS[activeModel as keyof typeof VIDEO_COSTS] || 3;
+    return IMAGE_COSTS[activeModel as keyof typeof IMAGE_COSTS] || 1;
+  }, [mode, activeModel]);
+
+  const canAfford = !user || user.credits >= cost;
+  const guestNeedsImage = !user && mode === "video";
+  const generateDisabled =
+    busy ||
+    authLoading ||
+    !prompt.trim() ||
+    (guestNeedsImage && !imageUrl.trim()) ||
+    (user != null && !canAfford) ||
+    (!user && guestRemaining === 0);
 
   useEffect(() => {
-    if (mode === "image" && model === "medium") setModel("lite");
-  }, [mode, model]);
-
-  useEffect(() => {
-    if (user?.referralUrl) setInviteUrl(user.referralUrl);
-  }, [user]);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const health = await api<{ kieConfigured?: boolean; generateReady?: boolean }>("/health");
+        if (!cancelled) setKieReady(!!health.kieConfigured);
+      } catch {
+        if (!cancelled) setKieReady(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
-    api<{ generations?: Array<HistoryItem & { result_url?: string | null }> }>("/generate")
-      .then((data) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await api<{
+          generations?: Array<HistoryItem & { result_url?: string | null }>;
+        }>("/generate");
+        if (cancelled) return;
         const list = Array.isArray(data.generations) ? data.generations : [];
         setHistory(
           list.map((g) => ({
@@ -86,13 +113,29 @@ function WorkspaceInner() {
             resultUrl: g.resultUrl ?? g.result_url ?? null,
           }))
         );
-      })
-      .catch(() => setHistory([]));
+      } catch {
+        if (!cancelled) setHistory([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user, resultUrl]);
+
+  const visibleHistory = user ? history : [];
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    if (next === "image" && model === "medium") setModel("lite");
+    if (next === "image") setLastImageUrl("");
+    setError("");
+    setErrorCode(null);
+  }
 
   async function onFile(file: File | null, which: "first" | "last") {
     if (!file) return;
     setError("");
+    setErrorCode(null);
     if (!isAllowedImageFile(file)) {
       setError("Use JPG, PNG, WebP, GIF, or TIFF");
       return;
@@ -106,13 +149,27 @@ function WorkspaceInner() {
       if (which === "first") setImageUrl(uploaded.imageUrl);
       else setLastImageUrl(uploaded.imageUrl);
     } catch (err) {
-      setError((err as ApiError).message || "Upload failed");
+      setErrorCode((err as ApiError).code || null);
+      setError(formatGenerateError(err, "Upload failed"));
     }
   }
 
   async function onGenerate() {
+    if (generateDisabled) return;
+    if (!user && !imageUrl.trim()) {
+      setErrorCode("image_url_required");
+      setError("Free trial needs a start image. Upload a file or paste a public https URL.");
+      return;
+    }
+    if (user && user.credits < cost) {
+      setErrorCode("insufficient_credits");
+      setError(`Not enough credits (have ${user.credits}, need ${cost}).`);
+      return;
+    }
+
     setBusy(true);
     setError("");
+    setErrorCode(null);
     setStatus(t("progress.waiting", "Queued…"));
     setResultUrl(null);
     setResultId(null);
@@ -120,7 +177,7 @@ function WorkspaceInner() {
       const body: Record<string, unknown> = {
         prompt: prompt.trim(),
         kind: mode,
-        model,
+        model: activeModel,
       };
       if (imageUrl.trim()) body.imageUrl = imageUrl.trim();
       if (mode === "video") {
@@ -153,28 +210,32 @@ function WorkspaceInner() {
       });
 
       if (String(settled.status) === "failed") {
-        throw new Error(
-          String(settled.errorMessage || settled.error || t("progress.failed", "Generation failed"))
+        const failMsg = String(
+          settled.errorMessage ||
+            (settled.generation as { error_message?: string } | undefined)?.error_message ||
+            settled.error ||
+            t("progress.failed", "Generation failed")
         );
+        throw Object.assign(new Error(failMsg), {
+          code: /balance|credit|wallet|insufficient/i.test(failMsg)
+            ? "kie_insufficient_balance"
+            : "generation_failed",
+        });
       }
 
       const url = String(settled.resultUrl || "");
       setResultUrl(url || null);
-      setResultKind((settled.generation as { kind?: Mode } | undefined)?.kind || created.kind || mode);
-      setResultId(created.generationId);
+      setResultKind(
+        (settled.generation as { kind?: Mode } | undefined)?.kind || created.kind || mode
+      );
+      setResultId(String(created.generationId));
       setStatus("");
       await refresh();
     } catch (err) {
-      const e = err as ApiError;
-      if (e.code === "kie_api_key_missing") {
-        setError(
-          e.message ||
-            "KIE_API_KEY is not configured. Set it as a Cloudflare secret to enable generation."
-        );
-      } else {
-        setError(e.message || t("progress.failed", "Generation failed"));
-      }
+      setErrorCode((err as ApiError).code || null);
+      setError(formatGenerateError(err, t("progress.failed", "Generation failed")));
       setStatus("");
+      await refresh();
     } finally {
       setBusy(false);
     }
@@ -189,7 +250,8 @@ function WorkspaceInner() {
       });
       setStatus("Shared to gallery");
     } catch (err) {
-      setError((err as ApiError).message || "Share failed");
+      setErrorCode((err as ApiError).code || null);
+      setError(formatGenerateError(err, "Share failed"));
     }
   }
 
@@ -242,6 +304,13 @@ function WorkspaceInner() {
           </div>
         )}
 
+        {kieReady === false && (
+          <div className="relative mb-5 rounded-2xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]">
+            <b>Generate offline.</b>{" "}
+            KIE_API_KEY is not set on this Worker — jobs return an honest error (no fake demo video).
+          </div>
+        )}
+
         {user && inviteUrl && (
           <Card className="relative mb-5 border-[rgba(168,85,247,.28)] bg-[rgba(168,85,247,.08)]">
             <CardHeader className="pb-2">
@@ -271,13 +340,24 @@ function WorkspaceInner() {
 
           <TabsContent value="create" className="mt-5">
             <div className="mb-4 flex justify-center">
-              <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+              <Tabs value={mode} onValueChange={(v) => switchMode(v as Mode)}>
                 <TabsList>
                   <TabsTrigger value="video">{t("tab.video", "🎬 Video")}</TabsTrigger>
-                  <TabsTrigger value="image">{t("tab.image", "🖼 Image")}</TabsTrigger>
+                  <TabsTrigger value="image" disabled={!user}>
+                    {t("tab.image", "🖼 Image")}
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
+            {!user && (
+              <p className="mb-4 text-center text-xs text-muted-foreground">
+                Guests: Lite image-to-video only ·{" "}
+                <Link href="/auth?mode=register" className="text-[var(--primary2)] hover:underline">
+                  sign up
+                </Link>{" "}
+                for text-to-video, first/last frame, and stills.
+              </p>
+            )}
 
             <Card className="mx-auto max-w-2xl">
               <CardHeader>
@@ -289,7 +369,10 @@ function WorkspaceInner() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-2">
-                  <Label>{t("gen.upload", "Upload Start Image")}</Label>
+                  <Label>
+                    {t("gen.upload", "Upload Start Image")}
+                    {!user ? " (required for free trial)" : mode === "video" ? " (optional for text-to-video)" : " (optional)"}
+                  </Label>
                   <Input
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff"
@@ -301,9 +384,17 @@ function WorkspaceInner() {
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                   />
+                  {imageUrl.trim() && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl}
+                      alt="Start frame preview"
+                      className="mt-1 max-h-40 rounded-lg border border-white/10 object-contain"
+                    />
+                  )}
                 </div>
 
-                {mode === "video" && (model === "medium" || model === "pro") && (
+                {mode === "video" && (activeModel === "medium" || activeModel === "pro") && (
                   <div className="space-y-2">
                     <Label>Last frame (optional)</Label>
                     <Input
@@ -341,19 +432,23 @@ function WorkspaceInner() {
                         mode === "video"
                           ? VIDEO_COSTS[m as keyof typeof VIDEO_COSTS]
                           : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
+                      const locked = !user && m !== "lite";
                       return (
                         <button
                           key={m}
                           type="button"
+                          disabled={locked}
                           onClick={() => setModel(m)}
                           className={`rounded-xl border px-2.5 py-3 text-center transition ${
-                            model === m
+                            activeModel === m
                               ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
                               : "border-white/10 bg-black/20 hover:border-white/22"
-                          }`}
+                          } ${locked ? "cursor-not-allowed opacity-40" : ""}`}
                         >
                           <div className="text-[13px] font-bold capitalize">{m}</div>
-                          <div className="mt-0.5 text-[11px] text-[var(--text3)]">{c} credits</div>
+                          <div className="mt-0.5 text-[11px] text-[var(--text3)]">
+                            {locked ? "sign in" : `${c} credits`}
+                          </div>
                         </button>
                       );
                     })}
@@ -419,14 +514,26 @@ function WorkspaceInner() {
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Badge variant="secondary">
-                    {user ? `${cost} credits` : "Free trial (Lite I2V)"}
-                  </Badge>
-                  <Button
-                    size="lg"
-                    disabled={busy || !prompt.trim()}
-                    onClick={() => void onGenerate()}
-                  >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={user && !canAfford ? "warning" : "secondary"}>
+                      {user
+                        ? `${cost} credits · balance ${user.credits}`
+                        : guestRemaining === 0
+                          ? "Free trial used up"
+                          : `Free trial (Lite I2V)${
+                              guestRemaining != null ? ` · ${guestRemaining} left` : ""
+                            }`}
+                    </Badge>
+                    {user && !canAfford && (
+                      <Link
+                        href="/pricing"
+                        className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                      >
+                        Buy credits
+                      </Link>
+                    )}
+                  </div>
+                  <Button size="lg" disabled={generateDisabled} onClick={() => void onGenerate()}>
                     {busy
                       ? status || "…"
                       : user
@@ -435,7 +542,27 @@ function WorkspaceInner() {
                   </Button>
                 </div>
 
-                {error && <p className="text-sm text-[var(--red)]">{error}</p>}
+                {error && (
+                  <div className="space-y-2 rounded-xl border border-[var(--red)]/35 bg-[var(--red)]/10 px-3 py-3 text-sm text-[var(--red)]">
+                    <p>{error}</p>
+                    {(errorCode === "insufficient_credits" ||
+                      errorCode === "insufficient credits" ||
+                      errorCode === "guest_limit") && (
+                      <Link
+                        href={errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"}
+                        className="inline-block font-semibold text-[var(--primary2)] hover:underline"
+                      >
+                        {errorCode === "guest_limit" ? "Sign up for 10 credits" : "View credit packs"}
+                      </Link>
+                    )}
+                    {errorCode === "kie_insufficient_balance" && (
+                      <p className="text-xs text-muted-foreground">
+                        Provider wallet is empty — top up at kie.ai. Site credits were refunded when
+                        the create call failed.
+                      </p>
+                    )}
+                  </div>
+                )}
                 {status && !error && <p className="text-sm text-[var(--primary2)]">{status}</p>}
 
                 {resultUrl && (
@@ -499,12 +626,12 @@ function WorkspaceInner() {
                     )}
                   </p>
                 )}
-                {user && history.length === 0 && (
+                {user && visibleHistory.length === 0 && (
                   <p className="text-sm text-muted-foreground">
                     {t("ws.history.empty.p", "Start creating to see your work here.")}
                   </p>
                 )}
-                {history.map((item) => (
+                {visibleHistory.map((item) => (
                   <div
                     key={String(item.id)}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"

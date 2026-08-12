@@ -39,6 +39,7 @@ function AuthForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setForgotMsg("");
     try {
       const path = mode === "login" ? "/auth/login" : "/auth/register";
       const body: Record<string, string> = { email, password };
@@ -54,7 +55,16 @@ function AuthForm() {
       applyAuthResponse(data);
       router.push(nextPath);
     } catch (err) {
-      setError((err as ApiError).message || "Auth failed");
+      const e = err as ApiError;
+      if (e.status === 409 || e.message?.includes("already registered")) {
+        setError("That email is already registered — try Log In.");
+      } else if (e.status === 401) {
+        setError("Invalid email or password.");
+      } else if (e.code === "schema_migration_required") {
+        setError(e.message || "Database migration required (see BACKEND.md).");
+      } else {
+        setError(e.message || "Auth failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -92,12 +102,17 @@ function AuthForm() {
           {mode === "register"
             ? t("auth.signup.lead", "Claim 10 credits and unlock advanced models.")
             : t("auth.login.lead", "Sign in to spend credits and save history.")}
+          {pack ? ` Pack “${pack}” will be remembered in workspace (no charge unless Stripe is live).` : ""}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs
           value={mode}
-          onValueChange={(v) => setMode(v as "login" | "register")}
+          onValueChange={(v) => {
+            setMode(v as "login" | "register");
+            setError("");
+            setForgotMsg("");
+          }}
           className="mb-4"
         >
           <TabsList className="w-full">

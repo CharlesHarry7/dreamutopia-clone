@@ -1,25 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useLocalFlag } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 
 const KEY = "du_promo_dismissed";
 
 export function PromoBar() {
   const { t } = useI18n();
-  const [hidden, setHidden] = useState(true);
+  const [dismissed, setDismissed] = useLocalFlag(KEY, true);
 
-  useEffect(() => {
-    try {
-      setHidden(localStorage.getItem(KEY) === "1");
-    } catch {
-      setHidden(false);
-    }
-  }, []);
-
-  if (hidden) return null;
+  if (dismissed) return null;
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-3.5 border-b border-[var(--border)] bg-gradient-to-r from-[#1f1235] to-[#2d1654] px-5 py-2.5 text-[13.5px]">
@@ -36,14 +28,7 @@ export function PromoBar() {
         type="button"
         className="px-1.5 text-lg text-muted-foreground hover:text-white"
         aria-label="Dismiss"
-        onClick={() => {
-          try {
-            localStorage.setItem(KEY, "1");
-          } catch {
-            /* ignore */
-          }
-          setHidden(true);
-        }}
+        onClick={() => setDismissed(true)}
       >
         ✕
       </button>

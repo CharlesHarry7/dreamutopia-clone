@@ -218,18 +218,28 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 function createFailedResponse(
   created: { message: string; code?: number; status: number }
 ): Response {
-  const status =
-    created.code === 401 || created.status === 401
-      ? 502
-      : created.code === 402
-        ? 502
-        : 502;
-  return structuredError(
-    "kie_create_failed",
-    created.message || "Failed to create KIE generation task",
-    status,
-    { providerCode: created.code ?? null }
-  );
+  const msg = created.message || "Failed to create KIE generation task";
+  const providerCode = created.code ?? created.status ?? null;
+  const looksLikeEmptyWallet =
+    providerCode === 402 ||
+    created.status === 402 ||
+    /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg);
+
+  // Honest provider failure — never pretend generate succeeded when KIE rejects the job.
+  if (looksLikeEmptyWallet) {
+    return structuredError(
+      "kie_insufficient_balance",
+      msg ||
+        "KIE wallet has insufficient balance. Top up at kie.ai — credits on this site were not kept for a failed provider call.",
+      502,
+      { providerCode, kieConfigured: true }
+    );
+  }
+
+  return structuredError("kie_create_failed", msg, 502, {
+    providerCode,
+    kieConfigured: true,
+  });
 }
 
 /**
@@ -428,7 +438,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(session.userId)
       .first<{ credits: number }>();
     const credits = row ? Number(row.credits) : 0;
-    return json({ error: "insufficient credits", credits }, 402);
+    return structuredError(
+      "insufficient_credits",
+      `Not enough credits (have ${credits}, need ${cost}). Buy a pack or pick a cheaper model.`,
+      402,
+      { credits, cost, needed: cost }
+    );
   }
 
   const callBackUrl = kieCallbackUrl(new URL(request.url).origin);

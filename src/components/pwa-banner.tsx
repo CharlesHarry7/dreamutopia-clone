@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { useLocalFlag } from "@/lib/storage";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -12,15 +13,9 @@ type BeforeInstallPromptEvent = Event & {
 export function PwaBanner() {
   const { t } = useI18n();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(true);
+  const [dismissed, setDismissed] = useLocalFlag("du_pwa_dismiss", true);
 
   useEffect(() => {
-    try {
-      setDismissed(localStorage.getItem("du_pwa_dismiss") === "1");
-    } catch {
-      setDismissed(false);
-    }
-
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
@@ -56,14 +51,7 @@ export function PwaBanner() {
         type="button"
         className="text-muted-foreground hover:text-white"
         aria-label="Dismiss"
-        onClick={() => {
-          try {
-            localStorage.setItem("du_pwa_dismiss", "1");
-          } catch {
-            /* ignore */
-          }
-          setDismissed(true);
-        }}
+        onClick={() => setDismissed(true)}
       >
         ✕
       </button>

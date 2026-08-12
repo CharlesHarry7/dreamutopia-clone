@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PromoBar } from "@/components/promo-bar";
 import { SiteFooter } from "@/components/site-footer";
@@ -24,14 +25,18 @@ const FALLBACK_PACKS: Pack[] = [
 export default function PricingPage() {
   const { t } = useI18n();
   const { user } = useAuth();
+  const router = useRouter();
   const [packs, setPacks] = useState<Pack[]>(FALLBACK_PACKS);
   const [configured, setConfigured] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    api<{ configured?: boolean; packs?: Pack[] }>("/checkout")
-      .then((data) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await api<{ configured?: boolean; packs?: Pack[] }>("/checkout");
+        if (cancelled) return;
         setConfigured(!!data.configured);
         if (Array.isArray(data.packs) && data.packs.length) setPacks(data.packs);
         setNote(
@@ -43,9 +48,10 @@ export default function PricingPage() {
               ? "Stripe is not configured yet. No payment will be charged. Continue opens your workspace and remembers the pack."
               : "Stripe is not configured yet. No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits."
         );
-      })
-      .catch((err: ApiError) => {
-        const payload = (err.payload || {}) as { packs?: Pack[]; configured?: boolean };
+      } catch (err) {
+        if (cancelled) return;
+        const e = err as ApiError;
+        const payload = (e.payload || {}) as { packs?: Pack[] };
         if (Array.isArray(payload.packs) && payload.packs.length) setPacks(payload.packs);
         setConfigured(false);
         setNote(
@@ -53,17 +59,21 @@ export default function PricingPage() {
             ? "Stripe is not configured yet. No payment will be charged. Continue opens your workspace and remembers the pack."
             : "Stripe is not configured yet. No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits."
         );
-      });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   async function onSelect(packId: string) {
     if (!configured) {
-      if (user) window.location.href = `/workspace?pack=${encodeURIComponent(packId)}`;
-      else window.location.href = `/auth?mode=register&pack=${encodeURIComponent(packId)}`;
+      if (user) router.push(`/workspace?pack=${encodeURIComponent(packId)}`);
+      else router.push(`/auth?mode=register&pack=${encodeURIComponent(packId)}`);
       return;
     }
     if (!getToken()) {
-      window.location.href = `/auth?mode=login&pack=${encodeURIComponent(packId)}`;
+      router.push(`/auth?mode=login&pack=${encodeURIComponent(packId)}`);
       return;
     }
     setBusy(packId);
@@ -72,12 +82,13 @@ export default function PricingPage() {
         method: "POST",
         body: JSON.stringify({ packId }),
       });
-      if (res.url) window.location.href = res.url;
-      else throw new Error("No checkout URL");
+      if (!res.url) throw new Error("No checkout URL");
+      // Stripe Checkout is an external host — full navigation is required.
+      window.location.assign(res.url);
     } catch (err) {
       const e = err as ApiError;
       if (e.code === "checkout_not_configured" || e.status === 503) {
-        window.location.href = `/workspace?pack=${encodeURIComponent(packId)}`;
+        router.push(`/workspace?pack=${encodeURIComponent(packId)}`);
         return;
       }
       setNote(e.message || "Checkout failed");

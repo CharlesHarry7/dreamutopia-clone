@@ -13,10 +13,8 @@ import {
   api,
   captureReferral,
   clearSession,
-  CREDITS_KEY,
   getToken,
   setSession,
-  TOKEN_KEY,
 } from "@/lib/api";
 
 type AuthUser = {
@@ -53,20 +51,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     captureReferral();
     const token = getToken();
+    // Yield so effect bootstraps never sync-set before the first await.
+    await Promise.resolve();
+
     if (!token) {
-      setUser(null);
       try {
         const credits = await api<{
           guest?: boolean;
           guestRemaining?: number;
           credits?: number;
         }>("/credits");
+        setUser(null);
         if (credits.guest) setGuestRemaining(Number(credits.guestRemaining ?? 0));
         else setGuestRemaining(null);
       } catch {
+        setUser(null);
         setGuestRemaining(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
       return;
     }
 
@@ -107,7 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Session bootstrap: load /auth/me or guest credits once on mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount fetch
     void refresh();
   }, [refresh]);
 
@@ -122,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearSession();
     setUser(null);
+    setGuestRemaining(null);
+    setLoading(true);
     await refresh();
   }, [refresh]);
 
@@ -143,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         referralUrl: data.referralUrl,
       });
       setGuestRemaining(null);
+      setLoading(false);
     },
     []
   );
@@ -151,10 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({ user, guestRemaining, loading, refresh, logout, applyAuthResponse }),
     [user, guestRemaining, loading, refresh, logout, applyAuthResponse]
   );
-
-  // keep TOKEN_KEY referenced for tree-shaking clarity
-  void TOKEN_KEY;
-  void CREDITS_KEY;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

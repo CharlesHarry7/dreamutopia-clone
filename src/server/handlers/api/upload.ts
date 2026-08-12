@@ -64,7 +64,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const session = await getSession(env, token);
   const guestId = ensureGuestId(request);
   const extra = session ? undefined : guestHeaders(guestId, request);
-  let guestRec = session ? null : await loadGuest(env, guestId);
+  const guestRec = session ? null : await loadGuest(env, guestId);
 
   if (!session && guestRec) {
     const quota = await guestQuota(env, guestRec, clientIp(request));

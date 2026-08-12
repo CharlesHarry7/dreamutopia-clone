@@ -58,7 +58,11 @@ export function SiteHeader({ active }: { active?: string }) {
           </SelectContent>
         </Select>
 
-        {!loading && user ? (
+        {loading ? (
+          <Badge variant="secondary" className="min-w-[4.5rem] justify-center opacity-60">
+            …
+          </Badge>
+        ) : user ? (
           <>
             <Badge>
               <span className="tabular-nums">{user.credits}</span> credits
