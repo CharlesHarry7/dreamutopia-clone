@@ -13,16 +13,34 @@ Guests (no session) get **2 Lite image-to-video** tries per device cookie + IP, 
 
 When a job finishes, the Function copies the provider file into R2 when `MEDIA` is bound, then stores that `/api/media` URL as `result_url`.
 
-Payment/Stripe is out of scope. `GET/POST /api/checkout` returns `checkout_not_configured` (503).
+## Payments (optional Stripe)
+
+`GET /api/checkout` always returns `{ ok, configured, packs, firstPurchaseBonus }`. `configured` is true only when `STRIPE_SECRET_KEY` is set.
+
+`POST /api/checkout` `{ packId }` (signed-in) creates a Stripe Checkout Session (`price_data`, no pre-created Price IDs). If the secret is missing it returns `checkout_not_configured` (503) — the UI does not pretend to charge.
+
+Webhook: `POST /api/webhooks/stripe` with `Stripe-Signature`. On `checkout.session.completed` credits are added (idempotent via `credit_events.stripe_session_id`). First purchase adds **31** bonus credits (5 Lite + 1 Pro). If the buyer has `referred_by`, the referrer gets **10%** of the pack credits.
+
+Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`.
+
+## Password reset (optional Resend)
+
+`POST /api/auth/forgot` `{ email }` sends a 1-hour KV token via Resend. If `RESEND_API_KEY` is missing it returns `email_not_configured` (503) and never returns a reset URL to the client. `POST /api/auth/reset` `{ token, password }` sets the new hash.
+
+Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register accepts optional `referralCode` (`?ref=` on `/auth`).
 
 ## Binding names (must match code)
 
 | Binding / secret | Type | Required for | Used by |
 |------------------|------|--------------|---------|
-| `DB` | D1 | auth + generate | users, credits, generations, gallery |
-| `SESSIONS` | KV | auth + generate | login/register/logout/me session tokens |
+| `DB` | D1 | auth + generate + checkout | users, credits, generations, gallery, credit_events |
+| `SESSIONS` | KV | auth + generate + reset | login/register/logout/me session tokens, guest trials, reset tokens |
 | `KIE_API_KEY` | Pages **secret** | real generate | `/api/generate` → KIE Market API |
 | `MEDIA` | R2 | **file upload** | `POST /api/upload`, `GET /api/media` |
+| `STRIPE_SECRET_KEY` | Pages **secret** | paid packs | `POST /api/checkout` |
+| `STRIPE_WEBHOOK_SECRET` | Pages **secret** | paid packs | `POST /api/webhooks/stripe` |
+| `RESEND_API_KEY` | Pages **secret** | password reset email | `POST /api/auth/forgot` |
+| `MAIL_FROM` | Pages var/secret | password reset email | verified Resend from-address |
 
 ## Generate path
 
@@ -107,6 +125,7 @@ npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
 ```bash
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/002_gallery_unique.sql
+npx wrangler d1 execute dreamutopia-db --remote --file=migrations/003_referrals_credits.sql
 ```
 
 ## 2. Paste IDs into `wrangler.toml`
@@ -135,6 +154,21 @@ bucket_name = "dreamutopia-media"
 
 Do **not** commit the key.
 
+## 3b. Optional Stripe + Resend secrets
+
+**Stripe (paid credit packs)**
+
+1. Stripe Dashboard → Developers → API keys → Secret key → Pages secret `STRIPE_SECRET_KEY`
+2. Developers → Webhooks → Add endpoint `https://<your-host>/api/webhooks/stripe` → event `checkout.session.completed`
+3. Paste the webhook signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`
+4. Redeploy. `GET /api/health` → `checkoutConfigured: true`. Pricing CTAs then open Stripe.
+
+**Resend (password reset email)**
+
+1. Create an API key at [resend.com](https://resend.com)
+2. Pages secrets: `RESEND_API_KEY` and `MAIL_FROM` (a verified sender, e.g. `DreamUtopia <noreply@yourdomain.com>`)
+3. Without these, `POST /api/auth/forgot` returns `email_not_configured` (503) and does **not** leak a reset URL
+
 ## 4. Cloudflare Pages dashboard bindings
 
 1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → project
@@ -155,7 +189,8 @@ Expect:
 - `generateReady: true`
 - `guestTrials: true`
 - `uploadReady: true` (MEDIA bound)
-- `checkoutConfigured: false`
+- `checkoutConfigured: true` after `STRIPE_SECRET_KEY` is set (otherwise `false`; GET `/api/checkout` still 200)
+- `mailConfigured: true` after `RESEND_API_KEY` is set
 
 Then:
 
@@ -198,14 +233,17 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | Missing `imageUrl` on signed-in video | text-to-video (allowed) |
 | First+last on Lite | `first_last_requires_medium` 400 |
 | D1 missing new columns | `schema_migration_required` 503 |
-| Checkout | `checkout_not_configured` 503 |
+| Checkout without Stripe secret | GET `{ configured: false }`; POST `checkout_not_configured` 503 |
+| Forgot password without Resend | `email_not_configured` 503 |
 
 ## Checklist
 
 - [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
-- [ ] `schema.sql` (+ `001_generations_kie.sql` / `002_gallery_unique.sql` if DB already existed)
+- [ ] `schema.sql` (+ `001_generations_kie.sql` / `002_gallery_unique.sql` / `003_referrals_credits.sql` if DB already existed)
 - [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
 - [ ] Pages secret: `KIE_API_KEY`
+- [ ] Optional: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/webhooks/stripe`)
+- [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset)
 - [ ] Redeploy
 - [ ] `/api/health` → `generateReady: true`, `uploadReady: true`
 - [ ] Logged-in POST `/api/upload` then `/api/generate` queues a KIE job; GET returns `resultUrl`

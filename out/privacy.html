@@ -50,14 +50,17 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <li>A guest-trial cookie (<code>du_guest</code>) plus an IP hash so each device gets 2 free Lite videos</li>
 <li>Uploaded start images in Cloudflare R2, served at unguessable <code>/api/media</code> URLs so the inference provider can fetch them</li>
 <li>If you tap <b>Share to gallery</b>, that finished result (prompt + media) is listed on the public homepage gallery</li>
+<li>Referral codes and a credit ledger (<code>credit_events</code>) when you buy a pack</li>
+<li>Password-reset tokens in KV (1 hour) if you request a reset</li>
 </ul>
 <h2>Providers</h2>
-<p>Video and image generation is performed by <a href="https://kie.ai">KIE</a> (Kling 2.6 / Kling 3.0 / Nano Banana 2). Your prompt and source image URLs are sent to that API. Result files are copied into R2 when the media bucket is bound.</p>
+<p>Video and image generation is performed by <a href="https://kie.ai">KIE</a> (Kling 2.6 / Kling 3.0 / Nano Banana 2). Your prompt and source image URLs are sent to that API. Result files are copied into R2 when the media bucket is bound. Paid packs are processed by Stripe when configured. Password-reset email is sent by Resend when configured.</p>
 <h2>Cookies and local data</h2>
 <p>The session token and cached credit count live in your browser’s <code>localStorage</code>. The HttpOnly <code>du_guest</code> cookie tracks free Lite trials. We do not use advertising cookies.</p>
 <h2>Contact</h2>
 <p>This is a personal clone project, not the original DreamUtopia product. For data deletion, sign out and email the operator who deployed this Pages project.</p>
 </main>
 <footer>© 2026 DreamUtopia AI clone · <a href="/terms">Terms</a></footer>
+<script src="/assets/js/seo.js"></script>
 </body>
 </html>

@@ -1,22 +1,70 @@
-import { json, preflight } from "../../libs/utils";
-import type { Env } from "../../libs/utils";
+import { json, preflight, type Env } from "../../libs/utils";
+import { getSessionUser } from "../../libs/auth";
+import {
+  FIRST_PURCHASE_BONUS_CREDITS,
+  PACKS,
+  REFERRAL_PERCENT,
+  parsePackId,
+  publicPacks,
+} from "../../libs/packs";
+import { createCheckoutSession, hasStripe } from "../../libs/stripe";
 
 export const onRequestOptions = (): Response => preflight();
 
-/**
- * GET/POST /api/checkout — payment stub.
- * Stripe / crypto / Stars are not configured. UI must not pretend a charge will happen.
- */
-function notConfigured(): Response {
-  return json(
-    {
-      ok: false,
-      reason: "checkout_not_configured",
-      message: "Paid checkout is not live yet. No payment provider is configured.",
-    },
-    503
-  );
+function catalog(env: Env) {
+  return {
+    ok: true,
+    configured: hasStripe(env),
+    packs: publicPacks(),
+    firstPurchaseBonus: FIRST_PURCHASE_BONUS_CREDITS,
+    referralPercent: REFERRAL_PERCENT,
+  };
 }
 
-export const onRequestGet: PagesFunction<Env> = async () => notConfigured();
-export const onRequestPost: PagesFunction<Env> = async () => notConfigured();
+export const onRequestGet: PagesFunction<Env> = async ({ env }) => json(catalog(env));
+
+export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+  if (!hasStripe(env) || !env.STRIPE_SECRET_KEY) {
+    return json(
+      {
+        error: "checkout_not_configured",
+        code: "checkout_not_configured",
+        configured: false,
+        message: "Set Pages secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
+      },
+      503
+    );
+  }
+
+  const session = await getSessionUser(env, request);
+  if (!session) return json({ error: "unauthorized" }, 401);
+
+  let body: { packId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, 400);
+  }
+
+  const packId = parsePackId(body.packId);
+  if (!packId) return json({ error: "unknown_pack" }, 400);
+  const pack = PACKS[packId];
+
+  const origin = new URL(request.url).origin;
+  const created = await createCheckoutSession({
+    secretKey: env.STRIPE_SECRET_KEY,
+    origin,
+    userId: session.userId,
+    email: session.email,
+    pack,
+  });
+
+  if (!created.ok) {
+    return json(
+      { error: "stripe_session_failed", message: created.message },
+      created.status >= 400 && created.status < 600 ? created.status : 502
+    );
+  }
+
+  return json({ ok: true, url: created.url, id: created.id });
+};

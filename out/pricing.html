@@ -343,7 +343,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">Paid checkout is not live yet on this site — no card, crypto, or Stars charges are processed today. You can still create a free account (10 credits on signup) and keep your chosen pack as intent until checkout ships.</div>
+<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -369,14 +369,11 @@ nav{display:none}
 <div class="footer-col">
 <h4>Features</h4>
 <ul>
-<li><a href="/#features">Free AI Video Generator</a></li>
-<li><a href="/#features">Photo to Video AI Free</a></li>
-<li><a href="/#features">AI Video Enhancer</a></li>
-<li><a href="/#gallery">Image to Video AI</a></li>
-<li><a href="/#get-started">AI Image Animator</a></li>
-<li><a href="/workspace">Free Fast AI Video Generator</a></li>
-<li><a href="/#features">Anime AI Generator</a></li>
-<li><a href="/#gallery">Picture to Dance</a></li>
+<li><a href="/free-ai-video">Free AI Video Generator</a></li>
+<li><a href="/photo-to-video">Photo to Video AI</a></li>
+<li><a href="/image-to-video">Image to Video AI</a></li>
+<li><a href="/workspace">Workspace</a></li>
+<li><a href="/#gallery">Gallery</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -410,6 +407,7 @@ nav{display:none}
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
 <script>
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
@@ -462,8 +460,8 @@ nav{display:none}
     if (note) {
       note.classList.add("show");
       note.innerHTML = signedIn
-        ? "<b>Paid checkout isn’t live yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack until checkout ships."
-        : "<b>Paid checkout isn’t live yet.</b> No payment will be charged. Continue free opens sign-up and remembers your pack — new accounts still get 10 free credits.";
+        ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
+        : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
     }
     ctas.forEach(function (a) {
       const pack = a.getAttribute("data-pack");
@@ -490,11 +488,63 @@ nav{display:none}
     });
   }
 
+  function applyLiveCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Checkout is live.</b> Select opens Stripe. First purchase adds <b>31 bonus credits</b> (5 Lite + 1 Pro)."
+        : "<b>Checkout is live.</b> Sign in, then Select opens Stripe. First purchase adds <b>31 bonus credits</b>.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Buy with Stripe" : "Sign in to buy";
+      a.removeAttribute("title");
+      a.setAttribute("aria-label", (signedIn ? "Buy " : "Sign in to buy ") + pack + " pack");
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn ? "Secure Stripe checkout" : "Account required · then Stripe";
+      }
+      if (!signedIn) {
+        a.href = packAuthHref(pack);
+        a.onclick = null;
+        return;
+      }
+      a.href = "#";
+      a.onclick = async function (e) {
+        e.preventDefault();
+        const token = localStorage.getItem(TOKEN_KEY);
+        const prev = a.textContent;
+        a.textContent = "Redirecting…";
+        try {
+          const res = await fetch("/api/checkout", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ packId: pack }),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (data && data.url) {
+            location.href = data.url;
+            return;
+          }
+          throw new Error(data.message || data.error || "checkout failed");
+        } catch (err) {
+          a.textContent = prev;
+          if (note) {
+            note.innerHTML = "<b>Checkout failed.</b> " + (err.message || "Try again.");
+          }
+        }
+      };
+    });
+  }
+
   async function checkoutAvailable() {
     try {
       const res = await fetch("/api/checkout", { method: "GET" });
       const data = await res.json().catch(function () { return {}; });
-      return res.ok && data && data.ok === true;
+      return !!(data && data.ok === true && data.configured === true);
     } catch (e) {
       return false;
     }
@@ -527,15 +577,7 @@ nav{display:none}
     document.addEventListener("du:i18n", function () { hydrateHeader(signedIn); });
     const live = await checkoutAvailable();
     if (live) {
-      if (note) {
-        note.classList.add("show");
-        note.innerHTML = "<b>Checkout ready.</b> Select starts the paid credit pack flow.";
-      }
-      ctas.forEach(function (a) {
-        a.textContent = "Select";
-        const pack = a.getAttribute("data-pack");
-        a.href = signedIn ? packWorkspaceHref(pack) : packAuthHref(pack);
-      });
+      applyLiveCopy(signedIn);
       return;
     }
     applyUnavailableCopy(signedIn);

@@ -18,4 +18,7 @@ id = "6b2dbe20ae95452f8f22b98f0ce6196e"
 binding = "MEDIA"
 bucket_name = "dreamutopia-media"
 
-# Secret (set in Pages dashboard / wrangler pages secret): KIE_API_KEY
+# Secrets (Pages dashboard / wrangler pages secret):
+#   KIE_API_KEY
+#   STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET  (paid credits)
+#   RESEND_API_KEY + MAIL_FROM                 (password reset email)

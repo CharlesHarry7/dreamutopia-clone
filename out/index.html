@@ -489,7 +489,7 @@ nav{display:none}
 <section>
 <div class="credits-cta">
 <h3 data-i18n="credits.h">Get 10 free credits — try advanced models</h3>
-<p data-i18n="credits.p">Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. The free 2 trials only show the entry-level model; newcomer credits unlock the rest. Credit packs are listed on Pricing; paid checkout is not live yet.</p>
+<p data-i18n="credits.p">Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. The free 2 trials only show the entry-level model; newcomer credits unlock the rest. Credit packs are on Pricing. Stripe checkout runs when the operator sets the secret; first purchase adds 31 bonus credits.</p>
 <a href="/auth?mode=register" class="btn-primary-lg" data-i18n="compare.claim">Claim 10 Free Credits</a>
 <div class="login-link" data-i18n-html="credits.need">Need more? <a href="/pricing">View credit packs</a> · Already have an account? <a href="/auth?mode=login">Log in</a></div>
 </div>
@@ -509,7 +509,7 @@ nav{display:none}
 <h3 data-i18n="faq.h">Frequently Asked Questions</h3>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q" data-i18n="faq.q1">Is DreamUtopia really free to use?</div>
-<div class="faq-a" data-i18n="faq.a1">Yes! Every device gets 2 free Lite video generations with no signup. Create an account for 10 credits (Lite 3 · Medium 5 · Pro 16 · Image Lite 1 · Pro 2). Paid checkout for extra packs is not live yet.</div>
+<div class="faq-a" data-i18n="faq.a1">Yes! Every device gets 2 free Lite video generations with no signup. Create an account for 10 credits (Lite 3 · Medium 5 · Pro 16 · Image Lite 1 · Pro 2). Extra packs are sold on Pricing via Stripe when configured.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q" data-i18n="faq.q2">What AI models are available?</div>
@@ -537,7 +537,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q" data-i18n="faq.q8">What happens after my 2 free tries?</div>
-<div class="faq-a" data-i18n="faq.a8">After 2 free Lite videos, create a free account for 10 credits. Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). Paid checkout is not live yet. Credits never expire.</div>
+<div class="faq-a" data-i18n="faq.a8">After 2 free Lite videos, create a free account for 10 credits. Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). First purchase adds 31 bonus credits. Credits never expire.</div>
 </div>
 </section>
 
@@ -554,14 +554,11 @@ nav{display:none}
 <div class="footer-col">
 <h4 data-i18n="foot.features">Features</h4>
 <ul>
-<li><a href="/#features">Free AI Video Generator</a></li>
-<li><a href="/#features">Photo to Video AI Free</a></li>
-<li><a href="/#features">AI Video Enhancer</a></li>
-<li><a href="/#gallery">Image to Video AI</a></li>
-<li><a href="/#get-started">AI Image Animator</a></li>
-<li><a href="/workspace">Free Fast AI Video Generator</a></li>
-<li><a href="/#features">Anime AI Generator</a></li>
-<li><a href="/#gallery">Picture to Dance</a></li>
+<li><a href="/free-ai-video">Free AI Video Generator</a></li>
+<li><a href="/photo-to-video">Photo to Video AI</a></li>
+<li><a href="/image-to-video">Image to Video AI</a></li>
+<li><a href="/workspace">Workspace</a></li>
+<li><a href="/#gallery">Gallery</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -606,6 +603,7 @@ nav{display:none}
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
 <script>
 let homeFile = null;
 let homeImageUrl = "";

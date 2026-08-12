@@ -1,6 +1,7 @@
 import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
 import { verifyPassword } from "../../../libs/password";
 import { createSession } from "../../../libs/auth";
+import { mergeGuestJobs } from "../../../libs/account";
 import type { Env } from "../../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -34,12 +35,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const ok = await verifyPassword(password, salt, hash);
   if (!ok) return error("invalid credentials", 401);
 
-  const token = await createSession(env, Number(row.id), String(row.email));
+  const userId = Number(row.id);
+  const token = await createSession(env, userId, String(row.email));
+  let mergedJobs = 0;
+  try {
+    mergedJobs = await mergeGuestJobs(env, request, userId);
+  } catch {
+    mergedJobs = 0;
+  }
+
   return json({
     ok: true,
     token,
-    userId: Number(row.id),
+    userId,
     email: row.email,
     credits: Number(row.credits),
+    mergedJobs,
   });
 };

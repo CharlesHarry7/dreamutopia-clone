@@ -6,6 +6,13 @@
   const CREDITS_KEY = "dreamutopia_credits";
   const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
+  try {
+    const ref = new URLSearchParams(location.search).get("ref");
+    if (ref && /^[a-z0-9]{6,16}$/i.test(ref.trim())) {
+      localStorage.setItem("du_ref", ref.trim());
+    }
+  } catch (e) {}
+
   function getToken() {
     try {
       return localStorage.getItem(TOKEN_KEY) || "";

@@ -57,6 +57,8 @@ nav>a:hover{color:var(--text);background:rgba(255,255,255,.04)}
 .switch{margin-top:18px;text-align:center;font-size:13px;color:var(--text2)}
 .switch a{color:var(--primary2);font-weight:600}
 .switch a:hover{text-decoration:underline}
+.forgot-link{margin-top:-6px;margin-bottom:12px;text-align:right;font-size:12.5px}
+.forgot-link a{color:var(--primary2);font-weight:600}
 .back{display:block;margin-top:16px;text-align:center;font-size:13px;color:var(--text3)}
 .back:hover{color:var(--text2)}
 
@@ -111,6 +113,7 @@ nav{display:none}
 <label for="password" data-i18n="auth.password">Password</label>
 <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters">
 </div>
+<p class="forgot-link" id="forgotLinkWrap" hidden><a href="/auth?mode=forgot" id="forgotLink">Forgot password?</a></p>
 <button class="submit" id="submitBtn" type="submit" data-i18n="auth.submitSignup">Sign Up Free</button>
 <div class="form-error" id="formError" role="alert"></div>
 </form>
@@ -126,6 +129,7 @@ nav{display:none}
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
 <script>
 const TOKEN_KEY = "dreamutopia_token";
 const CREDITS_KEY = "dreamutopia_credits";
@@ -136,7 +140,12 @@ const PACKS = {
   premium: { name: "Premium Pack", price: "$200", credits: 500 },
 };
 const params = new URLSearchParams(location.search);
-let mode = params.get("mode") === "login" ? "login" : "register";
+const REF_KEY = "du_ref";
+if ((params.get("ref") || "").trim()) localStorage.setItem(REF_KEY, params.get("ref").trim());
+function currentRef() {
+  return (params.get("ref") || localStorage.getItem(REF_KEY) || "").trim();
+}
+let mode = params.get("mode") === "login" ? "login" : params.get("mode") === "forgot" ? "forgot" : "register";
 const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
 const selectedPack = packId ? PACKS[packId] : null;
 const nextMode = params.get("next") === "image" ? "image" : "";
@@ -158,6 +167,8 @@ function authUrl(nextAuthMode) {
   let url = "/auth?mode=" + nextAuthMode;
   if (packId) url += "&pack=" + encodeURIComponent(packId);
   if (nextMode) url += "&next=" + encodeURIComponent(nextMode);
+  const ref = currentRef();
+  if (ref) url += "&ref=" + encodeURIComponent(ref);
   return url;
 }
 
@@ -169,10 +180,19 @@ function workspaceUrl() {
 }
 
 function setMode(next) {
-  mode = next === "login" ? "login" : "register";
+  mode = next === "login" ? "login" : next === "forgot" ? "forgot" : "register";
   const isLogin = mode === "login";
-  title.textContent = isLogin ? DU.t("auth.login.h", "Welcome back") : DU.t("auth.signup.h", "Create your account");
-  if (selectedPack) {
+  const isForgot = mode === "forgot";
+  const passwordField = passwordInput.closest(".field");
+  const forgotWrap = document.getElementById("forgotLinkWrap");
+  title.textContent = isForgot
+    ? "Reset password"
+    : isLogin
+      ? DU.t("auth.login.h", "Welcome back")
+      : DU.t("auth.signup.h", "Create your account");
+  if (isForgot) {
+    lead.textContent = "We’ll email a reset link if that address has an account. The link expires in one hour.";
+  } else if (selectedPack) {
     lead.textContent = isLogin
       ? "Log in to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits)."
       : "Create a free account to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits).";
@@ -181,23 +201,34 @@ function setMode(next) {
       ? DU.t("auth.login.lead", "Log in to continue creating in your workspace.")
       : DU.t("auth.signup.lead", "Claim 10 free credits and unlock advanced AI models in the workspace.");
   }
-  tabRegister.classList.toggle("active", !isLogin);
+  tabRegister.classList.toggle("active", !isLogin && !isForgot);
   tabLogin.classList.toggle("active", isLogin);
-  tabRegister.setAttribute("aria-selected", String(!isLogin));
+  tabRegister.setAttribute("aria-selected", String(!isLogin && !isForgot));
   tabLogin.setAttribute("aria-selected", String(isLogin));
-  submitBtn.textContent = isLogin ? DU.t("auth.submitLogin", "Log In") : DU.t("auth.submitSignup", "Sign Up Free");
-  perk.style.display = isLogin ? "none" : "";
-  if (selectedPack && !isLogin) {
-    perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> (" + selectedPack.price + " · " + selectedPack.credits + " credits). Paid checkout isn’t live yet — nothing will be charged. New accounts still get <b>10 free credits</b> instantly.";
-  } else if (!isLogin) {
-    perk.innerHTML = DU.t("auth.perk", "New accounts get <b>10 free credits</b> instantly — no credit card required.");
+  submitBtn.textContent = isForgot
+    ? "Send reset link"
+    : isLogin
+      ? DU.t("auth.submitLogin", "Log In")
+      : DU.t("auth.submitSignup", "Sign Up Free");
+  if (passwordField) passwordField.style.display = isForgot ? "none" : "";
+  passwordInput.required = !isForgot;
+  if (forgotWrap) forgotWrap.hidden = !isLogin;
+  perk.style.display = isLogin || isForgot ? "none" : "";
+  if (selectedPack && !isLogin && !isForgot) {
+    perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> (" + selectedPack.price + " · " + selectedPack.credits + " credits). After signup, open Pricing to pay with Stripe when checkout is configured. New accounts still get <b>10 free credits</b>. First paid pack adds <b>31 bonus credits</b>.";
+  } else if (!isLogin && !isForgot) {
+    const ref = currentRef();
+    perk.innerHTML = DU.t("auth.perk", "New accounts get <b>10 free credits</b> instantly — no credit card required.")
+      + (ref ? " Invite code <b>" + ref + "</b> will be attached." : "");
   }
-  switchLine.innerHTML = isLogin
-    ? DU.t("auth.need", "Need an account?") + ' <a href="' + authUrl("register") + '" id="switchLink">' + DU.t("auth.submitSignup", "Sign Up Free") + "</a>"
-    : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
+  switchLine.innerHTML = isForgot
+    ? 'Remembered it? <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
+    : isLogin
+      ? DU.t("auth.need", "Need an account?") + ' <a href="' + authUrl("register") + '" id="switchLink">' + DU.t("auth.submitSignup", "Sign Up Free") + "</a>"
+      : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
-    setMode(isLogin ? "register" : "login");
+    setMode(isForgot || isLogin ? "register" : "login");
   };
   passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
   hdrLogin.classList.toggle("active", isLogin);
@@ -209,11 +240,18 @@ function setMode(next) {
   if (location.pathname + location.search !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
-  document.title = (isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
+  document.title = (isForgot ? "Reset password" : isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
 }
 
 tabRegister.onclick = () => setMode("register");
 tabLogin.onclick = () => setMode("login");
+const forgotLink = document.getElementById("forgotLink");
+if (forgotLink) {
+  forgotLink.onclick = (e) => {
+    e.preventDefault();
+    setMode("forgot");
+  };
+}
 
 async function api(path, body) {
   const res = await fetch("/api" + path, {
@@ -222,7 +260,7 @@ async function api(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "request failed");
+  if (!res.ok) throw new Error(data.message || data.error || "request failed");
   return data;
 }
 
@@ -236,17 +274,29 @@ document.getElementById("authForm").onsubmit = async (e) => {
     formError.classList.add("show");
     return;
   }
-  if (!password || password.length < 6) {
+  if (mode !== "forgot" && (!password || password.length < 6)) {
     formError.textContent = "Password must be at least 6 characters.";
     formError.classList.add("show");
     return;
   }
   submitBtn.disabled = true;
   const prev = submitBtn.textContent;
-  submitBtn.textContent = mode === "login" ? "Logging in…" : "Creating account…";
+  submitBtn.textContent = mode === "forgot" ? "Sending…" : mode === "login" ? "Logging in…" : "Creating account…";
   try {
+    if (mode === "forgot") {
+      const data = await api("/auth/forgot", { email });
+      perk.style.display = "";
+      perk.innerHTML = data && data.ok
+        ? "If that email has an account, a reset link is on the way. Check spam if you don’t see it."
+        : "Request sent.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = prev;
+      return;
+    }
     const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-    const data = await api(endpoint, { email, password });
+    const payload = { email, password };
+    if (mode === "register" && currentRef()) payload.referralCode = currentRef();
+    const data = await api(endpoint, payload);
     localStorage.setItem(TOKEN_KEY, data.token);
     if (data.credits !== undefined && data.credits !== null) {
       localStorage.setItem(CREDITS_KEY, String(data.credits));

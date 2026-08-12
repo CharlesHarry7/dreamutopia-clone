@@ -75,6 +75,14 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .pack-banner p{font-size:13px;color:var(--text2);max-width:620px;line-height:1.5}
 .pack-banner a{color:var(--primary2);font-weight:600}
 .pack-banner a:hover{text-decoration:underline}
+.pack-banner .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;flex-shrink:0}
+.invite-card{display:none;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.28);border-radius:16px;padding:16px 20px;margin-bottom:22px}
+.invite-card.show{display:block}
+.invite-card h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.invite-card p{font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.5}
+.invite-row{display:flex;gap:8px;flex-wrap:wrap}
+.invite-row input{flex:1;min-width:180px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit}
+.invite-row button{border:1px solid var(--border2);padding:10px 14px;border-radius:9px;font-size:13px;font-weight:600}
 
 /* Primary tabs: Create / My Creations */
 .tabs-primary{display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.05);border-radius:10px;width:fit-content;margin-bottom:20px}
@@ -322,6 +330,16 @@ nav{display:none}
 <h2 id="packBannerTitle">Credit pack selected</h2>
 <p id="packBannerText"></p>
 </div>
+<button type="button" class="btn-primary" id="packBuyBtn" hidden>Buy with Stripe</button>
+</section>
+
+<section class="invite-card" id="inviteCard" hidden>
+<h2>Invite friends — earn 10%</h2>
+<p>Share your link. When they buy a credit pack, you receive 10% of that pack’s credits.</p>
+<div class="invite-row">
+<input id="inviteUrl" readonly aria-label="Invite URL">
+<button type="button" id="inviteCopy">Copy link</button>
+</div>
 </section>
 
 <!-- Create / My Creations -->
@@ -476,14 +494,11 @@ Image
 <div class="footer-col">
 <h4 data-i18n="foot.features">Features</h4>
 <ul>
-<li><a href="/#features">Free AI Video Generator</a></li>
-<li><a href="/#features">Photo to Video AI Free</a></li>
-<li><a href="/#features">AI Video Enhancer</a></li>
-<li><a href="/#gallery">Image to Video AI</a></li>
-<li><a href="/#get-started">AI Image Animator</a></li>
-<li><a href="/workspace">Free Fast AI Video Generator</a></li>
-<li><a href="/#features">Anime AI Generator</a></li>
-<li><a href="/#gallery">Picture to Dance</a></li>
+<li><a href="/free-ai-video">Free AI Video Generator</a></li>
+<li><a href="/photo-to-video">Photo to Video AI</a></li>
+<li><a href="/image-to-video">Image to Video AI</a></li>
+<li><a href="/workspace">Workspace</a></li>
+<li><a href="/#gallery">Gallery</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -519,6 +534,7 @@ Image
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
 <script>
 const TOKEN_KEY = "dreamutopia_token";
 const CREDITS_KEY = "dreamutopia_credits";
@@ -674,13 +690,62 @@ function goAuth(mode) {
 
 function showPackBanner() {
   const banner = document.getElementById("packBanner");
+  const buyBtn = document.getElementById("packBuyBtn");
   if (!banner || !selectedPack) return;
   banner.hidden = false;
   banner.classList.add("show");
   document.getElementById("packBannerTitle").textContent = selectedPack.name + " selected";
   document.getElementById("packBannerText").innerHTML = token
-    ? selectedPack.price + " · " + selectedPack.credits + " credits reserved for your account. Paid checkout is not live yet — keep creating with your current credits, or <a href=\"/pricing\">review packs</a>."
+    ? selectedPack.price + " · " + selectedPack.credits + " credits. First purchase also adds <b>31 bonus credits</b> (5 Lite + 1 Pro). If Stripe is configured, use Buy with Stripe — otherwise keep creating with your current credits."
     : selectedPack.price + " · " + selectedPack.credits + " credits. <a href=\"" + authHref("register") + "\">Sign up</a> or <a href=\"" + authHref("login") + "\">log in</a> to continue with this pack.";
+  if (buyBtn) {
+    buyBtn.hidden = !token;
+    buyBtn.onclick = async function () {
+      if (!token) return goAuth("login");
+      buyBtn.disabled = true;
+      buyBtn.textContent = "Redirecting…";
+      try {
+        const data = await api("/checkout", { method: "POST", body: JSON.stringify({ packId: packId }) });
+        if (data.url) {
+          location.href = data.url;
+          return;
+        }
+        throw new Error(data.message || data.error || "checkout failed");
+      } catch (e) {
+        buyBtn.disabled = false;
+        buyBtn.textContent = "Buy with Stripe";
+        toast(e.message || "Checkout is not configured yet", true);
+      }
+    };
+  }
+}
+
+function showInviteCard(user) {
+  const card = document.getElementById("inviteCard");
+  const input = document.getElementById("inviteUrl");
+  const copy = document.getElementById("inviteCopy");
+  if (!card || !input) return;
+  const url = user && user.referralUrl;
+  if (!token || !url) {
+    card.hidden = true;
+    card.classList.remove("show");
+    return;
+  }
+  card.hidden = false;
+  card.classList.add("show");
+  input.value = url;
+  if (copy) {
+    copy.onclick = async function () {
+      try {
+        await navigator.clipboard.writeText(url);
+        copy.textContent = "Copied";
+        setTimeout(function () { copy.textContent = "Copy link"; }, 1500);
+      } catch (e) {
+        input.select();
+        toast("Copy the invite link from the field");
+      }
+    };
+  }
 }
 
 function bindAuthTriggers() {
@@ -763,6 +828,7 @@ function updateAuthUI(credits) {
     btnLabel.textContent = DU.t("ws.gen.trial", "Generate Free Trial");
     bindAuthTriggers();
   }
+  if (!token) showInviteCard(null);
   refreshHistoryEmpty();
   syncVideoOptions();
 }
@@ -1246,6 +1312,14 @@ function escapeHtml(s) {
     hint.innerHTML = 'File upload isn’t bound yet — paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> that KIE can fetch.';
   }
   const params = new URLSearchParams(location.search);
+  const checkoutState = params.get("checkout");
+  if (checkoutState === "success") toast("Payment received — credits appear after Stripe confirms (usually a few seconds).");
+  if (checkoutState === "cancel") toast("Checkout canceled", true);
+  if (checkoutState) {
+    params.delete("checkout");
+    const next = location.pathname + (params.toString() ? "?" + params.toString() : "");
+    history.replaceState(null, "", next);
+  }
   const modeParam = params.get("mode");
   if (modeParam === "image") switchMode("image");
   else switchMode("video");
@@ -1264,6 +1338,7 @@ function escapeHtml(s) {
       const me = await fetchAuthMe(1);
       updateAuthUI(me.user.credits);
       showPackBanner();
+      showInviteCard(me.user);
       loadHistory();
     } catch (e) {
       if (isUnauthorizedError(e)) {

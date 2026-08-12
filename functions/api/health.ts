@@ -1,4 +1,6 @@
 import { json, preflight, hasDb, hasSessions, hasMedia, hasKieKey } from "../../libs/utils";
+import { hasStripe } from "../../libs/stripe";
+import { hasMailer } from "../../libs/mail";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -12,6 +14,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   };
   const authReady = bindings.DB && bindings.SESSIONS;
   const kieConfigured = hasKieKey(env);
+  const checkoutConfigured = hasStripe(env);
+  const mailConfigured = hasMailer(env);
   // Guest trials need SESSIONS + KIE; signed-in generate also needs DB
   const generateReady = bindings.SESSIONS && kieConfigured;
   const uploadReady = bindings.MEDIA;
@@ -25,7 +29,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     kieConfigured,
     generateReady,
     uploadReady,
-    checkoutConfigured: false,
+    checkoutConfigured,
+    mailConfigured,
     guestTrials: true,
     guestLimit: 2,
     mediaRequiredForGenerate: false,
