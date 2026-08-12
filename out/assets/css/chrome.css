@@ -123,8 +123,31 @@ header.nav-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
 }
 
 html.nav-lock,
-html.nav-lock body {
+html.nav-lock body,
+html.lightbox-lock,
+html.lightbox-lock body {
   overflow: hidden;
+}
+
+.pw-wrap {
+  position: relative;
+}
+.pw-wrap input {
+  padding-right: 72px;
+}
+.pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary2, #c084fc);
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.pw-toggle:hover {
+  color: #fff;
 }
 
 .upload-area.drag {

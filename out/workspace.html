@@ -201,8 +201,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .save-actions .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600}
 
 /* History panel */
-.history-panel{display:none;max-width:820px;margin:0 auto}
-.history-panel.show{display:block}
+.history-panel{max-width:820px;margin:0 auto}
+.history-panel[hidden]{display:none !important}
 .history-empty{text-align:center;padding:56px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:18px}
 .history-empty h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .history-empty p{font-size:14px;color:var(--text2);margin-bottom:18px}
@@ -439,10 +439,10 @@ Image
 <button type="button" class="opt-chip active" data-dur="5" aria-pressed="true" onclick="pickDuration(5)">5s</button>
 <button type="button" class="opt-chip" data-dur="10" aria-pressed="false" onclick="pickDuration(10)">10s</button>
 </div>
-<div class="opt-row" id="aspectRow" style="display:none">
-<button type="button" class="opt-chip active" data-ar="16:9" onclick="pickAspect('16:9')">16:9</button>
-<button type="button" class="opt-chip" data-ar="9:16" onclick="pickAspect('9:16')">9:16</button>
-<button type="button" class="opt-chip" data-ar="1:1" onclick="pickAspect('1:1')">1:1</button>
+<div class="opt-row" id="aspectRow" style="display:none" role="group" aria-label="Aspect ratio" data-i18n-aria="a11y.aspect">
+<button type="button" class="opt-chip active" data-ar="16:9" aria-pressed="true" onclick="pickAspect('16:9')">16:9</button>
+<button type="button" class="opt-chip" data-ar="9:16" aria-pressed="false" onclick="pickAspect('9:16')">9:16</button>
+<button type="button" class="opt-chip" data-ar="1:1" aria-pressed="false" onclick="pickAspect('1:1')">1:1</button>
 </div>
 
 <button class="gen-btn" id="genBtn" disabled onclick="generate()">
@@ -480,13 +480,13 @@ Image
 </section>
 
 <!-- HISTORY VIEW -->
-<section class="history-panel" id="historyView" role="tabpanel" aria-labelledby="tabHistory">
+<section class="history-panel" id="historyView" role="tabpanel" aria-labelledby="tabHistory" tabindex="-1" hidden>
 <div class="history-empty" id="historyEmpty">
 <h3 id="historyEmptyTitle" data-i18n="ws.history.signin.h">Sign in to view your history</h3>
 <p id="historyEmptyDesc" data-i18n="ws.history.signin.p">Your creations will appear here after you log in.</p>
-<button class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
+<button type="button" class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
 </div>
-<div class="history-list" id="historyList" hidden></div>
+<div class="history-list" id="historyList" hidden role="list" data-i18n-aria="a11y.history" aria-label="Your creations"></div>
 </section>
 
 </main>
@@ -605,6 +605,8 @@ function toast(msg, isError) {
   const el = document.getElementById("toast");
   el.textContent = msg;
   el.className = "toast show" + (isError ? " error" : "");
+  el.setAttribute("role", isError ? "alert" : "status");
+  el.setAttribute("aria-live", isError ? "assertive" : "polite");
   setTimeout(() => el.classList.remove("show"), 3500);
 }
 
@@ -874,14 +876,16 @@ function switchPrimaryTab(tab) {
   const create = tab === "create";
   const tabCreate = document.getElementById("tabCreate");
   const tabHistory = document.getElementById("tabHistory");
+  const createView = document.getElementById("createView");
+  const historyView = document.getElementById("historyView");
   tabCreate.classList.toggle("active", create);
   tabHistory.classList.toggle("active", !create);
   tabCreate.setAttribute("aria-selected", create ? "true" : "false");
   tabHistory.setAttribute("aria-selected", create ? "false" : "true");
   tabCreate.tabIndex = create ? 0 : -1;
   tabHistory.tabIndex = create ? -1 : 0;
-  document.getElementById("createView").style.display = create ? "" : "none";
-  document.getElementById("historyView").classList.toggle("show", !create);
+  createView.hidden = !create;
+  historyView.hidden = create;
   if (!create) loadHistory();
 }
 
@@ -965,7 +969,9 @@ function pickDuration(n) {
 function pickAspect(v) {
   aspectRatio = v === "9:16" || v === "1:1" ? v : "16:9";
   document.querySelectorAll("#aspectRow .opt-chip").forEach((el) => {
-    el.classList.toggle("active", el.dataset.ar === aspectRatio);
+    const on = el.dataset.ar === aspectRatio;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
 }
 
@@ -1082,11 +1088,15 @@ function renderBlendThumbs() {
     img.className = "blend-thumb";
     img.alt = "blend " + (i + 1);
     img.src = URL.createObjectURL(file);
-    img.title = "Click to remove";
+    img.tabIndex = 0;
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-label", DU.t("gen.remove", "Remove") + " " + (i + 1));
+    img.title = DU.t("gen.remove", "Remove");
     img.onclick = () => {
       blendFiles.splice(i, 1);
       renderBlendThumbs();
     };
+    if (DU.bindActivate) DU.bindActivate(img, img.onclick);
     row.insertBefore(img, document.getElementById("addBlendBtn"));
   });
 }
@@ -1326,10 +1336,13 @@ async function loadHistory() {
     }
     empty.hidden = true;
     list.hidden = false;
+    list.setAttribute("aria-busy", "true");
     list.innerHTML = gens.map((g) => {
       const url = g.result_url || g.resultUrl || "";
       const kind = g.kind || (String(g.model).indexOf("image") === 0 ? "image" : "video");
       const guestTag = g.guest ? " · guest" : "";
+      const statusRaw = String(g.status || "");
+      const statusLabel = DU.t("ws.status." + statusRaw, statusRaw);
       const meta = kind === "image"
         ? `#${g.id} · image · ${escapeHtml(String(g.model))}${guestTag}`
         : `#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s${guestTag}`;
@@ -1340,22 +1353,24 @@ async function loadHistory() {
             ${g.guest ? "" : `<button type="button" data-act="share" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.result.share", "Share to gallery"))}</button>`}
           </div>`
         : "";
+      const alt = escapeHtml((g.prompt || "").slice(0, 120) || (kind === "image" ? "Generated image" : "Generated video"));
       const preview = !url
         ? ""
         : kind === "image"
-          ? `<img src="${escapeHtml(url)}" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
-          : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
+          ? `<img src="${escapeHtml(url)}" alt="${alt}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
+          : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" aria-label="${alt}" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
       return `
-      <div class="history-item">
+      <article class="history-item" role="listitem">
         <div class="h-top">
           <span class="h-meta">${meta}</span>
-          <span class="h-status ${escapeHtml(String(g.status))}">${escapeHtml(String(g.status))}</span>
+          <span class="h-status ${escapeHtml(statusRaw)}">${escapeHtml(statusLabel)}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
         ${preview}
         ${link}
-      </div>`;
+      </article>`;
     }).join("");
+    list.setAttribute("aria-busy", "false");
     if (!list.dataset.bound) {
       list.dataset.bound = "1";
       list.addEventListener("click", async function (e) {

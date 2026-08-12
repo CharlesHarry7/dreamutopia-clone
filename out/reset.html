@@ -75,6 +75,8 @@ const params = new URLSearchParams(location.search);
 const token = (params.get("token") || "").trim();
 const formError = document.getElementById("formError");
 const submitBtn = document.getElementById("submitBtn");
+const passwordInput = document.getElementById("password");
+if (window.DU && DU.bindPasswordToggle) DU.bindPasswordToggle(passwordInput);
 if (!/^[a-f0-9]{32}$/.test(token)) {
   document.getElementById("lead").textContent = (window.DU && DU.t)
     ? DU.t("auth.reset.invalid", "This reset link is missing or invalid. Request a new one from the login page.")
@@ -84,12 +86,15 @@ if (!/^[a-f0-9]{32}$/.test(token)) {
 document.getElementById("resetForm").onsubmit = async function (e) {
   e.preventDefault();
   formError.classList.remove("show");
-  const password = document.getElementById("password").value;
+  const password = passwordInput.value;
   if (password.length < 6) {
     formError.textContent = (window.DU && DU.t) ? DU.t("auth.pass.short", "Password must be at least 6 characters.") : "Password must be at least 6 characters.";
     formError.classList.add("show");
+    passwordInput.setAttribute("aria-invalid", "true");
+    passwordInput.focus();
     return;
   }
+  passwordInput.removeAttribute("aria-invalid");
   submitBtn.disabled = true;
   try {
     const res = await fetch("/api/auth/reset", {

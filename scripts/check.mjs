@@ -70,6 +70,8 @@ function extractI18nKeys(src) {
     "notfound.h",
     "progress.done",
     "a11y.result",
+    "a11y.showPass",
+    "gen.btn.workspace",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -144,7 +146,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v11", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v12", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
@@ -171,6 +173,18 @@ function extractI18nKeys(src) {
   mustContain("out/assets/js/du.js", "bindImageDrop", "drop helper");
   mustContain("out/assets/js/du.js", "bindImagePaste", "paste helper");
   mustContain("out/assets/js/du.js", "bindModEnter", "mod+enter generate");
+  mustContain("out/assets/js/du.js", "trapFocus", "dialog focus trap");
+  mustContain("out/assets/js/du.js", "bindPasswordToggle", "password show/hide");
+  mustContain("out/assets/js/du.js", "prefersReducedMotion", "reduced-motion scroll");
+  mustContain("out/index.html", "lightboxPrev", "lightbox prev");
+  mustContain("out/index.html", "trapFocus", "homepage lightbox trap");
+  mustContain("out/index.html", "gen.btn.workspace", "homepage image tab continues in workspace");
+  mustContain("out/workspace.html", 'data-i18n-aria="a11y.aspect"', "aspect group label");
+  mustContain("out/workspace.html", "aria-pressed", "aspect/model pressed state");
+  mustContain("out/workspace.html", 'role="listitem"', "history list items");
+  mustContain("out/auth.html", "bindPasswordToggle", "auth password toggle");
+  mustContain("out/reset.html", "bindPasswordToggle", "reset password toggle");
+  mustContain("out/assets/css/chrome.css", "lightbox-lock", "lightbox scroll lock");
   mustContain("out/index.html", "bindImageDrop", "homepage drop");
   mustContain("out/index.html", "bindImagePaste", "homepage paste");
   mustContain("out/workspace.html", "bindImagePaste", "workspace paste");

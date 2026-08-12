@@ -330,9 +330,84 @@
     }
     if (opts.busy || opts.error) {
       try {
-        box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        box.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
       } catch (e) {}
     }
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isShown(el) {
+    if (!el || el.hidden) return false;
+    if (el.closest && el.closest("[hidden]")) return false;
+    try {
+      const st = window.getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") return false;
+    } catch (e) {}
+    return true;
+  }
+
+  function trapFocus(container) {
+    function handler(e) {
+      if (e.key !== "Tab" || !container || !isShown(container)) return;
+      const nodes = container.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select, video[controls], [tabindex]:not([tabindex="-1"])'
+      );
+      const list = Array.prototype.filter.call(nodes, isShown);
+      if (!list.length) {
+        e.preventDefault();
+        if (typeof container.focus === "function") container.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handler);
+    return function () {
+      document.removeEventListener("keydown", handler);
+    };
+  }
+
+  function bindPasswordToggle(input) {
+    if (!input || input.dataset.toggleBound) return;
+    input.dataset.toggleBound = "1";
+    const wrap = document.createElement("div");
+    wrap.className = "pw-wrap";
+    if (input.parentNode) input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pw-toggle";
+    btn.setAttribute("aria-pressed", "false");
+    function label() {
+      const hidden = input.type === "password";
+      btn.textContent = hidden ? t("a11y.showPass", "Show") : t("a11y.hidePass", "Hide");
+      btn.setAttribute(
+        "aria-label",
+        hidden ? t("a11y.showPass", "Show password") : t("a11y.hidePass", "Hide password")
+      );
+    }
+    label();
+    btn.addEventListener("click", function () {
+      input.type = input.type === "password" ? "text" : "password";
+      btn.setAttribute("aria-pressed", input.type === "text" ? "true" : "false");
+      label();
+    });
+    wrap.appendChild(btn);
+    document.addEventListener("du:i18n", label);
   }
 
   function focusEl(el) {
@@ -396,5 +471,8 @@
     focusEl: focusEl,
     bindTablist: bindTablist,
     bindActivate: bindActivate,
+    prefersReducedMotion: prefersReducedMotion,
+    trapFocus: trapFocus,
+    bindPasswordToggle: bindPasswordToggle,
   };
 })(window);

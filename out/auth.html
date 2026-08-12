@@ -105,12 +105,12 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 <h1 id="title" data-i18n="auth.signup.h">Create your account</h1>
 <p class="lead" id="lead" data-i18n="auth.signup.lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>
 
-<div class="mode-tabs" role="tablist">
-<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true" data-i18n="hdr.signup">Sign Up</button>
-<button type="button" id="tabLogin" role="tab" aria-selected="false" data-i18n="hdr.login">Log In</button>
+<div class="mode-tabs" role="tablist" aria-label="Account">
+<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true" aria-controls="authForm" tabindex="0" data-i18n="hdr.signup">Sign Up</button>
+<button type="button" id="tabLogin" role="tab" aria-selected="false" aria-controls="authForm" tabindex="-1" data-i18n="hdr.login">Log In</button>
 </div>
 
-<form id="authForm" novalidate>
+<form id="authForm" novalidate role="tabpanel" aria-labelledby="tabRegister">
 <div class="field">
 <label for="email" data-i18n="auth.email">Email</label>
 <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
@@ -212,6 +212,9 @@ function setMode(next) {
   tabLogin.classList.toggle("active", isLogin);
   tabRegister.setAttribute("aria-selected", String(!isLogin && !isForgot));
   tabLogin.setAttribute("aria-selected", String(isLogin));
+  tabRegister.tabIndex = !isLogin && !isForgot ? 0 : -1;
+  tabLogin.tabIndex = isLogin ? 0 : -1;
+  document.getElementById("authForm").setAttribute("aria-labelledby", isForgot ? "title" : isLogin ? "tabLogin" : "tabRegister");
   submitBtn.textContent = isForgot
     ? DU.t("auth.forgot.submit", "Send reset link")
     : isLogin
@@ -269,6 +272,8 @@ function setMode(next) {
 
 tabRegister.onclick = () => setMode("register");
 tabLogin.onclick = () => setMode("login");
+if (DU.bindTablist) DU.bindTablist(document.querySelector(".mode-tabs"));
+if (DU.bindPasswordToggle) DU.bindPasswordToggle(passwordInput);
 const forgotLink = document.getElementById("forgotLink");
 if (forgotLink) {
   forgotLink.onclick = (e) => {
@@ -301,13 +306,19 @@ document.getElementById("authForm").onsubmit = async (e) => {
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     formError.textContent = DU.t("auth.email.invalid", "Please enter a valid email.");
     formError.classList.add("show");
+    document.getElementById("email").setAttribute("aria-invalid", "true");
+    document.getElementById("email").focus();
     return;
   }
+  document.getElementById("email").removeAttribute("aria-invalid");
   if (mode !== "forgot" && (!password || password.length < 6)) {
     formError.textContent = DU.t("auth.pass.short", "Password must be at least 6 characters.");
     formError.classList.add("show");
+    passwordInput.setAttribute("aria-invalid", "true");
+    passwordInput.focus();
     return;
   }
+  passwordInput.removeAttribute("aria-invalid");
   submitBtn.disabled = true;
   const prev = submitBtn.textContent;
   submitBtn.textContent = mode === "forgot"
