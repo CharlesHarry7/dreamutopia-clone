@@ -6,7 +6,7 @@ Cloudflare 资源名：Pages `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `d
 
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
-- a file uploaded to R2 (`POST /api/upload` → public `GET /api/media?key=`), or
+- a file uploaded to R2 (`POST /api/upload` → public `GET /api/media?key=`), JPG/PNG/WebP/GIF/TIFF ≤ 20 MB, or
 - any public `https` `imageUrl` that KIE can fetch.
 
 Guests (no session) get **2 Lite image-to-video** tries per device cookie + IP, stored in KV (`du_guest`). Signed-in jobs go to D1.
@@ -28,7 +28,7 @@ Payment/Stripe is out of scope. `GET/POST /api/checkout` returns `checkout_not_c
 
 ```
 POST /api/upload          Authorization: Bearer <session>
-  Content-Type: image/jpeg (raw body, ≤10 MB)
+  Content-Type: image/jpeg (raw body, ≤20 MB)
 → { key, imageUrl }       // https://<host>/api/media?key=…
 
 POST /api/generate
@@ -58,7 +58,13 @@ POST /api/generate
 GET /api/generate?id=<generationId>
 → poll KIE recordInfo when still processing
 → copy result into R2 when MEDIA is bound
-→ { status, resultUrl, generation.kind }
+→ { status, resultUrl, generation.kind, providerState }
+
+POST /api/gallery   Authorization: Bearer <session>
+  { "generationId" }
+→ opt-in publish of a finished account job (needs R2 media_key)
+GET /api/gallery
+→ { items: [{ id, url, kind, prompt, likes }] }
 ```
 
 If `KIE_API_KEY` is missing:
@@ -96,10 +102,11 @@ Apply schema (new DBs):
 npx wrangler d1 execute dreamutopia-db --remote --file=schema.sql
 ```
 
-**Existing DBs** (created before KIE columns) also need:
+**Existing DBs** also need:
 
 ```bash
 npx wrangler d1 execute dreamutopia-db --remote --file=migrations/001_generations_kie.sql
+npx wrangler d1 execute dreamutopia-db --remote --file=migrations/002_gallery_unique.sql
 ```
 
 ## 2. Paste IDs into `wrangler.toml`
@@ -196,7 +203,7 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 ## Checklist
 
 - [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
-- [ ] `schema.sql` (+ `migrations/001_generations_kie.sql` if DB already existed)
+- [ ] `schema.sql` (+ `001_generations_kie.sql` / `002_gallery_unique.sql` if DB already existed)
 - [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
 - [ ] Pages secret: `KIE_API_KEY`
 - [ ] Redeploy

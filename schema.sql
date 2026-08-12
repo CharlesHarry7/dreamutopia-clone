@@ -37,3 +37,4 @@ CREATE TABLE IF NOT EXISTS gallery (
 
 CREATE INDEX IF NOT EXISTS idx_generations_user ON generations(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gallery_generation ON gallery(generation_id);

@@ -52,7 +52,11 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   auth.html        # Login / register
   privacy.html     # Privacy
   terms.html       # Terms
-  assets/js/du.js  # Shared fetch / upload / poll helper
+  assets/js/du.js  # Shared fetch / upload / poll / download
+  assets/js/i18n.js # EN / 中文 / 日本語 / Español
+  assets/js/pwa.js  # Service worker + install banner
+  manifest.webmanifest
+  sw.js
 /functions/api     # Cloudflare Pages Functions (API routes)
   health.ts        # GET /api/health
   auth/            # register / login / logout / me
@@ -60,7 +64,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   upload.ts        # GET probe + POST file → R2 (auth or guest)
   media.ts         # GET/HEAD /api/media?key= (public image bytes)
   generate.ts      # POST/GET /api/generate (KIE)
-  gallery.ts       # GET /api/gallery
+  gallery.ts       # GET public gallery + POST opt-in publish
   checkout.ts      # GET/POST stub (503 checkout_not_configured)
   upload-ticket.ts # Legacy probe
 /libs              # Shared backend logic
@@ -74,12 +78,14 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1.
 2. **Account:** sign up (10 credits). Video: text-to-video, image-to-video, or first+last frame (Medium/Pro). Image: T2I / I2I / blend, 1K–4K.
 3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
-4. Client polls `GET /api/generate?id=…` until `status=done`. When R2 is bound, the provider file is copied to `/api/media`.
-5. Paid checkout is **not live**.
+4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
+5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist.
+6. Language selector switches EN / 中文 / 日本語 / Español. PWA: add to home screen (`manifest.webmanifest` + `sw.js`).
+7. Paid checkout is **not live**.
 
 ## Backend setup
 
-See **[BACKEND.md](./BACKEND.md)** for bindings, the `KIE_API_KEY` Pages secret, and D1 migration `001_generations_kie.sql`.
+See **[BACKEND.md](./BACKEND.md)** for bindings, the `KIE_API_KEY` Pages secret, and D1 migrations `001_generations_kie.sql` / `002_gallery_unique.sql`.
 
 **Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
 **Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.

@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign in — DreamUtopia</title>
 <meta name="description" content="Log in or create a free DreamUtopia account to claim 10 credits and unlock advanced AI models.">
+<meta name="theme-color" content="#0d0d12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DreamUtopia">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -26,6 +31,7 @@ nav>a:hover{color:var(--text);background:rgba(255,255,255,.04)}
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-login.active{color:var(--text)}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
+.lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer}
 
 .auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 20px;position:relative}
 .auth-main::before{content:'';position:absolute;inset:0 10% auto;height:320px;background:radial-gradient(ellipse at center,rgba(168,85,247,.16),transparent 70%);pointer-events:none}
@@ -70,47 +76,56 @@ nav{display:none}
 <span>DreamUtopia AI</span>
 </a>
 <nav>
-<a href="/">Home</a>
-<a href="/pricing">Pricing</a>
-<a href="/workspace">Workspace</a>
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/pricing" data-i18n="nav.pricing">Pricing</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
 </nav>
 <div class="header-right">
-<a href="/auth?mode=login" class="btn-login" id="hdrLogin">Log In</a>
-<a href="/auth?mode=register" class="btn-signup" id="hdrSignup">Sign Up</a>
+<a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
+<select class="lang-select" aria-label="Language">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
 </div>
 </header>
 
 <main class="auth-main">
 <div class="auth-card">
-<h1 id="title">Create your account</h1>
-<p class="lead" id="lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>
+<h1 id="title" data-i18n="auth.signup.h">Create your account</h1>
+<p class="lead" id="lead" data-i18n="auth.signup.lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>
 
 <div class="mode-tabs" role="tablist">
-<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true">Sign Up</button>
-<button type="button" id="tabLogin" role="tab" aria-selected="false">Log In</button>
+<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true" data-i18n="hdr.signup">Sign Up</button>
+<button type="button" id="tabLogin" role="tab" aria-selected="false" data-i18n="hdr.login">Log In</button>
 </div>
 
 <form id="authForm" novalidate>
 <div class="field">
-<label for="email">Email</label>
+<label for="email" data-i18n="auth.email">Email</label>
 <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
 </div>
 <div class="field">
-<label for="password">Password</label>
-<input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters">
+<label for="password" data-i18n="auth.password">Password</label>
+<input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters">
 </div>
-<button class="submit" id="submitBtn" type="submit">Sign Up Free</button>
+<button class="submit" id="submitBtn" type="submit" data-i18n="auth.submitSignup">Sign Up Free</button>
 <div class="form-error" id="formError" role="alert"></div>
 </form>
 
-<div class="perk" id="perk">New accounts get <b>10 free credits</b> instantly — no credit card required.</div>
+<div class="perk" id="perk" data-i18n-html="auth.perk">New accounts get <b>10 free credits</b> instantly — no credit card required.</div>
 <p class="switch" id="switchLine">Already have an account? <a href="/auth?mode=login" id="switchLink">Log in</a></p>
-<a class="back" href="/workspace">← Back to workspace</a>
+<a class="back" href="/workspace" data-i18n="auth.back">← Back to workspace</a>
 </div>
 </main>
 
 <footer>© DreamUtopia AI · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
 
+<script src="/assets/js/du.js"></script>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/pwa.js"></script>
 <script>
 const TOKEN_KEY = "dreamutopia_token";
 const CREDITS_KEY = "dreamutopia_credits";
@@ -156,30 +171,30 @@ function workspaceUrl() {
 function setMode(next) {
   mode = next === "login" ? "login" : "register";
   const isLogin = mode === "login";
-  title.textContent = isLogin ? "Welcome back" : "Create your account";
+  title.textContent = isLogin ? DU.t("auth.login.h", "Welcome back") : DU.t("auth.signup.h", "Create your account");
   if (selectedPack) {
     lead.textContent = isLogin
       ? "Log in to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits)."
       : "Create a free account to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits).";
   } else {
     lead.textContent = isLogin
-      ? "Log in to continue creating in your workspace."
-      : "Claim 10 free credits and unlock advanced AI models in the workspace.";
+      ? DU.t("auth.login.lead", "Log in to continue creating in your workspace.")
+      : DU.t("auth.signup.lead", "Claim 10 free credits and unlock advanced AI models in the workspace.");
   }
   tabRegister.classList.toggle("active", !isLogin);
   tabLogin.classList.toggle("active", isLogin);
   tabRegister.setAttribute("aria-selected", String(!isLogin));
   tabLogin.setAttribute("aria-selected", String(isLogin));
-  submitBtn.textContent = isLogin ? "Log In" : "Sign Up Free";
+  submitBtn.textContent = isLogin ? DU.t("auth.submitLogin", "Log In") : DU.t("auth.submitSignup", "Sign Up Free");
   perk.style.display = isLogin ? "none" : "";
   if (selectedPack && !isLogin) {
     perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> (" + selectedPack.price + " · " + selectedPack.credits + " credits). Paid checkout isn’t live yet — nothing will be charged. New accounts still get <b>10 free credits</b> instantly.";
   } else if (!isLogin) {
-    perk.innerHTML = "New accounts get <b>10 free credits</b> instantly — no credit card required.";
+    perk.innerHTML = DU.t("auth.perk", "New accounts get <b>10 free credits</b> instantly — no credit card required.");
   }
   switchLine.innerHTML = isLogin
-    ? 'New here? <a href="' + authUrl("register") + '" id="switchLink">Sign up free</a>'
-    : 'Already have an account? <a href="' + authUrl("login") + '" id="switchLink">Log in</a>';
+    ? DU.t("auth.need", "Need an account?") + ' <a href="' + authUrl("register") + '" id="switchLink">' + DU.t("auth.submitSignup", "Sign Up Free") + "</a>"
+    : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
     setMode(isLogin ? "register" : "login");
@@ -265,6 +280,8 @@ document.getElementById("authForm").onsubmit = async (e) => {
     }
   } catch (e) {}
 })();
+
+document.addEventListener("du:i18n", function () { setMode(mode); });
 </script>
 </body>
 </html>

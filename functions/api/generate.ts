@@ -128,22 +128,34 @@ async function syncProviderStatus(
   env: Env & { DB: D1Database; KIE_API_KEY: string },
   row: GenerationRow,
   origin: string
-): Promise<GenerationRow> {
-  if (row.status !== "processing" || !row.provider_job_id) return row;
+): Promise<{ row: GenerationRow; providerState: string | null }> {
+  if (row.status !== "processing" || !row.provider_job_id) {
+    return { row, providerState: row.status === "done" ? "success" : row.status === "failed" ? "fail" : null };
+  }
 
   const info = await getTaskInfo(env.KIE_API_KEY, row.provider_job_id);
   if (!info.ok) {
-    return row;
+    return { row, providerState: null };
   }
 
   if (info.state === "success" && info.resultUrl) {
     const resultUrl = await persistResult(env, row.user_id, info.resultUrl, origin);
+    const mediaKey = mediaKeyFromUrl(resultUrl);
     await env.DB.prepare(
-      "UPDATE generations SET status = 'done', result_url = ?, error_message = NULL WHERE id = ?"
+      "UPDATE generations SET status = 'done', result_url = ?, media_key = COALESCE(?, media_key), error_message = NULL WHERE id = ?"
     )
-      .bind(resultUrl, row.id)
+      .bind(resultUrl, mediaKey, row.id)
       .run();
-    return { ...row, status: "done", result_url: resultUrl, error_message: null };
+    return {
+      row: {
+        ...row,
+        status: "done",
+        result_url: resultUrl,
+        media_key: mediaKey || row.media_key,
+        error_message: null,
+      },
+      providerState: "success",
+    };
   }
 
   if (info.state === "fail") {
@@ -156,10 +168,10 @@ async function syncProviderStatus(
     const parsed = parseStoredModel(row.model);
     const cost = parsed.kind === "image" ? IMAGE_COST[parsed.model] : VIDEO_COST[parsed.model];
     if (cost) await refundCredits(env, row.user_id, cost);
-    return { ...row, status: "failed", error_message: msg };
+    return { row: { ...row, status: "failed", error_message: msg }, providerState: "fail" };
   }
 
-  return row;
+  return { row, providerState: info.state || "generating" };
 }
 
 function publicGeneration(row: GenerationRow) {
@@ -253,10 +265,12 @@ async function syncGuestJob(
   job: GuestJob,
   origin: string,
   ip: string | null
-): Promise<GuestJob> {
-  if (job.status !== "processing" || !job.providerJobId) return job;
+): Promise<{ job: GuestJob; providerState: string | null }> {
+  if (job.status !== "processing" || !job.providerJobId) {
+    return { job, providerState: job.status === "done" ? "success" : job.status === "failed" ? "fail" : null };
+  }
   const info = await getTaskInfo(env.KIE_API_KEY, job.providerJobId);
-  if (!info.ok) return job;
+  if (!info.ok) return { job, providerState: null };
 
   let next = job;
   if (info.state === "success" && info.resultUrl) {
@@ -269,12 +283,12 @@ async function syncGuestJob(
     const ipUsed = await loadIpUsed(env, ip);
     await saveIpUsed(env, ip, Math.max(0, ipUsed - 1));
   } else {
-    return job;
+    return { job, providerState: info.state || "generating" };
   }
 
   rec.jobs = rec.jobs.map((j) => (j.id === job.id ? next : j));
   await saveGuest(env, rec);
-  return next;
+  return { job: next, providerState: next.status === "done" ? "success" : "fail" };
 }
 
 function createFailedResponse(
@@ -744,11 +758,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!row) return error("not found", 404);
 
+    let providerState: string | null = null;
     if (row.status === "processing" && row.provider_job_id) {
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      row = await syncProviderStatus(env, row, origin);
+      const synced = await syncProviderStatus(env, row, origin);
+      row = synced.row;
+      providerState = synced.providerState;
     }
 
     return json({
@@ -757,6 +774,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       generation: publicGeneration(row),
       resultUrl: row.result_url,
       status: row.status,
+      providerState,
     });
   }
 
@@ -827,9 +845,12 @@ async function handleGuestGet(
     }
     let job = rec.jobs.find((j) => j.id === idParam) || null;
     if (!job) return json({ error: "not found", code: "not_found" }, 404, headers);
+    let providerState: string | null = null;
     if (job.status === "processing" && job.providerJobId) {
       if (!hasKieKey(env)) return kieMissingResponse();
-      job = await syncGuestJob(env, rec, job, origin, ip);
+      const synced = await syncGuestJob(env, rec, job, origin, ip);
+      job = synced.job;
+      providerState = synced.providerState;
     }
     return json(
       {
@@ -839,6 +860,7 @@ async function handleGuestGet(
         generation: publicGuestJob(job),
         resultUrl: job.resultUrl,
         status: job.status,
+        providerState,
         guestRemaining: quota.remaining,
         guestLimit: GUEST_LIMIT,
       },
