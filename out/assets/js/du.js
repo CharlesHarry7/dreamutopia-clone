@@ -101,23 +101,118 @@
     return t("progress.generating", "Generating…") + (status ? " (" + status + ")" : "");
   }
 
-  async function pollGeneration(generationId, onStatus) {
-    const maxAttempts = 80;
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(function (r) { setTimeout(r, i < 10 ? 1500 : 3000); });
-      const data = await api("/generate?id=" + encodeURIComponent(generationId));
-      const g = data.generation || {};
-      const status = data.status || g.status;
-      const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
-      if (typeof onStatus === "function") onStatus(status, data);
-      if (status === "done" && resultUrl) {
-        return { status: status, resultUrl: resultUrl, generation: g, kind: g.kind || data.kind || "video" };
+  function cancelledError() {
+    const err = new Error(t("progress.cancelled", "Stopped waiting — the job may still finish. Check Workspace / History."));
+    err.code = "poll_cancelled";
+    return err;
+  }
+
+  function sleep(ms, signal) {
+    return new Promise(function (resolve, reject) {
+      if (signal && signal.aborted) {
+        reject(cancelledError());
+        return;
       }
-      if (status === "failed") {
-        throw new Error(g.error_message || t("progress.failed", "Generation failed"));
+      const timer = setTimeout(resolve, ms);
+      if (!signal) return;
+      signal.addEventListener(
+        "abort",
+        function () {
+          clearTimeout(timer);
+          reject(cancelledError());
+        },
+        { once: true }
+      );
+    });
+  }
+
+  function shouldRetryPoll(err) {
+    if (!err) return false;
+    if (err.code === "poll_cancelled") return false;
+    const code = String(err.code || "");
+    if (
+      code === "kie_api_key_missing" ||
+      code === "provider_credits_insufficient" ||
+      code === "kie_unauthorized" ||
+      code === "guest_limit" ||
+      code === "unauthorized" ||
+      code === "not_found"
+    ) {
+      return false;
+    }
+    if (err.status === 400 || err.status === 401 || err.status === 402 || err.status === 404) return false;
+    if (err.status === 429 || code === "rate_limited") return true;
+    if (err.status === 502 || err.status === 504) return true;
+    if (!err.status) return true;
+    return false;
+  }
+
+  function failedJobError(message) {
+    const raw = String(message || "");
+    if (/credits insufficient|balance isn.?t enough|top up/i.test(raw)) {
+      const err = new Error(t("err.provider_credits_insufficient", "Generation is temporarily unavailable. Please try again later."));
+      err.code = "provider_credits_insufficient";
+      return err;
+    }
+    return new Error(raw || t("progress.failed", "Generation failed"));
+  }
+
+  async function pollGeneration(generationId, onStatus, opts) {
+    opts = opts || {};
+    const signal = opts.signal;
+    const maxAttempts = opts.maxAttempts || 80;
+    const started = Date.now();
+    let networkFails = 0;
+    for (let i = 0; i < maxAttempts; i++) {
+      const hidden = typeof document !== "undefined" && document.hidden;
+      const delay = i === 0 ? 800 : i < 10 ? 1500 : hidden ? 5000 : 3000;
+      await sleep(delay, signal);
+      try {
+        const data = await api("/generate?id=" + encodeURIComponent(generationId));
+        networkFails = 0;
+        const g = data.generation || {};
+        const status = data.status || g.status;
+        const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
+        const extra = {
+          elapsedSec: Math.round((Date.now() - started) / 1000),
+          attempt: i + 1,
+        };
+        if (typeof onStatus === "function") onStatus(status, Object.assign({}, data, extra));
+        if (status === "done" && resultUrl) {
+          return { status: status, resultUrl: resultUrl, generation: g, kind: g.kind || data.kind || "video" };
+        }
+        if (status === "failed") {
+          throw failedJobError(g.error_message || g.errorMessage);
+        }
+      } catch (e) {
+        if (e && e.code === "poll_cancelled") throw e;
+        if (!shouldRetryPoll(e)) throw e;
+        networkFails += 1;
+        if (networkFails >= 6) {
+          const err = new Error(t("err.network", "Network hiccup while waiting. Check Workspace / History."));
+          err.code = "network";
+          throw err;
+        }
+        if (typeof onStatus === "function") {
+          onStatus("processing", {
+            providerState: "waiting",
+            elapsedSec: Math.round((Date.now() - started) / 1000),
+            networkRetry: true,
+          });
+        }
       }
     }
     throw new Error(t("progress.timeout", "Timed out waiting for provider result — check History later"));
+  }
+
+  function formatProgress(status, data) {
+    if (data && data.networkRetry) {
+      const wait = data.elapsedSec ? " · " + data.elapsedSec + "s" : "";
+      return t("err.network", "Connection blip — still waiting.") + wait;
+    }
+    let label = progressLabel(status, data && data.providerState);
+    if (data && data.elapsedSec) label += " · " + data.elapsedSec + "s";
+    return label;
   }
 
   async function downloadResult(url, filename) {
@@ -174,6 +269,7 @@
     uploadImage: uploadImage,
     pollGeneration: pollGeneration,
     progressLabel: progressLabel,
+    formatProgress: formatProgress,
     downloadResult: downloadResult,
     publishGallery: publishGallery,
     likeGallery: likeGallery,

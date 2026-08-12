@@ -302,3 +302,13 @@ export async function getTaskInfo(
     failMsg: data.failMsg || null,
   };
 }
+
+/** Never leak KIE wallet / “top up” copy to the browser. */
+export function publicProviderFailMessage(raw: string | null | undefined): string {
+  const s = (raw || "").trim();
+  if (!s) return "Generation failed";
+  if (/credits insufficient|balance isn.?t enough|top up|\b402\b/i.test(s)) {
+    return "Generation is temporarily unavailable. Please try again later.";
+  }
+  return s;
+}

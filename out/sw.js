@@ -1,5 +1,5 @@
 /* DreamUtopia clone — cache static chrome; never cache /api. */
-const CACHE = "du-static-v6";
+const CACHE = "du-static-v7";
 const PRECACHE = [
   "/",
   "/workspace",
@@ -35,6 +35,10 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event && event.data === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {

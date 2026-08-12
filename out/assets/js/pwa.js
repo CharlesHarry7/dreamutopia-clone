@@ -48,7 +48,23 @@
   }
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(function () {});
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then(function (reg) {
+        if (reg.waiting) {
+          try { reg.waiting.postMessage("SKIP_WAITING"); } catch (e) {}
+        }
+        reg.addEventListener("updatefound", function () {
+          var w = reg.installing;
+          if (!w) return;
+          w.addEventListener("statechange", function () {
+            if (w.state === "installed" && navigator.serviceWorker.controller) {
+              try { w.postMessage("SKIP_WAITING"); } catch (e) {}
+            }
+          });
+        });
+      })
+      .catch(function () {});
   }
 
   window.addEventListener("beforeinstallprompt", function (e) {

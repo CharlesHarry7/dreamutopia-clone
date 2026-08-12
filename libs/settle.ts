@@ -6,7 +6,7 @@
 
 import { costForStoredModel } from "./costs";
 import { mediaKeyFromUrl, persistRemoteMedia } from "./media";
-import { getTaskInfo, type KieTaskInfo, type KieTaskError } from "./kie";
+import { getTaskInfo, publicProviderFailMessage, type KieTaskInfo, type KieTaskError } from "./kie";
 import {
   loadGuest,
   loadIpUsed,
@@ -219,7 +219,7 @@ export async function settleAccountJob(
   }
 
   if (info.state === "fail") {
-    const msg = info.failMsg || info.failCode || "provider generation failed";
+    const msg = publicProviderFailMessage(info.failMsg || info.failCode || "provider generation failed");
     const upd = await env.DB.prepare(
       "UPDATE generations SET status = 'failed', error_message = ? WHERE id = ? AND status = 'processing'"
     )
@@ -277,7 +277,7 @@ export async function settleGuestJob(
     const resultUrl = await persistResult(env, GUEST_USER_ID, info.resultUrl, origin);
     next = { ...current, status: "done", resultUrl, errorMessage: null };
   } else if (info.state === "fail") {
-    const msg = info.failMsg || info.failCode || "provider generation failed";
+    const msg = publicProviderFailMessage(info.failMsg || info.failCode || "provider generation failed");
     next = { ...current, status: "failed", errorMessage: msg };
     fresh.used = Math.max(0, fresh.used - 1);
     const ipUsed = await loadIpUsed(env, ip);

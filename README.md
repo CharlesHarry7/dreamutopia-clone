@@ -93,7 +93,7 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
 4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
 5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist; public items can be liked (once per IP).
-6. Language selector switches EN / 中文 / 日本語 / Español (including keyword landings). PWA: add to home screen (`manifest.webmanifest` + `sw.js` + `/offline.html`).
+6. Language selector switches EN / 中文 / 日本語 / Español (including keyword landings). PWA: add to home screen (`manifest.webmanifest` + `sw.js` + `/offline`). Generate polling shows elapsed time, retries blips, and can stop waiting without killing the job.
 7. Paid packs: without Stripe secrets, `GET/POST /api/checkout` is **503** (`configured: false`) — no fake charge. With secrets, signed-in POST redirects to Stripe. First purchase +31 credits; invites earn 10% of the pack. Password reset needs Resend. `/robots.txt` and `/sitemap.xml` are Functions.
 
 `node scripts/check.mjs` (also GitHub Action `check`) asserts i18n key parity, pack ids vs pricing, checkout honesty, and that the service worker never caches `/api`.

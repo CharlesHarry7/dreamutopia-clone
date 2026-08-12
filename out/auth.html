@@ -12,6 +12,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -19,6 +21,9 @@
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;display:flex;flex-direction:column}
 a{text-decoration:none;color:inherit}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
 img{max-width:100%;display:block}
 
 header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
@@ -71,7 +76,7 @@ nav{display:none}
 </style>
 </head>
 <body>
-
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo" aria-label="DreamUtopia AI">
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
@@ -85,7 +90,7 @@ nav{display:none}
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
-<select class="lang-select" aria-label="Language">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
@@ -94,7 +99,7 @@ nav{display:none}
 </div>
 </header>
 
-<main class="auth-main">
+<main id="main" class="auth-main">
 <div class="auth-card">
 <h1 id="title" data-i18n="auth.signup.h">Create your account</h1>
 <p class="lead" id="lead" data-i18n="auth.signup.lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>

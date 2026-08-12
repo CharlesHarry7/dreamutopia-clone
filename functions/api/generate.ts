@@ -3,6 +3,7 @@ import {
   error,
   structuredError,
   preflight,
+  asHead,
   hasDb,
   hasSessions,
   hasKieKey,
@@ -16,6 +17,7 @@ import {
   isPublicHttpsUrl,
   parseAspectRatio,
   parseImageResolution,
+  publicProviderFailMessage,
   type AspectRatio,
   type ImageResolution,
 } from "../../libs/kie";
@@ -151,7 +153,7 @@ function publicGeneration(row: GenerationRow) {
     provider_job_id: row.provider_job_id,
     result_url: row.result_url,
     resultUrl: row.result_url,
-    error_message: row.error_message,
+    error_message: row.error_message ? publicProviderFailMessage(row.error_message) : null,
     created_at: row.created_at,
     guest: false,
   };
@@ -173,7 +175,7 @@ function publicGuestJob(job: GuestJob) {
     provider_job_id: job.providerJobId,
     result_url: job.resultUrl,
     resultUrl: job.resultUrl,
-    error_message: job.errorMessage,
+    error_message: job.errorMessage ? publicProviderFailMessage(job.errorMessage) : null,
     created_at: job.createdAt,
     guest: true,
   };

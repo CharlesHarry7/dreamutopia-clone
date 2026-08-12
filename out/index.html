@@ -13,6 +13,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -26,7 +28,14 @@
 html{scroll-behavior:smooth}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
-button{font-family:inherit;cursor:pointer;border:none;outline:none;background:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
+@media (prefers-reduced-motion: reduce){
+html{scroll-behavior:auto}
+*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
 img{max-width:100%;display:block}
 
 /* Promo bar */
@@ -110,6 +119,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .gen-status .cap{font-size:13px;color:var(--text2)}
+.gen-cancel{margin-top:10px;font-size:12.5px;color:var(--primary2);text-decoration:underline;background:none}
 .gen-result{margin-top:14px;display:none;text-align:center}
 .gen-result.show{display:block}
 .gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;margin:0 auto}
@@ -262,13 +272,13 @@ nav{display:none}
 </style>
 </head>
 <body>
-
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <!-- Promo Bar -->
 <div class="promo">
 <span class="promo-icon">🎁</span>
 <span class="promo-text" data-i18n="promo.text">Your first purchase unlocks 5 free Lite videos + 1 free Pro video — plus earn 10% credits every time a friend you invite buys.</span>
 <a href="/pricing" class="promo-btn" data-i18n="promo.cta">Get started</a>
-<button class="promo-close" onclick="this.parentElement.style.display='none'">✕</button>
+<button class="promo-close" onclick="this.parentElement.style.display='none'" aria-label="Dismiss" data-i18n-aria="a11y.dismiss">✕</button>
 </div>
 
 <!-- Header -->
@@ -294,7 +304,7 @@ nav{display:none}
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
-<select class="lang-select" aria-label="Language">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
@@ -303,6 +313,7 @@ nav{display:none}
 </div>
 </header>
 
+<main id="main">
 <!-- Hero -->
 <section class="hero">
 <div class="hero-meta">
@@ -333,11 +344,11 @@ nav{display:none}
 <div class="icon" id="homeUploadIcon">🖼</div>
 <div class="p1" id="homeUploadLabel" data-i18n="gen.upload">Upload Start Image</div>
 <div class="p2" id="homeUploadHint" data-i18n="gen.browse">Click to browse · JPG, PNG, WebP, GIF, or TIFF</div>
-<button type="button" class="remove-btn" id="homeRemove" hidden>Remove</button>
+<button type="button" class="remove-btn" id="homeRemove" hidden data-i18n="gen.remove">Remove</button>
 </div>
 
 <div class="label-row">
-<label data-i18n="gen.prompt">Describe Your Video</label>
+<label for="homePrompt" data-i18n="gen.prompt">Describe Your Video</label>
 <span><span class="req" data-i18n="gen.required">Required</span> &nbsp; <span class="counter" id="homeCounter">0/8000</span></span>
 </div>
 <textarea class="prompt-input" id="homePrompt" maxlength="8000" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
@@ -345,9 +356,10 @@ nav{display:none}
 <button class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
 <p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
-<div class="gen-status" id="homeStatus">
+<div class="gen-status" id="homeStatus" role="status" aria-live="polite">
 <div class="spinner"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
+<button type="button" class="gen-cancel" id="homeCancel" hidden data-i18n="progress.cancel">Stop waiting</button>
 </div>
 <div class="gen-result" id="homeResult">
 <video id="homeVideo" controls playsinline></video>
@@ -544,6 +556,7 @@ nav{display:none}
 </div>
 </section>
 
+</main>
 <!-- Footer -->
 <footer>
 <div class="footer-grid">
@@ -594,8 +607,8 @@ nav{display:none}
 <button type="button" class="x" id="pwaDismiss" aria-label="Dismiss">✕</button>
 </div>
 
-<div class="lightbox" id="lightbox" hidden>
-<button type="button" class="x" id="lightboxClose" aria-label="Close">✕</button>
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Gallery">
+<button type="button" class="x" id="lightboxClose" aria-label="Close" data-i18n-aria="a11y.close">✕</button>
 <div class="box">
 <video id="lightboxVideo" controls playsinline hidden></video>
 <img id="lightboxImage" alt="" hidden>
@@ -611,6 +624,7 @@ nav{display:none}
 let homeFile = null;
 let homeImageUrl = "";
 let homeBusy = false;
+let homePollAbort = null;
 
 function isImageTab() {
   const tab = document.querySelector(".gen-tab.active");
@@ -753,14 +767,18 @@ async function homeGenerate() {
     return;
   }
   homeBusy = true;
+  if (homePollAbort) homePollAbort.abort();
+  homePollAbort = new AbortController();
   const btn = document.getElementById("genBtn");
   const status = document.getElementById("homeStatus");
   const text = document.getElementById("homeStatusText");
   const result = document.getElementById("homeResult");
   const video = document.getElementById("homeVideo");
+  const cancel = document.getElementById("homeCancel");
   btn.disabled = true;
   status.classList.add("show");
   result.classList.remove("show");
+  if (cancel) cancel.hidden = false;
   text.textContent = DU.t("progress.starting", "Starting…");
   try {
     let imageUrl = homeImageUrl;
@@ -777,9 +795,9 @@ async function homeGenerate() {
     const data = await DU.api("/generate", { method: "POST", body: JSON.stringify(payload) });
     if (data.guestRemaining !== undefined) setGuestFoot(data.guestRemaining);
     text.textContent = DU.t("progress.queued", "Queued · waiting for provider…");
-    const done = await DU.pollGeneration(data.generationId, (st, payload) => {
-      text.textContent = DU.progressLabel(st, payload && payload.providerState);
-    });
+    const done = await DU.pollGeneration(data.generationId, function (st, payload) {
+      text.textContent = DU.formatProgress ? DU.formatProgress(st, payload) : DU.progressLabel(st, payload && payload.providerState);
+    }, { signal: homePollAbort.signal });
     video.src = done.resultUrl;
     document.getElementById("homeResultLink").href = done.resultUrl;
     document.getElementById("homeDownload").onclick = function () {
@@ -793,11 +811,18 @@ async function homeGenerate() {
     if (code === "guest_limit") setGuestFoot(0);
     if (e && e.payload && e.payload.guestRemaining !== undefined) setGuestFoot(e.payload.guestRemaining);
   }
+  if (cancel) cancel.hidden = true;
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));
 }
 
 document.getElementById("genBtn").addEventListener("click", homeGenerate);
+const homeCancelBtn = document.getElementById("homeCancel");
+if (homeCancelBtn) {
+  homeCancelBtn.addEventListener("click", function () {
+    if (homePollAbort) homePollAbort.abort();
+  });
+}
 
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
@@ -885,6 +910,7 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   const close = document.getElementById("lightboxClose");
   const grid = document.getElementById("galleryGrid");
   if (!box || !grid) return;
+  let lastFocus = null;
   function hide() {
     box.classList.remove("show");
     box.hidden = true;
@@ -892,11 +918,14 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
     video.removeAttribute("src");
     video.load();
     image.removeAttribute("src");
+    if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
+    lastFocus = null;
   }
   function show(item) {
     const media = item.querySelector("img,video");
     const url = item.getAttribute("data-url") || (media && media.src) || "";
     if (!url) return;
+    lastFocus = document.activeElement;
     const kind = item.getAttribute("data-kind") || (item.querySelector("video") ? "video" : "image");
     cap.textContent = item.getAttribute("data-prompt") || "";
     if (kind === "video") {
@@ -910,6 +939,7 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
     }
     box.hidden = false;
     box.classList.add("show");
+    if (close) close.focus();
   }
   grid.addEventListener("click", function (e) {
     if (e.target.closest(".gallery-like")) return;
@@ -919,6 +949,23 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   if (close) close.addEventListener("click", hide);
   box.addEventListener("click", function (e) { if (e.target === box) hide(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") hide(); });
+})();
+
+(function faqA11y() {
+  document.querySelectorAll(".faq-item").forEach(function (item) {
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", "0");
+    item.setAttribute("aria-expanded", item.classList.contains("open") ? "true" : "false");
+    item.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        item.click();
+      }
+    });
+    item.addEventListener("click", function () {
+      item.setAttribute("aria-expanded", item.classList.contains("open") ? "true" : "false");
+    });
+  });
 })();
 
 (function hydrateGuestFoot() {

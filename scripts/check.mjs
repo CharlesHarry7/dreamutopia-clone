@@ -137,7 +137,18 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v6", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v7", "SW cache bump");
+  mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
+  mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
+  mustContain("out/index.html", 'href="#main"', "homepage skip link");
+  mustContain("out/index.html", "prefers-reduced-motion", "reduced motion");
+  mustContain("out/index.html", 'aria-live="polite"', "live generate status");
+  mustContain("out/assets/js/du.js", "shouldRetryPoll", "poll retries transient errors");
+  mustContain("out/assets/js/du.js", "poll_cancelled", "poll cancel");
+  mustContain("out/assets/js/seo.js", "og:locale", "SEO locale");
+  mustContain("out/assets/js/seo.js", "application/ld+json", "JSON-LD");
+  mustContain("functions/sitemap.xml.ts", "lastmod", "sitemap lastmod");
+  mustContain("libs/kie.ts", "publicProviderFailMessage", "sanitize provider fail copy");
   mustContain("out/sw.js", '"/offline"', "SW precaches pretty /offline");
   if (/PRECACHE[\s\S]*?\.html/.test(read("out/sw.js"))) {
     fail.push("SW PRECACHE must use pretty URLs (/offline not /offline.html) — Pages 308s .html");
