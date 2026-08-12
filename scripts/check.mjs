@@ -143,6 +143,28 @@ function extractI18nKeys(src) {
 {
   mustContain("functions/api/upload.ts", "guestRemaining", "upload returns guest remaining");
   mustContain("functions/api/upload.ts", "GUEST_UPLOAD_LIMIT", "guest upload cap");
+  mustContain("functions/api/upload-ticket.ts", "onRequestHead", "upload-ticket HEAD");
+  mustContain("functions/api/upload-ticket.ts", "isSafeMediaKey", "upload-ticket does not echo unsafe keys");
+}
+
+// --- every Pages Function GET has HEAD (otherwise Pages serves 404 HTML) ---
+{
+  function walkTs(dir, acc = []) {
+    if (!fs.existsSync(dir)) return acc;
+    for (const name of fs.readdirSync(dir)) {
+      const abs = path.join(dir, name);
+      if (fs.statSync(abs).isDirectory()) walkTs(abs, acc);
+      else if (name.endsWith(".ts")) acc.push(path.relative(root, abs));
+    }
+    return acc;
+  }
+  for (const rel of walkTs(path.join(root, "functions"))) {
+    const src = read(rel);
+    if (src.includes("onRequestGet") && !src.includes("onRequestHead")) {
+      fail.push(`${rel} has onRequestGet but no onRequestHead (HEAD falls through to Pages 404 HTML)`);
+    }
+  }
+  ok.push("every Functions GET has HEAD");
 }
 
 // --- gallery like ---
