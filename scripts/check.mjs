@@ -161,6 +161,18 @@ function extractI18nKeys(src) {
   mustContain("functions/api/generate.ts", "handleGeneratePost", "generate POST try/catch wrapper");
   mustContain("functions/api/generate.ts", "function asTrimmed", "generate string fields never .trim() on non-strings");
   mustContain("libs/rateLimit.ts", "Math.max(60", "KV expirationTtl min 60s (else 1101)");
+  mustContain("functions/api/_middleware.ts", "request_failed", "API middleware never 1101");
+  {
+    const gen = read("functions/api/generate.ts");
+    const start = gen.indexOf("async function handleGeneratePost");
+    const end = gen.indexOf("async function guestRequestError");
+    const fn = start >= 0 && end > start ? gen.slice(start, end) : "";
+    const guestAt = fn.indexOf("guestRequestError");
+    const rlAt = fn.indexOf("takeRateLimit");
+    if (guestAt < 0 || rlAt < 0 || guestAt > rlAt) {
+      fail.push("handleGeneratePost must run guestRequestError before takeRateLimit (KV TTL 1101)");
+    } else ok.push("guest 4xx runs before KV rate limit");
+  }
   mustContain("functions/api/history.ts", "onRequestHead", "history alias HEAD");
   mustContain("functions/api/history.ts", "onRequestGet", "history alias GET");
   mustContain("functions/api/jobs.ts", "onRequestHead", "jobs alias HEAD");

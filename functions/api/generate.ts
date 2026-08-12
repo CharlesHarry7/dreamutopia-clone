@@ -389,10 +389,33 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
   }
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError(
+      "generate_failed",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
+    );
+  }
   if (token && !session) {
     return expiredSessionResponse({ mediaRequired: false });
   }
+
+  // Guest 4xx (image_url_required / guest_limit / lite-only) must not touch rate-limit KV.
+  // A KV expirationTtl < 60 throw is Cloudflare 1101.
+  if (!session) {
+    const blocked = await guestRequestError(env, request, {
+      kind,
+      model,
+      imageUrl,
+      lastImageUrl,
+    });
+    if (blocked) return blocked;
+  }
+
   const ip = clientIp(request);
   const rl = await takeRateLimit(
     env.SESSIONS,
@@ -406,39 +429,42 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
     body.idempotencyKey || body.idempotency_key || request.headers.get("idempotency-key")
   );
 
-  if (!session) {
-    const blocked = await guestRequestError(env, request, {
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-    });
-    if (blocked) return blocked;
-  }
-
   if (!hasKieKey(env)) {
     if (!session) {
-      const guestId = ensureGuestId(request);
-      const rec = await loadGuest(env, guestId);
-      const quota = await guestQuota(env, rec, clientIp(request));
-      return kieMissingResponse(
-        { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
-        guestHeaders(guestId, request)
-      );
+      try {
+        const guestId = ensureGuestId(request);
+        const rec = await loadGuest(env, guestId);
+        const quota = await guestQuota(env, rec, clientIp(request));
+        return kieMissingResponse(
+          { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+          guestHeaders(guestId, request)
+        );
+      } catch {
+        return kieMissingResponse({ guestRemaining: GUEST_LIMIT, guestLimit: GUEST_LIMIT });
+      }
     }
     return kieMissingResponse();
   }
 
   if (!session) {
-    return handleGuestPost(env, request, {
-      prompt,
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-      durationSec: durationSec || 5,
-      idempotencyKey,
-    });
+    try {
+      return await handleGuestPost(env, request, {
+        prompt,
+        kind,
+        model,
+        imageUrl,
+        lastImageUrl,
+        durationSec: durationSec || 5,
+        idempotencyKey,
+      });
+    } catch {
+      return structuredError(
+        "generate_failed",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
   }
 
   if (!hasDb(env)) {
@@ -629,64 +655,86 @@ async function guestRequestError(
   request: Request,
   opts: { kind: GenerationKind; model: string; imageUrl: string; lastImageUrl: string }
 ): Promise<Response | null> {
-  const guestId = ensureGuestId(request);
-  const headers = guestHeaders(guestId, request);
-  const rec = await loadGuest(env, guestId);
-  const quota = await guestQuota(env, rec, clientIp(request));
-  if (opts.kind !== "video" || opts.model !== "lite") {
-    return json(
-      {
-        error: "guest_lite_only",
-        code: "guest_lite_only",
-        message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      401,
-      headers
+  try {
+    const guestId = ensureGuestId(request);
+    const headers = guestHeaders(guestId, request);
+    const rec = await loadGuest(env, guestId);
+    const quota = await guestQuota(env, rec, clientIp(request));
+    if (opts.kind !== "video" || opts.model !== "lite") {
+      return json(
+        {
+          error: "guest_lite_only",
+          code: "guest_lite_only",
+          message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
+          guestRemaining: quota.remaining,
+          guestLimit: GUEST_LIMIT,
+        },
+        401,
+        headers
+      );
+    }
+    if (opts.lastImageUrl) {
+      return json(
+        {
+          error: "first_last_requires_medium",
+          code: "first_last_requires_medium",
+          message: "First + last frame needs a free account (Medium or Pro).",
+          guestRemaining: quota.remaining,
+          guestLimit: GUEST_LIMIT,
+        },
+        401,
+        headers
+      );
+    }
+    if (!opts.imageUrl) {
+      return json(
+        {
+          error: "image_url_required",
+          code: "image_url_required",
+          message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+          mediaRequired: false,
+          guestRemaining: quota.remaining,
+          guestLimit: GUEST_LIMIT,
+        },
+        400,
+        headers
+      );
+    }
+    if (quota.blocked) {
+      return json(
+        {
+          error: "guest_limit",
+          code: "guest_limit",
+          message: "You used both free Lite videos on this device. Sign up for 10 credits.",
+          guestRemaining: 0,
+          guestLimit: GUEST_LIMIT,
+        },
+        402,
+        headers
+      );
+    }
+    return null;
+  } catch {
+    if (!opts.imageUrl) {
+      return json(
+        {
+          error: "image_url_required",
+          code: "image_url_required",
+          message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+          mediaRequired: false,
+          guestRemaining: GUEST_LIMIT,
+          guestLimit: GUEST_LIMIT,
+        },
+        400
+      );
+    }
+    return structuredError(
+      "generate_failed",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
     );
   }
-  if (opts.lastImageUrl) {
-    return json(
-      {
-        error: "first_last_requires_medium",
-        code: "first_last_requires_medium",
-        message: "First + last frame needs a free account (Medium or Pro).",
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      401,
-      headers
-    );
-  }
-  if (!opts.imageUrl) {
-    return json(
-      {
-        error: "image_url_required",
-        code: "image_url_required",
-        message: "Free trial needs a start image. Upload a file or paste a public https URL.",
-        mediaRequired: false,
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      400,
-      headers
-    );
-  }
-  if (quota.blocked) {
-    return json(
-      {
-        error: "guest_limit",
-        code: "guest_limit",
-        message: "You used both free Lite videos on this device. Sign up for 10 credits.",
-        guestRemaining: 0,
-        guestLimit: GUEST_LIMIT,
-      },
-      402,
-      headers
-    );
-  }
-  return null;
 }
 
 async function handleGuestPost(
@@ -844,16 +892,30 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
   }
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+  }
   if (token && !session) {
     return expiredSessionResponse();
   }
-  const url = new URL(request.url);
+  let url: URL;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+  }
   const idParam = url.searchParams.get("id");
   const origin = url.origin;
 
   if (!session) {
-    return handleGuestGet(env, request, idParam, origin);
+    try {
+      return await handleGuestGet(env, request, idParam, origin);
+    } catch {
+      return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+    }
   }
 
   if (!hasDb(env)) {

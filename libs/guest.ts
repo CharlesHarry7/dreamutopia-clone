@@ -51,7 +51,12 @@ export function ensureGuestId(request: Request): string {
 }
 
 export function guestCookieHeader(id: string, request: Request): string {
-  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  let secure = "";
+  try {
+    secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  } catch {
+    secure = "; Secure";
+  }
   return `${GUEST_COOKIE}=${id}; Path=/; Max-Age=${GUEST_TTL}; HttpOnly; SameSite=Lax${secure}`;
 }
 
@@ -87,7 +92,12 @@ export async function loadGuest(
   env: { SESSIONS: KVNamespace },
   id: string
 ): Promise<GuestRecord> {
-  const raw = await env.SESSIONS.get(guestKey(id));
+  let raw: string | null = null;
+  try {
+    raw = await env.SESSIONS.get(guestKey(id));
+  } catch {
+    return { id, used: 0, uploads: 0, jobs: [] };
+  }
   if (!raw) return { id, used: 0, uploads: 0, jobs: [] };
   try {
     const parsed = JSON.parse(raw) as GuestRecord;
@@ -105,16 +115,24 @@ export async function loadGuest(
 
 export async function saveGuest(env: { SESSIONS: KVNamespace }, rec: GuestRecord): Promise<void> {
   rec.jobs = rec.jobs.slice(0, 8);
-  await env.SESSIONS.put(guestKey(rec.id), JSON.stringify(rec), { expirationTtl: GUEST_TTL });
+  try {
+    await env.SESSIONS.put(guestKey(rec.id), JSON.stringify(rec), { expirationTtl: GUEST_TTL });
+  } catch {
+    /* never 1101 generate on KV put */
+  }
 }
 
 export async function loadIpUsed(env: { SESSIONS: KVNamespace }, ip: string | null): Promise<number> {
   if (!ip) return 0;
-  const hash = await hashIp(ip);
-  const raw = await env.SESSIONS.get(ipKey(hash));
-  if (!raw) return 0;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+  try {
+    const hash = await hashIp(ip);
+    const raw = await env.SESSIONS.get(ipKey(hash));
+    if (!raw) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function saveIpUsed(
@@ -123,8 +141,12 @@ export async function saveIpUsed(
   used: number
 ): Promise<void> {
   if (!ip) return;
-  const hash = await hashIp(ip);
-  await env.SESSIONS.put(ipKey(hash), String(Math.max(0, used)), { expirationTtl: IP_TTL });
+  try {
+    const hash = await hashIp(ip);
+    await env.SESSIONS.put(ipKey(hash), String(Math.max(0, used)), { expirationTtl: IP_TTL });
+  } catch {
+    /* never 1101 generate on KV put */
+  }
 }
 
 export function remainingOf(used: number): number {
