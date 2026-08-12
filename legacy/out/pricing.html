@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing Plans | DreamUtopia AI</title>
+<meta name="description" content="Buy credits for DreamUtopia AI. One-time credit packs for video and image generation. No subscriptions, no limits.">
+<meta name="theme-color" content="#0d0d12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DreamUtopia">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d12;--bg2:#16161e;--card:#1c1c26;--border:#2a2a38;--border2:#3a3a4a;--text:#fff;--text2:#a8a8b8;--text3:#6a6a7a;--primary:#a855f7;--primary2:#c084fc;--accent:#ec4899;--green:#22c55e;--orange:#fb923c;--radius:12px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{max-width:100%;display:block}
+header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.2px}
+.logo-img{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0}
+nav{display:flex;gap:8px;align-items:center}
+nav>a,.nav-drop>summary{font-size:14px;color:var(--text2);font-weight:500;padding:8px 12px;border-radius:8px;transition:color .2s,background .2s;list-style:none;cursor:pointer}
+nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-drop{position:relative}
+.nav-drop>summary{display:flex;align-items:center;gap:5px}
+.nav-drop>summary::-webkit-details-marker{display:none}
+.nav-drop>summary::after{content:'▾';font-size:10px;opacity:.6}
+.nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.45);z-index:60}
+.nav-menu a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--text2)}
+.nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
+.header-right{display:flex;gap:10px;align-items:center}
+.btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
+.btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
+.lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.pwa-install{position:fixed;left:16px;right:16px;bottom:16px;z-index:90;display:none;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px 14px;box-shadow:0 16px 48px rgba(0,0,0,.5);max-width:560px;margin:0 auto}
+.pwa-install.show{display:flex}
+.pwa-install img{width:40px;height:40px;border-radius:10px;flex-shrink:0}
+.pwa-install .copy{flex:1;min-width:0}
+.pwa-install .copy strong{display:block;font-size:14px}
+.pwa-install .copy p{font-size:12px;color:var(--text2);margin:2px 0 0}
+.pwa-install .hint{margin-top:6px;font-size:12px;color:var(--primary2)}
+.pwa-install .go{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;flex-shrink:0}
+.pwa-install .x{color:var(--text3);font-size:18px;padding:0 4px}
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+
+.page-head{text-align:center;padding:70px 20px 36px}
+.page-head h1{font-size:42px;font-weight:800;margin-bottom:14px;letter-spacing:-.5px}
+.page-head p{font-size:15.5px;color:var(--text2);max-width:560px;margin:0 auto 18px;line-height:1.55}
+.cost-legend{display:inline-flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;font-size:13px;color:var(--text2);background:var(--card);border:1px solid var(--border);padding:10px 18px;border-radius:30px}
+.cost-legend b{color:#fff;font-weight:600}
+.checkout-note{display:none;max-width:640px;margin:18px auto 0;padding:12px 16px;border-radius:12px;border:1px solid rgba(251,146,60,.4);background:rgba(251,146,60,.08);color:var(--text2);font-size:13.5px;line-height:1.5;text-align:center}
+.checkout-note.show{display:block}
+.checkout-note b{color:var(--orange);font-weight:700}
+.checkout-note a{color:var(--primary2);font-weight:600}
+.checkout-note a:hover{text-decoration:underline}
+
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-bottom:72px}
+.plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px 24px;position:relative;display:flex;flex-direction:column;transition:transform .3s,border-color .3s}
+.plan:hover{transform:translateY(-4px);border-color:var(--primary)}
+.plan.popular{border-color:var(--primary);background:linear-gradient(180deg,rgba(168,85,247,.1),var(--card))}
+.plan .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--primary),var(--accent));padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:.02em}
+.plan .audio-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--primary2);background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.35);padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.plan .name{font-size:16px;font-weight:700;margin-bottom:10px}
+.plan .price{font-size:40px;font-weight:800;margin-bottom:2px;letter-spacing:-1px}
+.plan .credits{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.plan .bonus{font-size:12.5px;color:var(--green);font-weight:600;margin-bottom:8px;min-height:18px}
+.plan .unlock{font-size:12.5px;color:var(--orange);font-weight:600;margin-bottom:14px;min-height:18px}
+.plan .yield{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+.plan .yield-row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0}
+.plan .yield-row .k{color:var(--text3);font-weight:600}
+.plan .yield-row .v{color:var(--text2);text-align:right}
+.plan ul{list-style:none;margin-bottom:20px;flex:1}
+.plan ul li{font-size:13px;color:var(--text2);padding:6px 0;display:flex;gap:8px;align-items:flex-start}
+.plan ul li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.plan .btn{width:100%;padding:12px;border-radius:9px;font-size:14px;font-weight:600;text-align:center;transition:opacity .2s;display:block}
+.plan .btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff}
+.plan .btn.outline{background:var(--bg2);border:1px solid var(--border2);color:var(--text)}
+.plan .btn:hover{opacity:.88}
+.plan .btn-caption{display:block;margin-top:8px;font-size:11.5px;color:var(--text3);text-align:center;line-height:1.4;min-height:2.6em}
+.best-value{display:inline-block;font-size:11px;font-weight:700;color:#000;background:var(--orange);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:middle}
+
+.section{padding:0 0 72px}
+.section h2{font-size:28px;font-weight:800;text-align:center;margin-bottom:10px}
+.section .sub{text-align:center;color:var(--text2);font-size:14.5px;max-width:520px;margin:0 auto 36px}
+.how-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.how-col{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px}
+.how-col h3{font-size:16px;font-weight:700;margin-bottom:18px}
+.model-row{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-top:1px solid var(--border)}
+.model-row:first-of-type{border-top:none;padding-top:0}
+.model-icon{width:40px;height:40px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.model-meta{flex:1;min-width:0}
+.model-meta .m-name{font-size:14.5px;font-weight:700;margin-bottom:2px}
+.model-meta .m-desc{font-size:12.5px;color:var(--text3)}
+.model-cost{text-align:right;flex-shrink:0}
+.model-cost .n{font-size:18px;font-weight:800}
+.model-cost .u{font-size:11px;color:var(--text3);display:block}
+
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.feat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
+.feat .fi{font-size:26px;margin-bottom:12px}
+.feat h4{font-size:15px;font-weight:700;margin-bottom:6px}
+.feat p{font-size:13px;color:var(--text2);line-height:1.5}
+.feat .chip{display:inline-block;margin-top:10px;font-size:11px;font-weight:700;color:var(--primary2);background:rgba(168,85,247,.12);padding:3px 9px;border-radius:20px}
+.footnote{text-align:center;font-size:12.5px;color:var(--text3);margin-top:22px;max-width:640px;margin-left:auto;margin-right:auto}
+
+.faq{max-width:760px;margin:0 auto}
+.faq-item{border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:10px;overflow:hidden}
+.faq-q{padding:16px 18px;font-size:14.5px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;gap:12px}
+.faq-q::after{content:'+';color:var(--text3);font-weight:400}
+.faq-item.open .faq-q::after{content:'−'}
+.faq-a{display:none;padding:0 18px 16px;font-size:13.5px;color:var(--text2);line-height:1.6}
+.faq-item.open .faq-a{display:block}
+
+footer{margin-top:20px;background:var(--bg2);border-top:1px solid var(--border);padding:56px 20px 28px}
+.footer-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:40px}
+.footer-brand .logo{margin-bottom:14px}
+.footer-brand .copy{font-size:13px;color:var(--text3);line-height:1.5}
+.footer-col h4{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text);text-transform:uppercase;letter-spacing:.5px}
+.footer-col ul{list-style:none}
+.footer-col ul li{margin-bottom:8px}
+.footer-col ul li a{font-size:13px;color:var(--text2);transition:color .2s}
+.footer-col ul li a:hover{color:var(--text)}
+
+@media(max-width:980px){.plans{grid-template-columns:repeat(2,1fr)}.feat-grid{grid-template-columns:1fr 1fr}.footer-grid{grid-template-columns:1fr 1fr;gap:30px}}
+@media(max-width:700px){
+.plans,.how-grid,.feat-grid{grid-template-columns:1fr}
+.page-head h1{font-size:30px}
+nav{display:none}
+.footer-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header>
+<a href="/" class="logo" aria-label="DreamUtopia AI">
+<img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
+<span>DreamUtopia AI</span>
+</a>
+<nav>
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/pricing" class="active" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
+<details class="nav-drop">
+<summary data-i18n="nav.features">Features</summary>
+<div class="nav-menu">
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+</div>
+</details>
+</nav>
+<div class="header-right">
+<a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
+<select class="lang-select" aria-label="Language">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
+</div>
+</header>
+
+<section class="page-head">
+<h1 data-i18n="price.h">Buy Credits</h1>
+<p data-i18n="price.p">Purchase credits and use them across all AI models — video and image generation. No subscriptions, no limits.</p>
+<div class="cost-legend">
+<span><b>Video:</b> Lite 3 · Med 5 · Pro 16</span>
+<span><b>Image:</b> Lite 1 · Pro 2</span>
+</div>
+<p class="checkout-note" id="checkoutNote" role="status" aria-live="polite"></p>
+</section>
+
+<div class="container">
+<div class="plans">
+
+<div class="plan">
+<div class="name">Starter Pack</div>
+<div class="price">$5</div>
+<div class="credits">10 credits</div>
+<div class="bonus"></div>
+<div class="unlock"></div>
+<div class="yield">
+<div class="yield-row"><span class="k">Video</span><span class="v">3 Lite · 2 Med · 0 Pro</span></div>
+<div class="yield-row"><span class="k">Image</span><span class="v">10 Lite · 5 Pro</span></div>
+</div>
+<ul>
+<li>No ads</li>
+<li>No CAPTCHAs</li>
+</ul>
+<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="starter"></span>
+</div>
+
+<div class="plan">
+<span class="audio-tag">Audio</span>
+<div class="name">Plus Pack</div>
+<div class="price">$25</div>
+<div class="credits">50 credits</div>
+<div class="bonus"></div>
+<div class="unlock">Unlocks Audio</div>
+<div class="yield">
+<div class="yield-row"><span class="k">Video</span><span class="v">16 Lite · 10 Med · 3 Pro</span></div>
+<div class="yield-row"><span class="k">Image</span><span class="v">50 Lite · 25 Pro</span></div>
+</div>
+<ul>
+<li>No ads</li>
+<li>No CAPTCHAs</li>
+</ul>
+<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="plus"></span>
+</div>
+
+<div class="plan popular">
+<div class="badge">MOST POPULAR</div>
+<span class="audio-tag">Audio</span>
+<div class="name">Pro Pack</div>
+<div class="price">$90</div>
+<div class="credits">200 credits</div>
+<div class="bonus">+11% more credits</div>
+<div class="unlock"></div>
+<div class="yield">
+<div class="yield-row"><span class="k">Video</span><span class="v">66 Lite · 40 Med · 12 Pro</span></div>
+<div class="yield-row"><span class="k">Image</span><span class="v">200 Lite · 100 Pro</span></div>
+</div>
+<ul>
+<li>No ads</li>
+<li>No CAPTCHAs</li>
+</ul>
+<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="pro"></span>
+</div>
+
+<div class="plan">
+<span class="audio-tag">Audio</span>
+<div class="name">Premium Pack <span class="best-value">Best Value</span></div>
+<div class="price">$200</div>
+<div class="credits">500 credits</div>
+<div class="bonus">+25% more credits</div>
+<div class="unlock"></div>
+<div class="yield">
+<div class="yield-row"><span class="k">Video</span><span class="v">166 Lite · 100 Med · 31 Pro</span></div>
+<div class="yield-row"><span class="k">Image</span><span class="v">500 Lite · 250 Pro</span></div>
+</div>
+<ul>
+<li>No ads</li>
+<li>No CAPTCHAs</li>
+</ul>
+<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
+<span class="btn-caption" data-pack-caption="premium"></span>
+</div>
+
+</div>
+</div>
+
+<section class="section">
+<div class="container">
+<h2>How Credits Work</h2>
+<p class="sub">One balance, all models. Spend your credits on video or image generation.</p>
+<div class="how-grid">
+<div class="how-col">
+<h3>Video Generation</h3>
+<div class="model-row">
+<div class="model-icon">⚡</div>
+<div class="model-meta">
+<div class="m-name">Lite</div>
+<div class="m-desc">T2V · I2V · 5-12s</div>
+</div>
+<div class="model-cost"><span class="n">3</span><span class="u">credits / video</span></div>
+</div>
+<div class="model-row">
+<div class="model-icon">⭐</div>
+<div class="model-meta">
+<div class="m-name">Medium</div>
+<div class="m-desc">T2V · I2V · First+Last · 5-12s</div>
+</div>
+<div class="model-cost"><span class="n">5</span><span class="u">credits / video</span></div>
+</div>
+<div class="model-row">
+<div class="model-icon">💎</div>
+<div class="model-meta">
+<div class="m-name">Pro <span style="font-size:11px;color:var(--primary2);font-weight:700">Audio</span></div>
+<div class="m-desc">All Medium + Audio · 5-12s</div>
+</div>
+<div class="model-cost"><span class="n">16</span><span class="u">credits / video</span></div>
+</div>
+</div>
+<div class="how-col">
+<h3>Image Generation</h3>
+<div class="model-row">
+<div class="model-icon">🖼️</div>
+<div class="model-meta">
+<div class="m-name">Lite</div>
+<div class="m-desc">T2I · I2I · Blend · Up to 4K</div>
+</div>
+<div class="model-cost"><span class="n">1</span><span class="u">credit / image</span></div>
+</div>
+<div class="model-row">
+<div class="model-icon">✨</div>
+<div class="model-meta">
+<div class="m-name">Pro</div>
+<div class="m-desc">T2I · I2I · Blend · Up to 4K</div>
+</div>
+<div class="model-cost"><span class="n">2</span><span class="u">credits / image</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="container">
+<h2>Platform Features</h2>
+<p class="sub">Everything included when you buy credits — no monthly plans required.</p>
+<div class="feat-grid">
+<div class="feat"><div class="fi">📝</div><h4>Text to Video</h4><p>Generate video from text prompts alone</p></div>
+<div class="feat"><div class="fi">🎬</div><h4>First &amp; Last Frame</h4><p>Control video start and end frames</p></div>
+<div class="feat"><div class="fi">🔊</div><h4>Audio Generation</h4><p>Pro model generates video with sound</p><span class="chip">Plus and up</span></div>
+<div class="feat"><div class="fi">🖼️</div><h4>Image Generation</h4><p>T2I, I2I, and multi-image blending</p></div>
+<div class="feat"><div class="fi">✨</div><h4>Up to 4K Images</h4><p>Generate high-resolution images</p></div>
+<div class="feat"><div class="fi">🚫</div><h4>Ad-free</h4><p>Any purchase removes ads from the site for good.</p></div>
+<div class="feat"><div class="fi">🤖</div><h4>No CAPTCHAs</h4><p>Generate without stopping to prove you're human.</p></div>
+</div>
+<p class="footnote">* Standard Pack and above unlock premium features. Audio generation requires Pro video model + Premium.</p>
+</div>
+</section>
+
+<section class="section">
+<div class="container">
+<h2>Frequently Asked Questions</h2>
+<p class="sub">Credits, payments, and how generations are billed.</p>
+<div class="faq">
+<div class="faq-item" onclick="this.classList.toggle('open')">
+<div class="faq-q">How do credits work?</div>
+<div class="faq-a">Credits are a universal currency for both video and image generation. Each model costs a different amount of credits. Buy credits once and use them on any model.</div>
+</div>
+<div class="faq-item" onclick="this.classList.toggle('open')">
+<div class="faq-q">What payment methods do you accept?</div>
+<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
+</div>
+<div class="faq-item" onclick="this.classList.toggle('open')">
+<div class="faq-q">Do credits expire?</div>
+<div class="faq-a">No, your credits never expire. Use them at your own pace.</div>
+</div>
+<div class="faq-item" onclick="this.classList.toggle('open')">
+<div class="faq-q">What happens if my generation fails?</div>
+<div class="faq-a">Failed generations are automatically refunded. You'll only be charged credits for successful generations.</div>
+</div>
+</div>
+</div>
+</section>
+
+<footer>
+<div class="footer-grid">
+<div class="footer-brand">
+<a href="/" class="logo" aria-label="DreamUtopia AI">
+<img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
+<span>DreamUtopia AI</span>
+</a>
+<p class="copy">© 2026 DreamUtopia AI. All rights reserved.</p>
+</div>
+<div class="footer-col">
+<h4>Features</h4>
+<ul>
+<li><a href="/free-ai-video">Free AI Video Generator</a></li>
+<li><a href="/photo-to-video">Photo to Video AI</a></li>
+<li><a href="/image-to-video">Image to Video AI</a></li>
+<li><a href="/workspace">Workspace</a></li>
+<li><a href="/#gallery">Gallery</a></li>
+</ul>
+</div>
+<div class="footer-col">
+<h4>Resources</h4>
+<ul>
+<li><a href="/#get-started">Get started</a></li>
+<li><a href="/#faq">FAQ</a></li>
+<li><a href="/pricing">Pricing</a></li>
+<li><a href="/workspace">Workspace</a></li>
+</ul>
+</div>
+<div class="footer-col">
+<h4>Legal</h4>
+<ul>
+<li><a href="/privacy">Privacy Policy</a></li>
+<li><a href="/terms">Terms of Service</a></li>
+</ul>
+</div>
+</div>
+</footer>
+<div class="pwa-install" id="pwaBanner" hidden>
+<img src="/assets/icons/icon-192.png" alt="" width="40" height="40">
+<div class="copy">
+<strong data-i18n="pwa.title">Get the DreamUtopia App</strong>
+<p data-i18n="pwa.sub">Install to your home screen for one-tap creating.</p>
+<p class="hint" id="pwaHint" hidden></p>
+</div>
+<button type="button" class="go" id="pwaInstall" data-i18n="pwa.install">Install</button>
+<button type="button" class="x" id="pwaDismiss" aria-label="Dismiss">✕</button>
+</div>
+<script src="/assets/js/du.js"></script>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/pwa.js"></script>
+<script src="/assets/js/seo.js"></script>
+<script>
+(function () {
+  const TOKEN_KEY = "dreamutopia_token";
+  const CREDITS_KEY = "dreamutopia_credits";
+  const note = document.getElementById("checkoutNote");
+  const ctas = Array.prototype.slice.call(document.querySelectorAll("[data-checkout-cta]"));
+
+  function packAuthHref(pack) {
+    return "/auth?mode=register&pack=" + encodeURIComponent(pack);
+  }
+  function packWorkspaceHref(pack) {
+    return "/workspace?pack=" + encodeURIComponent(pack);
+  }
+
+  function hydrateHeader(signedIn) {
+    const loginBtn = document.getElementById("hdrLogin");
+    const signupBtn = document.getElementById("hdrSignup");
+    if (!loginBtn || !signupBtn) return;
+    if (!signedIn) {
+      loginBtn.textContent = (window.DU && DU.t("hdr.login", "Log In")) || "Log In";
+      loginBtn.href = "/auth?mode=login";
+      loginBtn.onclick = null;
+      signupBtn.textContent = (window.DU && DU.t("hdr.signup", "Sign Up")) || "Sign Up";
+      signupBtn.href = "/auth?mode=register";
+      return;
+    }
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return hydrateHeader(false);
+    if (loginBtn) {
+      loginBtn.textContent = (window.DU && DU.t("hdr.logout", "Log Out")) || "Log Out";
+      loginBtn.href = "#";
+      loginBtn.onclick = function (e) {
+        e.preventDefault();
+        fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+        }).catch(function () {});
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(CREDITS_KEY);
+        location.reload();
+      };
+    }
+    if (signupBtn) {
+      signupBtn.textContent = (window.DU && DU.t("nav.workspace", "Workspace")) || "Workspace";
+      signupBtn.href = "/workspace";
+    }
+  }
+
+  function applyUnavailableCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
+        : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Continue" : "Continue free";
+      a.setAttribute("title", "Paid checkout not configured — continues without charging");
+      a.setAttribute(
+        "aria-label",
+        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (checkout not live)"
+      );
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn
+          ? "Checkout coming soon · no charge"
+          : "Free account · pack saved · no charge";
+      }
+    });
+  }
+
+  function wireFallbackHrefs(signedIn) {
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.href = signedIn ? packWorkspaceHref(pack) : packAuthHref(pack);
+      a.onclick = null;
+    });
+  }
+
+  function applyLiveCopy(signedIn) {
+    if (note) {
+      note.classList.add("show");
+      note.innerHTML = signedIn
+        ? "<b>Checkout is live.</b> Select opens Stripe. First purchase adds <b>31 bonus credits</b> (5 Lite + 1 Pro)."
+        : "<b>Checkout is live.</b> Sign in, then Select opens Stripe. First purchase adds <b>31 bonus credits</b>.";
+    }
+    ctas.forEach(function (a) {
+      const pack = a.getAttribute("data-pack");
+      a.textContent = signedIn ? "Buy with Stripe" : "Sign in to buy";
+      a.removeAttribute("title");
+      a.setAttribute("aria-label", (signedIn ? "Buy " : "Sign in to buy ") + pack + " pack");
+      const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
+      if (caption) {
+        caption.textContent = signedIn ? "Secure Stripe checkout" : "Account required · then Stripe";
+      }
+      if (!signedIn) {
+        a.href = packAuthHref(pack);
+        a.onclick = null;
+        return;
+      }
+      a.href = "#";
+      a.onclick = async function (e) {
+        e.preventDefault();
+        const token = localStorage.getItem(TOKEN_KEY);
+        const prev = a.textContent;
+        a.textContent = "Redirecting…";
+        try {
+          const res = await fetch("/api/checkout", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({ packId: pack }),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          if (data && data.url) {
+            location.href = data.url;
+            return;
+          }
+          throw new Error(data.message || data.error || "checkout failed");
+        } catch (err) {
+          a.textContent = prev;
+          if (note) {
+            note.innerHTML = "<b>Checkout failed.</b> " + (err.message || "Try again.");
+          }
+        }
+      };
+    });
+  }
+
+  async function checkoutAvailable() {
+    try {
+      const res = await fetch("/api/checkout", { method: "GET" });
+      const data = await res.json().catch(function () { return {}; });
+      return !!(data && data.ok === true && data.configured === true);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function isSignedIn() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return false;
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { authorization: "Bearer " + token },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(CREDITS_KEY);
+        return false;
+      }
+      return res.ok;
+    } catch (e) {
+      return !!token;
+    }
+  }
+
+  (async function init() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) hydrateHeader(true);
+    const signedIn = await isSignedIn();
+    if (!signedIn) hydrateHeader(false);
+    else hydrateHeader(true);
+    document.addEventListener("du:i18n", function () { hydrateHeader(signedIn); });
+    const live = await checkoutAvailable();
+    if (live) {
+      applyLiveCopy(signedIn);
+      return;
+    }
+    applyUnavailableCopy(signedIn);
+    wireFallbackHrefs(signedIn);
+  })();
+})();
+</script>
+</body>
+</html>
