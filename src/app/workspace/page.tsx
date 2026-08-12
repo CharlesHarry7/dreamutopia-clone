@@ -101,6 +101,8 @@ function WorkspaceInner() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [kieReady, setKieReady] = useState<boolean | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [resultLinkCopied, setResultLinkCopied] = useState(false);
+  const [historyCopiedId, setHistoryCopiedId] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareDone, setShareDone] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -371,6 +373,18 @@ function WorkspaceInner() {
     } finally {
       setDownloadBusy(false);
     }
+  }
+
+  function copyLink(url: string, which: "result" | string) {
+    void navigator.clipboard.writeText(url).then(() => {
+      if (which === "result") {
+        setResultLinkCopied(true);
+        window.setTimeout(() => setResultLinkCopied(false), 1600);
+      } else {
+        setHistoryCopiedId(which);
+        window.setTimeout(() => setHistoryCopiedId(null), 1600);
+      }
+    });
   }
 
   return (
@@ -911,6 +925,15 @@ function WorkspaceInner() {
                         >
                           {downloadBusy ? "…" : t("gen.download", "Download")}
                         </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={resultLinkCopied ? "Result link copied" : "Copy result link"}
+                          onClick={() => copyLink(resultUrl, "result")}
+                        >
+                          {resultLinkCopied ? "Copied" : "Copy link"}
+                        </Button>
                         {user && (
                           <Button
                             type="button"
@@ -923,6 +946,9 @@ function WorkspaceInner() {
                             {shareBusy ? "Sharing…" : shareDone ? "Shared" : "Share to gallery"}
                           </Button>
                         )}
+                        <span className="sr-only" aria-live="polite">
+                          {resultLinkCopied ? "Result link copied to clipboard" : ""}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1034,6 +1060,19 @@ function WorkspaceInner() {
                               >
                                 Download
                               </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                aria-label={
+                                  historyCopiedId === String(item.id)
+                                    ? "Link copied"
+                                    : "Copy result link"
+                                }
+                                onClick={() => copyLink(item.resultUrl!, String(item.id))}
+                              >
+                                {historyCopiedId === String(item.id) ? "Copied" : "Copy"}
+                              </Button>
                             </>
                           )}
                         </div>
@@ -1041,6 +1080,9 @@ function WorkspaceInner() {
                     ))}
                   </ul>
                 )}
+                <span className="sr-only" aria-live="polite">
+                  {historyCopiedId ? "Result link copied to clipboard" : ""}
+                </span>
                 {!user && !historyLoading && history.length > 0 && (
                   <Button asChild variant="outline" className="w-full">
                     <Link href="/auth?mode=register">

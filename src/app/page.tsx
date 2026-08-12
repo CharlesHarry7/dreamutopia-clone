@@ -158,6 +158,11 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground">{f.p}</p>
             </article>
           ))}
+          <div className="md:col-span-3 flex justify-center pt-2">
+            <Button asChild size="lg">
+              <Link href="/workspace">{t("feat.cta", "Try it free →")}</Link>
+            </Button>
+          </div>
         </section>
 
         <section id="gallery" className="mx-auto max-w-6xl px-5 py-16">

@@ -148,6 +148,17 @@ export default function PricingPage() {
                     variant={featured ? "default" : "outline"}
                     disabled={busy === pack.id}
                     aria-busy={busy === pack.id}
+                    aria-label={
+                      busy === pack.id
+                        ? `${pack.name}: working`
+                        : configured
+                          ? user
+                            ? `${pack.name}: Select`
+                            : `${pack.name}: Sign in to buy`
+                          : user
+                            ? `${pack.name}: Continue`
+                            : `${pack.name}: Continue free`
+                    }
                     onClick={() => void onSelect(pack.id)}
                   >
                     {busy === pack.id

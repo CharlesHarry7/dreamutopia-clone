@@ -226,7 +226,21 @@ export default function AuthPage() {
     <>
       <SiteHeader />
       <main className="flex flex-1 items-start justify-center px-5 py-14">
-        <Suspense fallback={<div className="text-muted-foreground">Loading…</div>}>
+        <Suspense
+          fallback={
+            <Card className="mx-auto w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Account</CardTitle>
+                <CardDescription>Loading…</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3" aria-busy="true">
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+              </CardContent>
+            </Card>
+          }
+        >
           <AuthForm />
         </Suspense>
       </main>
