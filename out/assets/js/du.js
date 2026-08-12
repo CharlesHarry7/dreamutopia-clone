@@ -93,7 +93,7 @@
 
   function signupHref(opts) {
     opts = opts || {};
-    const mode = opts.mode === "login" ? "login" : opts.mode === "signup" ? "signup" : "register";
+    const mode = opts.mode === "login" ? "login" : opts.mode === "register" ? "register" : "signup";
     const next = opts.next || "/workspace";
     return "/auth?mode=" + encodeURIComponent(mode) + "&next=" + encodeURIComponent(next);
   }
@@ -254,7 +254,7 @@
   }
 
   function showGateDialog(kind) {
-    const next = "/workspace" + (kind === "image" ? "?mode=image" : "");
+    const signupNext = signupHref({ mode: "signup", next: "/workspace" });
     if (kind === "medium" || kind === "pro") {
       return alertDialog({
         title: t("dialog.model.h", "Sign up to use Medium and Pro"),
@@ -262,7 +262,7 @@
           "dialog.model.p",
           "Free trial is Lite image-to-video only. Create a free account for 10 credits — Medium, Pro with sound, text-to-video, and image generation."
         ),
-        primaryHref: signupHref({ next: next }),
+        primaryHref: signupNext,
         primaryLabel: t("dialog.signup.cta", "Create a free account"),
         secondaryLabel: t("dialog.lite", "Stay on Lite"),
       });
@@ -274,7 +274,7 @@
           "dialog.image.p",
           "Guests can try 2 Lite videos on this device. Sign up free for 10 credits to generate stills (Lite 1 credit · Pro 2 credits)."
         ),
-        primaryHref: signupHref({ next: "/workspace?mode=image" }),
+        primaryHref: signupNext,
         primaryLabel: t("dialog.signup.cta", "Create a free account"),
         secondaryLabel: t("dialog.guest", "Continue as guest"),
       });
@@ -286,7 +286,7 @@
           "dialog.limit.p",
           "You used both free Lite videos on this device. Create a free account for 10 credits to keep creating."
         ),
-        primaryHref: signupHref({ next: "/workspace" }),
+        primaryHref: signupNext,
         primaryLabel: t("dialog.signup.cta", "Create a free account"),
         secondaryLabel: t("dialog.dismiss", "Dismiss"),
       });
@@ -306,7 +306,7 @@
     return alertDialog({
       title: t("dialog.signup.h", "Create a free account to continue"),
       body: t("dialog.signup.p", "Guests can try 2 Lite videos. Sign up for 10 credits and every model."),
-      primaryHref: signupHref({ next: next }),
+      primaryHref: signupNext,
     });
   }
 

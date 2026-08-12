@@ -158,7 +158,7 @@ nav{display:none}
 </nav>
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
-<a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
+<a href="/auth?mode=signup&amp;next=/workspace" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option value="en">English</option>
 <option value="zh">中文</option>
@@ -195,7 +195,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=starter&amp;next=/workspace" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="starter"></span>
 </div>
 
@@ -214,7 +214,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=plus&amp;next=/workspace" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="plus"></span>
 </div>
 
@@ -234,7 +234,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=pro&amp;next=/workspace" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="pro"></span>
 </div>
 
@@ -253,7 +253,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
+<a href="/auth?mode=signup&amp;pack=premium&amp;next=/workspace" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
 <span class="btn-caption" data-pack-caption="premium"></span>
 </div>
 
@@ -383,7 +383,7 @@ nav{display:none}
 <li><a href="/#faq">FAQ</a></li>
 <li><a href="/pricing">Pricing</a></li>
 <li><a href="/workspace">Workspace</a></li>
-<li><a href="/auth?mode=register&amp;next=/workspace">Sign up</a></li>
+<li><a href="/auth?mode=signup&amp;next=/workspace">Sign up</a></li>
 <li><a href="/auth?mode=login&amp;next=/workspace">Log in</a></li>
 </ul>
 </div>
@@ -418,7 +418,7 @@ nav{display:none}
   const ctas = Array.prototype.slice.call(document.querySelectorAll("[data-checkout-cta]"));
 
   function packAuthHref(pack) {
-    return "/auth?mode=register&pack=" + encodeURIComponent(pack);
+    return "/auth?mode=signup&pack=" + encodeURIComponent(pack) + "&next=" + encodeURIComponent("/workspace");
   }
   function packWorkspaceHref(pack) {
     return "/workspace?pack=" + encodeURIComponent(pack);
@@ -433,7 +433,7 @@ nav{display:none}
       loginBtn.href = "/auth?mode=login";
       loginBtn.onclick = null;
       signupBtn.textContent = (window.DU && DU.t("hdr.signup", "Sign Up")) || "Sign Up";
-      signupBtn.href = "/auth?mode=register";
+      signupBtn.href = "/auth?mode=signup&next=/workspace";
       return;
     }
     const token = localStorage.getItem(TOKEN_KEY);
