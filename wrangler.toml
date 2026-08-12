@@ -2,17 +2,6 @@ name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"
 
-# -----------------------------------------------------------------------------
-# Bindings — D1 + KV enabled with real Cloudflare resource IDs.
-# R2 MEDIA left commented until dreamutopia-media bucket is activated.
-#
-# Also ensure the same binding NAMES exist in the Cloudflare Pages project:
-# Settings → Bindings
-#   DB       → D1  dreamutopia-db
-#   SESSIONS → KV  SESSIONS
-#   MEDIA    → R2  dreamutopia-media (pending)
-# -----------------------------------------------------------------------------
-
 [[d1_databases]]
 binding = "DB"
 database_name = "dreamutopia-db"
@@ -22,7 +11,6 @@ database_id = "148c47fa-55da-4423-b031-1a74e4216014"
 binding = "SESSIONS"
 id = "6b2dbe20ae95452f8f22b98f0ce6196e"
 
-# Pending R2 bucket activation — do not invent a bucket id.
-# [[r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "dreamutopia-media"
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "dreamutopia-media"
