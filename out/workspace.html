@@ -201,8 +201,8 @@ nav{display:none}
 </nav>
 <div class="header-right">
 <span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
-<a href="#" class="btn-login" id="loginBtn">Log In</a>
-<button class="btn-signup" id="signupBtn">Sign Up</button>
+<a href="/auth?mode=login" class="btn-login" id="loginBtn">Log In</a>
+<a href="/auth?mode=register" class="btn-signup" id="signupBtn">Sign Up</a>
 <select class="lang-select" aria-label="Language">
 <option>English</option>
 <option>中文</option>
@@ -221,8 +221,8 @@ nav{display:none}
 <p>Try our AI video generator for free (2 free generations). Sign up to unlock all features and models.</p>
 </div>
 <div class="welcome-actions">
-<button class="btn-outline" id="welcomeLogin">Log In</button>
-<button class="btn-primary" id="welcomeSignup">Sign Up Free</button>
+<a href="/auth?mode=login" class="btn-outline" id="welcomeLogin">Log In</a>
+<a href="/auth?mode=register" class="btn-primary" id="welcomeSignup">Sign Up Free</a>
 </div>
 </section>
 
@@ -286,7 +286,7 @@ Image
 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 <span id="genBtnLabel">Generate Free Trial</span>
 </button>
-<p class="gen-foot" id="genFoot">Free trial. <a href="#" id="genFootSignup">Sign up</a> for more.</p>
+<p class="gen-foot" id="genFoot">Free trial. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for more.</p>
 
 <div class="gen-status" id="genStatus">
 <div class="spinner"></div>
@@ -299,8 +299,8 @@ Image
 <h3>Want to save your creations?</h3>
 <p>Sign up to keep your generations, unlock every model, and earn free credits.</p>
 <div class="save-actions">
-<button class="btn-outline" id="saveLogin">Log In</button>
-<button class="btn-primary" id="saveSignup">Sign Up Free</button>
+<a href="/auth?mode=login" class="btn-outline" id="saveLogin">Log In</a>
+<a href="/auth?mode=register" class="btn-primary" id="saveSignup">Sign Up Free</a>
 </div>
 </section>
 </div>
@@ -385,19 +385,25 @@ async function api(path, options = {}) {
   return data;
 }
 
+function goAuth(mode) {
+  location.href = "/auth?mode=" + (mode === "login" ? "login" : "register");
+}
+
 function bindAuthTriggers() {
-  const loginEls = ["loginBtn", "welcomeLogin", "saveLogin", "genFootSignup"];
-  const signupEls = ["signupBtn", "welcomeSignup", "saveSignup"];
-  loginEls.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.onclick = (e) => { e.preventDefault(); quickAuth("login"); };
-  });
-  signupEls.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.onclick = (e) => { e.preventDefault(); quickAuth("signup"); };
-  });
+  const loginBtn = document.getElementById("loginBtn");
+  const signupBtn = document.getElementById("signupBtn");
+  if (loginBtn) {
+    loginBtn.href = "/auth?mode=login";
+    loginBtn.textContent = "Log In";
+    loginBtn.onclick = null;
+  }
+  if (signupBtn) {
+    signupBtn.href = "/auth?mode=register";
+    signupBtn.textContent = "Sign Up";
+    signupBtn.onclick = null;
+  }
+  const foot = document.getElementById("genFootSignup");
+  if (foot) foot.href = "/auth?mode=register";
 }
 
 function updateAuthUI(credits) {
@@ -416,41 +422,28 @@ function updateAuthUI(credits) {
     save.classList.remove("show");
     foot.innerHTML = 'Credits never expire. <a href="/pricing">Buy more credits</a>';
     btnLabel.textContent = "Generate";
-    document.getElementById("loginBtn").textContent = "Log Out";
-    document.getElementById("loginBtn").onclick = async () => {
-      try { await api("/auth/logout", { method: "POST" }); } catch (e) {}
+    const loginBtn = document.getElementById("loginBtn");
+    loginBtn.textContent = "Log Out";
+    loginBtn.href = "#";
+    loginBtn.onclick = async (e) => {
+      e.preventDefault();
+      try { await api("/auth/logout", { method: "POST" }); } catch (err) {}
       token = ""; localStorage.removeItem(TOKEN_KEY); userCredits = null; location.reload();
     };
-    document.getElementById("signupBtn").textContent = "Buy Credits";
-    document.getElementById("signupBtn").onclick = () => { location.href = "/pricing"; };
+    const signupBtn = document.getElementById("signupBtn");
+    signupBtn.textContent = "Buy Credits";
+    signupBtn.href = "/pricing";
+    signupBtn.onclick = null;
   } else {
     badge.textContent = "—";
     buy.hidden = true;
     welcome.classList.add("show");
     save.classList.add("show");
-    foot.innerHTML = 'Free trial. <a href="#" id="genFootSignup">Sign up</a> for more.';
+    foot.innerHTML = 'Free trial. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for more.';
     btnLabel.textContent = "Generate Free Trial";
-    document.getElementById("loginBtn").textContent = "Log In";
-    document.getElementById("signupBtn").textContent = "Sign Up";
     bindAuthTriggers();
   }
   refreshHistoryEmpty();
-}
-
-async function quickAuth(mode) {
-  const email = prompt(mode === "signup" ? "Create account — enter email:" : "Log in — enter email:");
-  if (!email) return;
-  const password = prompt("Enter password (min 6 chars):");
-  if (!password || password.length < 6) return toast("Password too short", true);
-  try {
-    const endpoint = mode === "signup" ? "/auth/register" : "/auth/login";
-    const data = await api(endpoint, { method: "POST", body: JSON.stringify({ email, password }) });
-    token = data.token;
-    localStorage.setItem(TOKEN_KEY, token);
-    toast(mode === "signup" ? "Welcome! You got 10 free credits 🎉" : "Welcome back!");
-    updateAuthUI(data.credits);
-    loadHistory();
-  } catch (e) { toast(e.message, true); }
 }
 
 function switchPrimaryTab(tab) {
@@ -545,8 +538,7 @@ async function generate() {
     if (!token) {
       // Guest free-trial path: soft prompt to sign up after a short simulated wait
       await new Promise((r) => setTimeout(r, 1800));
-      statusText.innerHTML = 'Free trial ready — <a href="#" id="statusSignup" style="color:var(--primary2)">sign up</a> to save & unlock all models.';
-      document.getElementById("statusSignup").onclick = (e) => { e.preventDefault(); quickAuth("signup"); };
+      statusText.innerHTML = 'Free trial ready — <a href="/auth?mode=register" id="statusSignup" style="color:var(--primary2)">sign up</a> to save & unlock all models.';
       toast("Sign up to keep generating with full models");
       resetGenBtn();
       return;
@@ -594,7 +586,7 @@ function refreshHistoryEmpty() {
     title.textContent = "Sign in to view your history";
     desc.textContent = "Your creations will appear here after you log in.";
     cta.textContent = "Log In";
-    cta.onclick = () => quickAuth("login");
+    cta.onclick = () => goAuth("login");
   }
 }
 
