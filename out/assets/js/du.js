@@ -193,7 +193,10 @@
       ".du-dialog-secondary{border:1px solid #3a3a4a;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;background:transparent}" +
       ".du-dialog-secondary:hover{border-color:#a855f7}" +
       ".du-dialog-primary{background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none}" +
-      ".du-dialog-primary:hover{opacity:.92}";
+      ".du-dialog-primary:hover{opacity:.92}" +
+      ".du-toast{position:fixed;top:20px;right:20px;z-index:210;display:none;max-width:340px;background:#1c1c26;border:1px solid #2a2a38;border-radius:10px;padding:14px 18px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5)}" +
+      ".du-toast.show{display:block}" +
+      ".du-toast.error{border-color:#ef4444}";
     document.head.appendChild(style);
   }
 
@@ -251,6 +254,20 @@
     if (secondary) secondary.focus();
     else primary.focus();
     return backdrop;
+  }
+
+  function toast(msg, isError) {
+    ensureDialogStyles();
+    var el = document.getElementById("duToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "duToast";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = "du-toast show" + (isError ? " error" : "");
+    clearTimeout(el._hide);
+    el._hide = setTimeout(function () { el.classList.remove("show"); }, 4200);
   }
 
   function showGateDialog(kind) {
@@ -325,7 +342,7 @@
       showGateDialog("credits");
       return mapped;
     }
-    if (typeof opts.toast === "function") opts.toast(mapped.message, true);
+    (typeof opts.toast === "function" ? opts.toast : toast)(mapped.message, true);
     return mapped;
   }
 
@@ -414,5 +431,6 @@
     closeAlertDialog: closeAlertDialog,
     showGateDialog: showGateDialog,
     presentApiError: presentApiError,
+    toast: toast,
   };
 })(window);
