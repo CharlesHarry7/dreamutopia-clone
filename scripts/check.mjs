@@ -139,7 +139,9 @@ function extractI18nKeys(src) {
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
   mustContain("out/sw.js", "du-static-v6", "SW cache bump");
   mustContain("out/sw.js", '"/offline"', "SW precaches pretty /offline");
-  mustContain("out/sw.js", "caches.match(\"/offline\")", "SW offline fallback pretty URL");
+  if (/PRECACHE[\s\S]*?\.html/.test(read("out/sw.js"))) {
+    fail.push("SW PRECACHE must use pretty URLs (/offline not /offline.html) — Pages 308s .html");
+  } else ok.push("SW PRECACHE uses pretty URLs");
   mustContain("out/manifest.webmanifest", '"id": "/"', "PWA id");
   mustContain("out/manifest.webmanifest", '"lang": "en"', "PWA lang");
   if (!exists("out/offline.html")) fail.push("missing out/offline.html");
