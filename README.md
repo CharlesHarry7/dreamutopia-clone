@@ -63,6 +63,8 @@ Public `imageUrl` still works without R2.
 2. Bind `DB` / `SESSIONS` / `MEDIA` in Pages Settings
 3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
+`out/_routes.json` sends `/api/*` to Pages Functions so unknown API paths return Function responses instead of the homepage.
+
 ## Cost
 
 | Item | Monthly Cost |
