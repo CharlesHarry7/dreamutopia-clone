@@ -300,6 +300,33 @@ function createFailedResponse(
   }
 }
 
+function guestImageRequiredResponse(): Response {
+  return json(
+    {
+      error: "image_url_required",
+      code: "image_url_required",
+      message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+      mediaRequired: false,
+      guestRemaining: GUEST_LIMIT,
+      guestLimit: GUEST_LIMIT,
+    },
+    400
+  );
+}
+
+function guestLiteOnlyResponse(): Response {
+  return json(
+    {
+      error: "guest_lite_only",
+      code: "guest_lite_only",
+      message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
+      guestRemaining: GUEST_LIMIT,
+      guestLimit: GUEST_LIMIT,
+    },
+    401
+  );
+}
+
 /**
  * POST /api/generate
  * Body: { prompt, kind?, imageUrl?, lastImageUrl?, imageUrls?, mediaKey?, model?, durationSec?, aspectRatio?, resolution? }
@@ -342,6 +369,29 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
   const kind: GenerationKind = body.kind === "image" ? "image" : "video";
   const imageUrl = asTrimmed(body.imageUrl) || asTrimmed(body.image_url);
   const lastImageUrl = asTrimmed(body.lastImageUrl) || asTrimmed(body.last_image_url);
+  const modelName = asTrimmed(body.model);
+  const model =
+    kind === "image"
+      ? IMAGE_COST[modelName]
+        ? modelName
+        : "lite"
+      : VIDEO_COST[modelName]
+        ? modelName
+        : "lite";
+  const token = tokenFromRequest(request);
+
+  // Guest no-image: never touch KV. Same contract as main — 400 image_url_required
+  // before hasSessions / getSession / guestRequestError / takeRateLimit (those throws were CF 1101).
+  if (!token && kind === "video" && model === "lite" && !imageUrl && !lastImageUrl) {
+    return guestImageRequiredResponse();
+  }
+  if (!token && (kind === "image" || model !== "lite")) {
+    return guestLiteOnlyResponse();
+  }
+  if (!token && lastImageUrl && !imageUrl) {
+    return guestImageRequiredResponse();
+  }
+
   const extraUrls = collectHttpsUrls(body.imageUrls || body.image_urls);
 
   if (imageUrl && !isPublicHttpsUrl(imageUrl)) {
@@ -391,14 +441,6 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
   }
   const mediaKey = requestedKey || (imageUrl ? mediaKeyFromUrl(imageUrl) : null) || null;
 
-  const model =
-    kind === "image"
-      ? IMAGE_COST[body.model || ""]
-        ? (body.model as string)
-        : "lite"
-      : VIDEO_COST[body.model || ""]
-        ? (body.model as string)
-        : "lite";
   const cost = kind === "image" ? IMAGE_COST[model] : VIDEO_COST[model];
   const durationSec = kind === "image" ? null : Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
   const aspectRatio: AspectRatio = parseAspectRatio(body.aspectRatio);
@@ -435,55 +477,57 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
     );
   }
 
-  const token = tokenFromRequest(request);
   let session = null;
-  try {
-    session = await getSession(env, token);
-  } catch {
-    return structuredError(
-      "generate_failed",
-      "Generation failed. Please try again.",
-      500,
-      { mediaRequired: false }
-    );
-  }
-  if (token && !session) {
-    return expiredSessionResponse({ mediaRequired: false });
+  if (token) {
+    try {
+      session = await getSession(env, token);
+    } catch {
+      return structuredError(
+        "generate_failed",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
+    if (!session) {
+      return expiredSessionResponse({ mediaRequired: false });
+    }
   }
 
   // Guest 4xx (image_url_required / guest_limit / lite-only) must not touch rate-limit KV.
   // A KV expirationTtl < 60 throw is Cloudflare 1101.
-  // Guest no-image: never touch KV (live 1101 from RL TTL).
-  if (!session && kind === "video" && model === "lite" && !imageUrl && !lastImageUrl) {
-    return json(
-      {
-        error: "image_url_required",
-        code: "image_url_required",
-        message: "Free trial needs a start image. Upload a file or paste a public https URL.",
-        mediaRequired: false,
-        guestRemaining: GUEST_LIMIT,
-        guestLimit: GUEST_LIMIT,
-      },
-      400
-    );
-  }
   if (!session) {
-    const blocked = await guestRequestError(env, request, {
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-    });
-    if (blocked) return blocked;
+    try {
+      const blocked = await guestRequestError(env, request, {
+        kind,
+        model,
+        imageUrl,
+        lastImageUrl,
+      });
+      if (blocked) return blocked;
+    } catch {
+      if (!imageUrl) return guestImageRequiredResponse();
+      return structuredError(
+        "worker_exception",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
   }
 
   const ip = clientIp(request);
-  const rl = await takeRateLimit(
-    env.SESSIONS,
-    session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
-    session ? 30 : 10,
-    60
-  );
+  let rl;
+  try {
+    rl = await takeRateLimit(
+      env.SESSIONS,
+      session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
+      session ? 30 : 10,
+      60
+    );
+  } catch {
+    rl = { ok: true as const, remaining: session ? 30 : 10, resetSec: Math.floor(Date.now() / 1000) + 60 };
+  }
   if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
   const idempotencyKey = normalizeIdempotencyKey(
@@ -748,18 +792,7 @@ async function guestRequestError(
       );
     }
     if (!opts.imageUrl) {
-      return json(
-        {
-          error: "image_url_required",
-          code: "image_url_required",
-          message: "Free trial needs a start image. Upload a file or paste a public https URL.",
-          mediaRequired: false,
-          guestRemaining: quota.remaining,
-          guestLimit: GUEST_LIMIT,
-        },
-        400,
-        headers
-      );
+      return guestImageRequiredResponse();
     }
     if (quota.blocked) {
       return json(
@@ -776,21 +809,9 @@ async function guestRequestError(
     }
     return null;
   } catch {
-    if (!opts.imageUrl) {
-      return json(
-        {
-          error: "image_url_required",
-          code: "image_url_required",
-          message: "Free trial needs a start image. Upload a file or paste a public https URL.",
-          mediaRequired: false,
-          guestRemaining: GUEST_LIMIT,
-          guestLimit: GUEST_LIMIT,
-        },
-        400
-      );
-    }
+    if (!opts.imageUrl) return guestImageRequiredResponse();
     return structuredError(
-      "generate_failed",
+      "worker_exception",
       "Generation failed. Please try again.",
       500,
       { mediaRequired: false }
@@ -921,7 +942,12 @@ async function handleGuestPost(
     headers
   );
   } catch {
-    return workerExceptionJson("Generation failed. Please try again.");
+    return structuredError(
+      "worker_exception",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
+    );
   }
 }
 
@@ -1201,6 +1227,15 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
     if (method === "POST") return onRequestPost(ctx);
     return structuredError("method_not_allowed", "Method not allowed.", 405);
   } catch {
-    return workerExceptionJson("Request failed. Please try again.");
+    try {
+      return structuredError(
+        "worker_exception",
+        "Request failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    } catch {
+      return workerExceptionJson("Request failed. Please try again.");
+    }
   }
 };

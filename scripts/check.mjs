@@ -260,10 +260,26 @@ function extractI18nKeys(src) {
     if (guestAt < 0 || rlAt < 0 || guestAt > rlAt) {
       fail.push("handleGeneratePost must run guestRequestError before takeRateLimit (KV TTL 1101)");
     } else ok.push("guest 4xx runs before KV rate limit");
-    if (!fn.includes("Guest no-image: never touch KV") || fn.indexOf("image_url_required") > rlAt) {
+    const marker = "Guest no-image: never touch KV";
+    const markerAt = fn.indexOf(marker);
+    const sessAt = fn.indexOf("await getSession");
+    const hasAt = fn.indexOf("hasSessions");
+    if (markerAt < 0) {
+      fail.push("handleGeneratePost must mark guest no-image 400 before KV");
+    } else if (sessAt >= 0 && markerAt > sessAt) {
+      fail.push("guest image_url_required must run before getSession (no KV 1101)");
+    } else if (hasAt >= 0 && markerAt > hasAt) {
+      fail.push("guest image_url_required must run before hasSessions");
+    } else if (rlAt < 0 || markerAt > rlAt) {
       fail.push("handleGeneratePost must return guest image_url_required before takeRateLimit (no KV)");
-    } else ok.push("guest no-image 400 runs before KV rate limit");
+    } else ok.push("guest no-image 400 runs before getSession / KV rate limit");
+    if (!fn.includes("guestImageRequiredResponse")) {
+      fail.push("guest no-image must use guestImageRequiredResponse (400 image_url_required)");
+    } else ok.push("guest no-image helper is 400 image_url_required");
   }
+  mustContain("functions/api/history.ts", 'from "./generate"', "history reuses generate GET JSON");
+  mustContain("functions/api/jobs.ts", 'from "./generate"', "jobs reuses generate GET JSON");
+  mustContain("functions/api/creations.ts", 'from "./generate"', "creations reuses generate GET JSON");
   mustContain("functions/api/history.ts", "onRequestHead", "history alias HEAD");
   mustContain("functions/api/history.ts", "onRequestGet", "history alias GET");
   mustContain("functions/api/history.ts", "export const onRequest", "history onRequest HEAD fallback");
