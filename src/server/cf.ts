@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { Env } from "@/server/libs/utils";
 
-/** PagesFunction-compatible context for migrated handlers. */
+/** Handler context for OpenNext-adapted API routes (same shape as former Pages Functions). */
 export type HandlerContext = {
   request: Request;
   env: Env;
@@ -13,8 +13,12 @@ export type HandlerContext = {
 
 export type PagesHandler = (context: HandlerContext) => Response | Promise<Response>;
 
+function asEnv(env: CloudflareEnv): Env {
+  return env;
+}
+
 /**
- * Adapt a Cloudflare Pages Function handler to a Next.js App Router route handler.
+ * Adapt a migrated Pages-style handler to a Next.js App Router route handler.
  * Bindings (D1/KV/R2/secrets) come from OpenNext's getCloudflareContext().
  */
 export function adapt(handler: PagesHandler) {
@@ -22,14 +26,8 @@ export function adapt(handler: PagesHandler) {
     const { env, ctx } = getCloudflareContext();
     return handler({
       request,
-      env: env as unknown as Env,
+      env: asEnv(env),
       waitUntil: (p) => ctx.waitUntil(p),
     });
   };
-}
-
-/** Direct env access for non-Pages-style code. */
-export function getEnv(): Env {
-  const { env } = getCloudflareContext();
-  return env as unknown as Env;
 }

@@ -29,7 +29,7 @@ The first commit in this repo is the purchased Cloudflare Pages backend template
 
 Webhook: `POST /api/webhooks/stripe` (alias `POST /api/stripe/webhook`) with `Stripe-Signature`. On `checkout.session.completed` credits are added (idempotent via `credit_events.stripe_session_id`). First purchase adds **31** bonus credits (5 Lite + 1 Pro). If the buyer has `referred_by`, the referrer gets **10%** of the pack credits. Repeat checkouts reuse `users.stripe_customer_id` when migration `004` is applied.
 
-Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`.
+Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Workers secret `STRIPE_WEBHOOK_SECRET` (`wrangler secret put`).
 
 ## Password reset (optional Resend)
 
@@ -159,56 +159,54 @@ binding = "MEDIA"
 bucket_name = "dreamutopia-media"
 ```
 
-## 3. Set `KIE_API_KEY` (Pages secret)
+## 3. Set `KIE_API_KEY` (Workers secret — B-line)
 
 1. Create a key at [kie.ai API keys](https://kie.ai/api-key)
-2. Cloudflare Dashboard → **Workers & Pages** → project → **Settings** → **Variables and Secrets**
-3. Add secret **`KIE_API_KEY`** (Production; Preview if needed)
-4. Redeploy so Functions see the secret
+2. From repo root (Wrangler auth required): `npm run cf:secret:kie`  
+   Or Cloudflare Dashboard → **Workers** → `dreamutopia-clone` → **Settings** → **Variables and Secrets**
+3. Redeploy the Worker (`npm run cf:deploy`) so the secret is live
 
-Do **not** commit the key.
+Do **not** commit the key.  
+A-line live Pages keeps its own Pages secrets; they do **not** copy to the Worker.
 
-## 3b. Optional Stripe + Resend secrets
+## 3b. Optional Stripe + Resend secrets (Workers)
 
 **Stripe (paid credit packs)**
 
-1. Stripe Dashboard → Developers → API keys → Secret key → Pages secret `STRIPE_SECRET_KEY`
-2. Developers → Webhooks → Add endpoint `https://<your-host>/api/webhooks/stripe` → event `checkout.session.completed`
-3. Paste the webhook signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`
+1. Stripe Dashboard → Developers → API keys → Secret key → `npm run cf:secret:stripe` (`STRIPE_SECRET_KEY`)
+2. Developers → Webhooks → Add endpoint `https://<your-worker-host>/api/webhooks/stripe` → event `checkout.session.completed`
+3. `npm run cf:secret:stripe-webhook` (`STRIPE_WEBHOOK_SECRET`)
 4. Redeploy. `GET /api/health` → `checkoutConfigured: true`. Pricing CTAs then open Stripe.
 
-Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settings), set Pages secret `KIE_WEBHOOK_HMAC_KEY` to the same `webhookHmacKey`. Until then, `/api/webhooks/kie` still settles by re-querying KIE (does not trust the POST body for credits).
+Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settings), `npm run cf:secret:kie-hmac` (`KIE_WEBHOOK_HMAC_KEY`). Until then, `/api/webhooks/kie` still settles by re-querying KIE.
 
 **Resend (password reset email)**
 
 1. Create an API key at [resend.com](https://resend.com)
-2. Pages secrets: `RESEND_API_KEY` and `MAIL_FROM` (a verified sender, e.g. `DreamUtopia <noreply@yourdomain.com>`)
+2. `npm run cf:secret:resend` + `npm run cf:secret:mail-from` (verified sender, e.g. `DreamUtopia <noreply@yourdomain.com>`)
 3. Without these, `POST /api/auth/forgot` returns `email_not_configured` (503) and does **not** leak a reset URL
 
-## 4. Cloudflare Pages dashboard bindings
+## 4. Worker bindings (`wrangler.toml`)
 
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → project
-2. **Settings** → **Bindings**
-3. Add **D1** `DB`, **KV** `SESSIONS`, **R2** `MEDIA`
-4. Redeploy
+Bindings for B-line are declared in `wrangler.toml` (D1 `DB`, KV `SESSIONS`, R2 `MEDIA`). Same resource IDs as A-line Pages so staging can reuse data — prefer one writer stack at a time.
 
-## 5. Deploy runtime (Workers)
+A-line Pages bindings stay in the Pages project dashboard; do not cut Pages over from B-line.
 
-After the Next.js migration, APIs run on the **Worker** (`npm run cf:deploy` — see **DEPLOY.md**), not Pages Functions.
+## 5. Deploy runtime (Workers staging)
+
+APIs on this branch run on the **Worker** (`npm run cf:deploy` — see **DEPLOY.md** / **B-LINE.md**). Does **not** replace live Pages.
 
 ```bash
 npm run cf:secret:kie
 npm run cf:deploy
-npm run check:health -- https://<worker-host>
+npm run check:health -- https://<worker-host> --expect-worker
 ```
-
-Pages dashboard secrets are not used by OpenNext. Re-put secrets with `wrangler secret put` (or Worker → Settings → Variables and Secrets).
 
 ## 6. Verify
 
 ```bash
 curl -s https://<worker-host>/api/health | jq
-# legacy Pages URL may still exist until cutover:
+# live A-line Pages (unchanged):
 # curl -s https://dreamutopia-clone.pages.dev/api/health | jq
 ```
 

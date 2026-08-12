@@ -118,8 +118,10 @@ Empty KIE wallet → `kie_insufficient_balance` (honest 502, no fake video). Che
 |---|---|
 | `npm run dev` | Next.js dev server |
 | `npm run verify` | `lint && build` (B-line CI gate) |
+| `npm run verify:worker` | `verify` + `cf:build` |
 | `npm run build` / `lint` | Next production build / ESLint |
 | `npm run cf:build` | OpenNext Workers build only |
+| `npm run cf:dry-run` | `cf:build` + `wrangler deploy --dry-run` (no publish) |
 | `npm run cf:preview` / `preview` | Build + local Workers runtime |
 | `npm run cf:deploy` / `deploy` | Build + deploy Worker (staging; not Pages) |
 | `npm run cf:secret:kie` | `wrangler secret put KIE_API_KEY` |

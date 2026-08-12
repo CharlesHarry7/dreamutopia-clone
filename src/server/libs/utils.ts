@@ -1,11 +1,13 @@
-// Shared helpers + Env typing for Pages Functions
+// Shared helpers + Env typing for OpenNext Workers handlers
 
-/** Cloudflare bindings — optional until provisioned in dashboard / wrangler.toml */
+/** Cloudflare bindings — optional until provisioned in wrangler.toml / Worker dashboard */
 export interface Env {
   DB?: D1Database;
   SESSIONS?: KVNamespace;
   /** R2 media bucket — file uploads (POST /api/upload). Generate can still use a public imageUrl without MEDIA. */
   MEDIA?: R2Bucket;
+  /** OpenNext static assets binding (wrangler.toml [assets]). */
+  ASSETS?: Fetcher;
   /** Workers secret — required for real KIE image-to-video */
   KIE_API_KEY?: string;
   KIE_API_BASE?: string;

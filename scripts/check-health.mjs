@@ -134,6 +134,7 @@ async function main() {
     } else {
       probeOk(health.probes.DB, "DB", problems);
       probeOk(health.probes.SESSIONS, "SESSIONS", problems);
+      probeOk(health.probes.MEDIA, "MEDIA", problems);
     }
   }
   if (expectPages) {

@@ -878,8 +878,8 @@ function WorkspaceInner() {
                       )}
                       {errorCode === "kie_api_key_missing" && (
                         <p className="text-xs text-muted-foreground">
-                          Set the Workers secret KIE_API_KEY (Pages secrets are separate until
-                          cutover).
+                          Set the Workers secret KIE_API_KEY (`npm run cf:secret:kie`), then redeploy
+                          the Worker.
                         </p>
                       )}
                     </div>

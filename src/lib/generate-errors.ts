@@ -1,9 +1,8 @@
 import type { ApiError } from "@/lib/api";
-
-const KIE_API_KEY_MISSING =
-  "KIE_API_KEY is not configured. Set it as a Cloudflare Workers secret to enable generation.";
-const KIE_INSUFFICIENT_BALANCE =
-  "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate. Site credits were not kept for the failed provider call.";
+import {
+  KIE_API_KEY_MISSING_MESSAGE,
+  KIE_INSUFFICIENT_BALANCE_MESSAGE,
+} from "@/lib/kie-messages";
 
 /** Map generate/upload API failures to honest, user-facing copy. */
 export function formatGenerateError(err: unknown, fallback = "Generation failed"): string {
@@ -20,9 +19,9 @@ export function formatGenerateError(err: unknown, fallback = "Generation failed"
   switch (code) {
     case "kie_api_key_missing":
       // Prefer canonical copy — provider/raw text must not hide the real cause.
-      return KIE_API_KEY_MISSING;
+      return KIE_API_KEY_MISSING_MESSAGE;
     case "kie_insufficient_balance":
-      return KIE_INSUFFICIENT_BALANCE;
+      return `${KIE_INSUFFICIENT_BALANCE_MESSAGE} Site credits were not kept for the failed provider call.`;
     case "kie_create_failed":
       return message || "KIE rejected the job. No demo output was invented.";
     case "generation_timeout":

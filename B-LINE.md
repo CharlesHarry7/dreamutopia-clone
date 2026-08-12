@@ -36,11 +36,12 @@ npm run cf:deploy    # publish Worker staging (Wrangler auth required)
 
 | Status | Detail |
 |---|---|
-| **Preview URL** | **Not published from this agent environment** |
-| **Command** | `npm run cf:deploy` then open the printed `*.workers.dev` URL |
-| **Blocker** | No `CLOUDFLARE_API_TOKEN` / `wrangler login` in the cloud agent. `wrangler whoami` → not authenticated. MCP Workers list on the bound account has no `dreamutopia-clone` Worker yet. |
-| **Proven locally** | `npm run cf:build` OK; `wrangler deploy --dry-run` OK (bindings: D1/KV/R2/ASSETS; ~6MB upload). |
-| **After someone deploys** | `npm run check:health -- https://<worker>.workers.dev --expect-worker` — expect `cutoverComplete: false`, `productionSurface: "pages-until-cutover"`. |
+| **Preview URL** | **Not published** (no Wrangler auth in this agent) |
+| **Command** | `npm run cf:deploy` → use printed `*.workers.dev` |
+| **Dry-run (no auth publish)** | `npm run cf:dry-run` |
+| **Blocker** | `wrangler whoami` → not authenticated; stop here — do not block on human token clicks |
+| **Proven offline** | `npm run cf:build` + `wrangler deploy --dry-run` |
+| **After a local deploy** | `npm run check:health -- https://<worker>.workers.dev --expect-worker` — expect `cutoverComplete: false`, `productionSurface: "pages-until-cutover"`, `probes.MEDIA` |
 
 Deploying the Worker for smoke tests does **not** replace [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).
 

@@ -37,6 +37,17 @@ async function probeSessions(env: Env): Promise<Probe> {
   }
 }
 
+async function probeMedia(env: Env): Promise<Probe> {
+  if (!hasMedia(env)) return { ok: false, detail: "unbound" };
+  try {
+    // Cheap HEAD — object need not exist (null is success)
+    await env.MEDIA!.head("__health_ping__");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, detail: e instanceof Error ? e.message.slice(0, 160) : "r2_failed" };
+  }
+}
+
 // GET /api/health — liveness + binding readiness (+ soft probes)
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const bindings = {
@@ -45,7 +56,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     MEDIA: hasMedia(env),
   };
 
-  const [dbProbe, sessionsProbe] = await Promise.all([probeDb(env), probeSessions(env)]);
+  const [dbProbe, sessionsProbe, mediaProbe] = await Promise.all([
+    probeDb(env),
+    probeSessions(env),
+    probeMedia(env),
+  ]);
 
   const authReady = bindings.DB && bindings.SESSIONS && dbProbe.ok && sessionsProbe.ok;
   const kieConfigured = hasKieKey(env);
@@ -55,9 +70,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   // Guest trials need SESSIONS (+ KIE for real generate)
   const guestTrialsReady = bindings.SESSIONS && sessionsProbe.ok;
   const generateReady = guestTrialsReady && kieConfigured;
-  const uploadReady = bindings.MEDIA;
+  const uploadReady = bindings.MEDIA && mediaProbe.ok;
   const degraded =
-    (bindings.DB && !dbProbe.ok) || (bindings.SESSIONS && !sessionsProbe.ok);
+    (bindings.DB && !dbProbe.ok) ||
+    (bindings.SESSIONS && !sessionsProbe.ok) ||
+    (bindings.MEDIA && !mediaProbe.ok);
 
   let message: string;
   if (degraded) {
@@ -68,7 +85,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     message = "SESSIONS probe failed — guest trials unavailable until KV is healthy";
   } else if (!kieConfigured) {
     message =
-      "Auth ready — set Workers secret KIE_API_KEY for generation (Pages secrets are separate; live Pages is unchanged)";
+      "Auth ready — set Workers secret KIE_API_KEY (`npm run cf:secret:kie`) for generation";
   } else if (uploadReady) {
     message = "D1 + KV + KIE + R2 ready — 2 free Lite I2V tries, then sign in";
   } else {
@@ -81,7 +98,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     /** Distinguishes Next OpenNext Worker from legacy Pages Functions. */
     runtime: "next-opennext-workers",
     /**
-     * Live production is still Cloudflare Pages until the manual cutover in DEPLOY.md.
+     * Live production is still Cloudflare Pages until an explicit cutover (out of B-line scope).
      * Do not change this string (or cutoverComplete) while dreamutopia-clone.pages.dev remains live.
      */
     productionSurface: "pages-until-cutover" as const,
@@ -92,6 +109,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     probes: {
       DB: dbProbe,
       SESSIONS: sessionsProbe,
+      MEDIA: mediaProbe,
     },
     degraded,
     authReady,

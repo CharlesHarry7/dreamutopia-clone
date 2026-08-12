@@ -1,4 +1,4 @@
-/** Minimal PagesFunction typing so migrated handlers compile under Next.js. */
+/** Minimal PagesFunction typing so migrated Worker handlers keep their onRequest* exports. */
 type PagesFunction<Env = unknown> = (context: {
   request: Request;
   env: Env;
