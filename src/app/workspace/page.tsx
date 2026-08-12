@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   api,
+  downloadMedia,
   isAllowedImageFile,
   MAX_UPLOAD_BYTES,
   newIdempotencyKey,
@@ -97,6 +98,9 @@ function WorkspaceInner() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [kieReady, setKieReady] = useState<boolean | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareDone, setShareDone] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState(false);
 
   const activeModel = mode === "image" && model === "medium" ? "lite" : model;
   const inviteUrl = user?.referralUrl || "";
@@ -319,6 +323,7 @@ function WorkspaceInner() {
         (settled.generation as { kind?: Mode } | undefined)?.kind || created.kind || mode
       );
       setResultId(String(created.generationId));
+      setShareDone(false);
       setStatus("");
       await refresh();
     } catch (err) {
@@ -334,16 +339,32 @@ function WorkspaceInner() {
   }
 
   async function shareToGallery() {
-    if (!resultId || !user) return;
+    if (!resultId || !user || shareBusy) return;
+    setShareBusy(true);
+    setError("");
+    setErrorCode(null);
     try {
-      await api("/gallery", {
+      const res = await api<{ already?: boolean }>("/gallery", {
         method: "POST",
         body: JSON.stringify({ generationId: resultId }),
       });
-      setStatus("Shared to gallery");
+      setShareDone(true);
+      setStatus(res.already ? "Already in gallery" : "Shared to gallery");
     } catch (err) {
       setErrorCode((err as ApiError).code || null);
       setError(formatGenerateError(err, "Share failed"));
+    } finally {
+      setShareBusy(false);
+    }
+  }
+
+  async function onDownloadResult(url: string, hint?: string) {
+    if (downloadBusy) return;
+    setDownloadBusy(true);
+    try {
+      await downloadMedia(url, hint || "dreamutopia-result");
+    } finally {
+      setDownloadBusy(false);
     }
   }
 
@@ -820,19 +841,25 @@ function WorkspaceInner() {
                             {t("gen.open", "Open result")}
                           </a>
                         </Button>
-                        <Button asChild variant="outline" size="sm">
-                          <a href={resultUrl} download>
-                            {t("gen.download", "Download")}
-                          </a>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={downloadBusy}
+                          onClick={() => void onDownloadResult(resultUrl, `dreamutopia-${resultId || "result"}`)}
+                        >
+                          {downloadBusy ? "…" : t("gen.download", "Download")}
                         </Button>
                         {user && (
                           <Button
                             type="button"
                             size="sm"
                             variant="secondary"
+                            disabled={shareBusy || shareDone}
+                            aria-busy={shareBusy}
                             onClick={() => void shareToGallery()}
                           >
-                            Share to gallery
+                            {shareBusy ? "Sharing…" : shareDone ? "Shared" : "Share to gallery"}
                           </Button>
                         )}
                       </div>
@@ -926,11 +953,27 @@ function WorkspaceInner() {
                           )}
                           {item.status === "failed" && <Badge variant="warning">failed</Badge>}
                           {item.resultUrl && (
-                            <Button asChild size="sm" variant="outline">
-                              <a href={item.resultUrl} target="_blank" rel="noreferrer">
-                                Open
-                              </a>
-                            </Button>
+                            <>
+                              <Button asChild size="sm" variant="outline">
+                                <a href={item.resultUrl} target="_blank" rel="noreferrer">
+                                  Open
+                                </a>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={downloadBusy}
+                                onClick={() =>
+                                  void onDownloadResult(
+                                    item.resultUrl!,
+                                    `dreamutopia-${String(item.id)}`
+                                  )
+                                }
+                              >
+                                Download
+                              </Button>
+                            </>
                           )}
                         </div>
                       </li>

@@ -156,19 +156,38 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {items.map((item) => (
-              <div
-                key={String(item.id)}
-                className="aspect-[3/4] overflow-hidden rounded-[10px] bg-[var(--bg2)] transition-transform hover:scale-[1.03]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.url}
-                  alt={"prompt" in item ? item.prompt || "" : ""}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            ))}
+            {items.map((item) => {
+              const url = item.url;
+              const prompt = "prompt" in item ? item.prompt || "" : "";
+              const isVideo =
+                ("kind" in item && String(item.kind).toLowerCase() === "video") ||
+                /\.(mp4|webm|mov)(\?|$)/i.test(url);
+              return (
+                <a
+                  key={String(item.id)}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group aspect-[3/4] overflow-hidden rounded-[10px] bg-[var(--bg2)] transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={prompt ? `Open gallery item: ${prompt}` : "Open gallery item"}
+                >
+                  {isVideo ? (
+                    <video
+                      src={url}
+                      muted
+                      playsInline
+                      loop
+                      autoPlay
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={url} alt={prompt} className="h-full w-full object-cover" />
+                  )}
+                </a>
+              );
+            })}
           </div>
         </section>
 

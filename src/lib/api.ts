@@ -121,6 +121,42 @@ export async function uploadImage(file: File): Promise<{ key: string; imageUrl: 
   return data as { key: string; imageUrl: string };
 }
 
+/** Download a result URL (handles cross-origin where `<a download>` is ignored). */
+export async function downloadMedia(url: string, filenameHint = "dreamutopia-result"): Promise<void> {
+  const fallbackOpen = () => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) {
+      fallbackOpen();
+      return;
+    }
+    const blob = await res.blob();
+    const ext =
+      blob.type.includes("video") || /\.mp4(\?|$)/i.test(url)
+        ? "mp4"
+        : blob.type.includes("png")
+          ? "png"
+          : blob.type.includes("webp")
+            ? "webp"
+            : blob.type.includes("jpeg") || blob.type.includes("jpg")
+              ? "jpg"
+              : "bin";
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = `${filenameHint}.${ext}`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    fallbackOpen();
+  }
+}
+
 export async function pollGeneration(
   id: string,
   onTick?: (data: Record<string, unknown>) => void

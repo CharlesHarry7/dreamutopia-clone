@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 
 export function SiteFooter() {
+  const { user, loading, logout } = useAuth();
+
   return (
     <footer className="mt-auto border-t border-[var(--border)] bg-[var(--bg2)] px-6 py-12">
       <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-2 md:grid-cols-4">
@@ -24,12 +29,34 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <div className="mb-1 font-semibold text-foreground">Account</div>
-          <Link href="/auth?mode=login" className="hover:text-foreground">
-            Log In
-          </Link>
-          <Link href="/auth?mode=register" className="hover:text-foreground">
-            Sign Up
-          </Link>
+          {loading ? (
+            <span className="opacity-60">…</span>
+          ) : user ? (
+            <>
+              <Link href="/workspace" className="hover:text-foreground">
+                Workspace
+              </Link>
+              <Link href="/pricing" className="hover:text-foreground">
+                Buy credits ({user.credits})
+              </Link>
+              <button
+                type="button"
+                className="text-left hover:text-foreground"
+                onClick={() => void logout()}
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth?mode=login" className="hover:text-foreground">
+                Log In
+              </Link>
+              <Link href="/auth?mode=register" className="hover:text-foreground">
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <div className="mb-1 font-semibold text-foreground">Legal</div>
