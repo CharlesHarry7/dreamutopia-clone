@@ -59,6 +59,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .checkout-note b{color:var(--orange);font-weight:700}
 .checkout-note a{color:var(--primary2);font-weight:600}
 .checkout-note a:hover{text-decoration:underline}
+.checkout-note-en{display:block;margin-top:2px;font-size:13px;color:var(--text2);font-weight:500}
+.checkout-note-extra{display:block;margin-top:8px;font-size:12.5px;color:var(--text3)}
 
 .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding-bottom:72px}
 .plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 20px 24px;position:relative;display:flex;flex-direction:column;transition:transform .3s,border-color .3s}
@@ -344,7 +346,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
+<div class="faq-a">支付即将开放 / Payments coming soon. Selecting a pack will not charge a card — it only remembers the pack. When payments open, first purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -460,25 +462,32 @@ nav{display:none}
   }
 
   function applyUnavailableCopy(signedIn) {
+    const t = function (key, fallback) {
+      return (window.DU && DU.t(key, fallback)) || fallback;
+    };
     if (note) {
       note.classList.add("show");
-      note.innerHTML = signedIn
-        ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
-        : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
+      const extra = signedIn
+        ? t("price.soon.extra.signed", "Continue opens your workspace and remembers the pack. No charge.")
+        : t("price.soon.extra.guest", "Continue free opens sign-up — no charge. New accounts still get 10 free credits.");
+      note.innerHTML =
+        "<b>支付即将开放</b>" +
+        "<span class=\"checkout-note-en\">Payments coming soon</span>" +
+        "<span class=\"checkout-note-extra\">" + extra + "</span>";
     }
     ctas.forEach(function (a) {
       const pack = a.getAttribute("data-pack");
       a.textContent = signedIn ? "Continue" : "Continue free";
-      a.setAttribute("title", "Paid checkout not configured — continues without charging");
+      a.setAttribute("title", signedIn ? "Continue · no charge" : "Continue free · no charge");
       a.setAttribute(
         "aria-label",
-        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (checkout not live)"
+        (signedIn ? "Continue with " : "Continue free with ") + pack + " pack (no charge)"
       );
       const caption = document.querySelector('[data-pack-caption="' + pack + '"]');
       if (caption) {
         caption.textContent = signedIn
-          ? "Checkout coming soon · no charge"
-          : "Free account · pack saved · no charge";
+          ? t("price.caption.signed", "Continue · no charge")
+          : t("price.caption.guest", "Continue free · no charge");
       }
     });
   }
@@ -577,8 +586,11 @@ nav{display:none}
     const signedIn = await isSignedIn();
     if (!signedIn) hydrateHeader(false);
     else hydrateHeader(true);
-    document.addEventListener("du:i18n", function () { hydrateHeader(signedIn); });
     const live = await checkoutAvailable();
+    document.addEventListener("du:i18n", function () {
+      hydrateHeader(signedIn);
+      if (!live) applyUnavailableCopy(signedIn);
+    });
     if (live) {
       applyLiveCopy(signedIn);
       return;
