@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -19,17 +20,31 @@ import type { Locale } from "@/lib/i18n-strings";
 export function SiteHeader({ active }: { active?: string }) {
   const { t, locale, setLocale } = useI18n();
   const { user, guestRemaining, loading, logout } = useAuth();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Path when the drawer was opened — auto-hides after navigation without setState-in-effect. */
+  const [menuAtPath, setMenuAtPath] = useState(pathname);
+  const showMenu = menuOpen && menuAtPath === pathname;
   const menuId = useId();
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!showMenu) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setMenuOpen(false);
     }
+    function onResize() {
+      if (window.matchMedia("(min-width: 768px)").matches) setMenuOpen(false);
+    }
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [showMenu]);
 
   const nav = (
     <>
@@ -129,20 +144,27 @@ export function SiteHeader({ active }: { active?: string }) {
             variant="outline"
             size="sm"
             className="md:hidden"
-            aria-expanded={menuOpen}
+            aria-expanded={showMenu}
             aria-controls={menuId}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={showMenu ? "Close menu" : "Open menu"}
+            onClick={() => {
+              if (showMenu) {
+                setMenuOpen(false);
+                return;
+              }
+              setMenuAtPath(pathname);
+              setMenuOpen(true);
+            }}
           >
-            {menuOpen ? "Close" : "Menu"}
+            {showMenu ? "Close" : "Menu"}
           </Button>
         </div>
       </div>
 
-      {menuOpen && (
+      {showMenu && (
         <div
           id={menuId}
-          className="border-t border-[var(--border)] px-4 py-3 md:hidden"
+          className="max-h-[min(70vh,28rem)] overflow-y-auto border-t border-[var(--border)] px-4 py-3 md:hidden"
           role="navigation"
           aria-label="Mobile"
         >

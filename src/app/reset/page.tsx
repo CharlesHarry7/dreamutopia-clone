@@ -50,9 +50,9 @@ function ResetForm() {
       <CardContent>
         {!token ? (
           <div className="space-y-4">
-            <p className="text-sm text-[var(--red)]" role="alert">
+            <InlineAlert variant="error">
               Missing reset token. Open the link from your email, or request a new one.
-            </p>
+            </InlineAlert>
             <Button asChild className="w-full">
               <Link href="/auth?mode=login">Request a new reset link</Link>
             </Button>
