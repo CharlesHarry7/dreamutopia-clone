@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
@@ -15,6 +16,7 @@ function ResetForm() {
   const router = useRouter();
   const token = params.get("token") || "";
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -22,6 +24,11 @@ function ResetForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      setBusy(false);
+      return;
+    }
     try {
       await api("/auth/reset", {
         method: "POST",
@@ -42,7 +49,14 @@ function ResetForm() {
       </CardHeader>
       <CardContent>
         {!token ? (
-          <p className="text-sm text-[var(--red)]">Missing reset token.</p>
+          <div className="space-y-4">
+            <p className="text-sm text-[var(--red)]" role="alert">
+              Missing reset token. Open the link from your email, or request a new one.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/auth?mode=login">Request a new reset link</Link>
+            </Button>
+          </div>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-2">
@@ -52,13 +66,30 @@ function ResetForm() {
                 type="password"
                 minLength={6}
                 required
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            {error && <p className="text-sm text-[var(--red)]">{error}</p>}
-            <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "…" : "Update password"}
+            <div className="space-y-2">
+              <Label htmlFor="confirm">Confirm password</Label>
+              <Input
+                id="confirm"
+                type="password"
+                minLength={6}
+                required
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-[var(--red)]" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
+              {busy ? "Updating…" : "Update password"}
             </Button>
           </form>
         )}
@@ -71,8 +102,16 @@ export default function ResetPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 px-5 py-14">
-        <Suspense fallback={<div>Loading…</div>}>
+      <main className="flex flex-1 items-start justify-center px-5 py-14">
+        <Suspense
+          fallback={
+            <Card className="mx-auto w-full max-w-md">
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                Loading…
+              </CardContent>
+            </Card>
+          }
+        >
           <ResetForm />
         </Suspense>
       </main>

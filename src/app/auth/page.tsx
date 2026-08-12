@@ -30,6 +30,7 @@ function AuthForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgotMsg, setForgotMsg] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
   const [infoMsg, setInfoMsg] = useState(
     resetOk ? "Password updated — log in with your new password." : ""
   );
@@ -87,12 +88,15 @@ function AuthForm() {
   }
 
   async function onForgot() {
+    if (forgotBusy) return;
     setForgotMsg("");
     setError("");
+    setInfoMsg("");
     if (!email) {
       setError("Enter your email first");
       return;
     }
+    setForgotBusy(true);
     try {
       await api("/auth/forgot", { method: "POST", body: JSON.stringify({ email }) });
       setForgotMsg("If that email exists and mail is configured, a reset link was sent.");
@@ -103,6 +107,8 @@ function AuthForm() {
       } else {
         setError(e.message || "Forgot password failed");
       }
+    } finally {
+      setForgotBusy(false);
     }
   }
 
@@ -193,10 +199,12 @@ function AuthForm() {
         {mode === "login" && (
           <button
             type="button"
-            className="mt-3 text-sm text-[var(--primary2)] hover:underline"
+            className="mt-3 text-sm text-[var(--primary2)] hover:underline disabled:opacity-50"
+            disabled={forgotBusy || busy}
+            aria-busy={forgotBusy}
             onClick={() => void onForgot()}
           >
-            Forgot password?
+            {forgotBusy ? "Sending reset link…" : "Forgot password?"}
           </button>
         )}
 

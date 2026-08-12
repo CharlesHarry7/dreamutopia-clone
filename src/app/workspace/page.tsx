@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PromoBar } from "@/components/promo-bar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { formatGenerateError, guestRemainingFromError } from "@/lib/generate-errors";
 import { useI18n } from "@/lib/i18n";
+import { packLabel } from "@/lib/packs";
 
 type Mode = "video" | "image";
 type HistoryItem = {
@@ -75,8 +76,10 @@ const IMAGE_COSTS = { lite: 1, pro: 2 } as const;
 function WorkspaceInner() {
   const { t } = useI18n();
   const { user, guestRemaining, loading: authLoading, refresh, noteGuestRemaining } = useAuth();
+  const router = useRouter();
   const params = useSearchParams();
   const pack = params.get("pack") || "";
+  const savedPack = packLabel(pack);
 
   const [tab, setTab] = useState<"create" | "history">("create");
   const [mode, setMode] = useState<Mode>("video");
@@ -421,19 +424,37 @@ function WorkspaceInner() {
         )}
 
         {pack && (
-          <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-400/35 bg-orange-400/10 p-4">
-            <div>
-              <h2 className="mb-1 text-base font-bold text-[var(--orange)]">Pack saved: {pack}</h2>
+          <div
+            className="relative mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-400/35 bg-orange-400/10 p-4"
+            role="status"
+          >
+            <div className="min-w-0 flex-1">
+              <h2 className="mb-1 text-base font-bold text-[var(--orange)]">
+                {savedPack
+                  ? `Pack saved: ${savedPack.name}`
+                  : `Pack remembered: ${pack}`}
+              </h2>
               <p className="text-[13px] text-muted-foreground">
-                Checkout is not charged unless Stripe secrets are configured.{" "}
-                <Link href="/pricing" className="font-semibold text-[var(--primary2)] hover:underline">
-                  View pricing
-                </Link>
+                {savedPack
+                  ? `${savedPack.credits} credits · $${savedPack.usd}. `
+                  : ""}
+                Nothing is charged until Stripe is configured — then buy from Pricing.
               </p>
             </div>
-            <Button asChild>
-              <Link href="/pricing">Buy credits</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/pricing">Buy credits</Link>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Dismiss saved pack"
+                onClick={() => router.replace("/workspace", { scroll: false })}
+              >
+                Dismiss
+              </Button>
+            </div>
           </div>
         )}
 
