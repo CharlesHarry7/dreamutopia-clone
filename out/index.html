@@ -182,6 +182,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover}
 .gallery-item .play{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2}
 .gallery-item .play.hidden{display:none}
+.gallery-empty{grid-column:1/-1;text-align:center;padding:48px 24px;background:var(--bg2);border:1px dashed var(--border);border-radius:16px}
+.gallery-empty p{font-size:15px;color:var(--text2);margin-bottom:16px;line-height:1.55}
+.gallery-empty a{display:inline-block;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700}
+.gallery-empty a:hover{opacity:.92;text-decoration:none}
 
 /* Why section */
 .why{max-width:1100px;margin:100px auto 0;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
@@ -341,7 +345,7 @@ nav{display:none}
 
 <button class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
-<p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
+<p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register&amp;next=/workspace">Sign up</a> for more.</p>
 <div class="gen-status" id="homeStatus">
 <div class="spinner"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
@@ -349,7 +353,7 @@ nav{display:none}
 <div class="gen-result" id="homeResult">
 <video id="homeVideo" controls playsinline></video>
 <div class="result-actions">
-<a id="homeResultLink" href="#" target="_blank" rel="noopener" data-i18n="gen.open">Open result</a>
+<a id="homeResultLink" hidden target="_blank" rel="noopener" data-i18n="gen.open">Open result</a>
 <button type="button" id="homeDownload" data-i18n="gen.download">Download</button>
 </div>
 </div>
@@ -426,18 +430,10 @@ nav{display:none}
 <p data-i18n="gallery.p">A gallery of stunning visuals our creators have made</p>
 </div>
 <div class="gallery-grid" id="galleryGrid">
-<div class="gallery-item"><img src="/assets/images/g1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g3.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g4.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g5.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g6.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g7.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g8.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g9.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g10.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/b1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/b2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-empty" id="galleryEmpty">
+<p data-i18n="gallery.empty">No public creations yet</p>
+<a href="/workspace" data-i18n="gallery.cta">Create in workspace</a>
+</div>
 </div>
 </section>
 
@@ -568,6 +564,8 @@ nav{display:none}
 <li><a href="/#faq">FAQ</a></li>
 <li><a href="/pricing">Pricing</a></li>
 <li><a href="/workspace">Workspace</a></li>
+<li><a href="/auth?mode=register&amp;next=/workspace">Sign up</a></li>
+<li><a href="/auth?mode=login&amp;next=/workspace">Log in</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -634,6 +632,9 @@ document.querySelectorAll(".gen-tab").forEach((tab) => {
     document.querySelectorAll(".gen-tab").forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     syncHomeTab();
+    if (tab.getAttribute("data-kind") === "image" && !DU.getToken()) {
+      DU.showGateDialog("image");
+    }
   });
 });
 document.addEventListener("du:i18n", syncHomeTab);
@@ -724,11 +725,15 @@ async function homeGenerate() {
   if (homeBusy) return;
   const prompt = (document.getElementById("homePrompt").value || "").trim();
   if (!prompt) return;
+  const token = DU.getToken();
   if (isImageTab()) {
+    if (!token) {
+      DU.showGateDialog("image");
+      return;
+    }
     goWorkspace({ prompt: prompt });
     return;
   }
-  const token = DU.getToken();
   if (!homeFile && !homeImageUrl && !token) {
     const status = document.getElementById("homeStatus");
     const text = document.getElementById("homeStatusText");
@@ -762,22 +767,29 @@ async function homeGenerate() {
       const foot = document.getElementById("homeFoot");
       const n = data.guestRemaining;
       foot.innerHTML = n > 0
-        ? n + " free Lite video" + (n === 1 ? "" : "s") + " left. <a href=\"/auth?mode=register\">Sign up</a> for 10 credits."
-        : 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
+        ? n + " free Lite video" + (n === 1 ? "" : "s") + " left. <a href=\"" + DU.signupHref({ next: "/workspace" }) + "\">Sign up</a> for 10 credits."
+        : 'Free tries used. <a href="' + DU.signupHref({ next: "/workspace" }) + '">Sign up</a> for 10 credits.';
     }
     text.textContent = "Queued · waiting for provider…";
     const done = await DU.pollGeneration(data.generationId, (st, payload) => {
       text.textContent = DU.progressLabel(st, payload && payload.providerState);
     });
+    if (!done || !done.resultUrl) {
+      throw new Error(DU.t("progress.failed", "Generation failed"));
+    }
     video.src = done.resultUrl;
-    document.getElementById("homeResultLink").href = done.resultUrl;
+    const resultLink = document.getElementById("homeResultLink");
+    resultLink.href = done.resultUrl;
+    resultLink.hidden = false;
     document.getElementById("homeDownload").onclick = function () {
       DU.downloadResult(done.resultUrl, "dreamutopia-" + (data.generationId || "video"));
     };
     result.classList.add("show");
     text.innerHTML = '<span style="color:#22c55e">Done</span>';
   } catch (e) {
-    text.textContent = e.message || "Generation failed";
+    result.classList.remove("show");
+    const mapped = DU.presentApiError(e);
+    text.textContent = mapped.message;
   }
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));
@@ -800,7 +812,7 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
     }
   }
   if (loginBtn) {
-    loginBtn.href = "#";
+    loginBtn.href = "/auth?mode=login";
     loginBtn.addEventListener("click", function (e) {
       e.preventDefault();
       fetch("/api/auth/logout", {
@@ -819,13 +831,25 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
 (function loadLiveGallery() {
   const grid = document.getElementById("galleryGrid");
   if (!grid) return;
+  function showEmpty() {
+    grid.innerHTML = '<div class="gallery-empty" id="galleryEmpty"><p>' +
+      DU.t("gallery.empty", "No public creations yet") +
+      '</p><a href="/workspace">' +
+      DU.t("gallery.cta", "Create in workspace") +
+      "</a></div>";
+  }
   fetch("/api/gallery")
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      const items = (data && data.items) || [];
-      if (!items.length) return;
+      const items = ((data && data.items) || []).filter(function (item) {
+        return item && (item.url || item.resultUrl);
+      });
+      if (!items.length) {
+        showEmpty();
+        return;
+      }
       const live = items.slice(0, 12).map(function (item) {
-        const url = item.url || "";
+        const url = item.url || item.resultUrl || "";
         const kind = item.kind || "image";
         const prompt = (item.prompt || "").replace(/</g, "&lt;");
         if (kind === "video") {
@@ -833,10 +857,9 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
         }
         return '<div class="gallery-item" data-kind="image" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><img src="' + url.replace(/"/g, "&quot;") + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div></div>';
       }).join("");
-      if (items.length >= 6) grid.innerHTML = live;
-      else grid.insertAdjacentHTML("afterbegin", live);
+      grid.innerHTML = live;
     })
-    .catch(function () {});
+    .catch(function () { showEmpty(); });
 })();
 
 (function lightbox() {

@@ -148,7 +148,25 @@ function currentRef() {
 let mode = params.get("mode") === "login" ? "login" : params.get("mode") === "forgot" ? "forgot" : "register";
 const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
 const selectedPack = packId ? PACKS[packId] : null;
-const nextMode = params.get("next") === "image" ? "image" : "";
+const nextRaw = (params.get("next") || "").trim();
+const nextMode = nextRaw === "image" ? "image" : "";
+function safeNextPath() {
+  const n = nextRaw;
+  if (!n || n === "image") return "";
+  if (n.charAt(0) !== "/" || n.charAt(1) === "/" || /[:\\]/.test(n)) return "";
+  if (
+    n === "/workspace" ||
+    n.indexOf("/workspace?") === 0 ||
+    n === "/pricing" ||
+    n.indexOf("/pricing?") === 0 ||
+    n === "/" ||
+    n.indexOf("/#") === 0
+  ) {
+    return n;
+  }
+  return "";
+}
+const nextPath = safeNextPath();
 
 const title = document.getElementById("title");
 const lead = document.getElementById("lead");
@@ -164,15 +182,23 @@ const hdrLogin = document.getElementById("hdrLogin");
 const hdrSignup = document.getElementById("hdrSignup");
 
 function authUrl(nextAuthMode) {
-  let url = "/auth?mode=" + nextAuthMode;
+  const modeParam = nextAuthMode === "login" ? "login" : nextAuthMode === "forgot" ? "forgot" : "register";
+  let url = "/auth?mode=" + modeParam;
   if (packId) url += "&pack=" + encodeURIComponent(packId);
-  if (nextMode) url += "&next=" + encodeURIComponent(nextMode);
+  if (nextPath) url += "&next=" + encodeURIComponent(nextPath);
+  else if (nextMode) url += "&next=" + encodeURIComponent(nextMode);
   const ref = currentRef();
   if (ref) url += "&ref=" + encodeURIComponent(ref);
   return url;
 }
 
 function workspaceUrl() {
+  if (nextPath) {
+    if (packId && nextPath.indexOf("pack=") === -1) {
+      return nextPath + (nextPath.indexOf("?") >= 0 ? "&" : "?") + "pack=" + encodeURIComponent(packId);
+    }
+    return nextPath;
+  }
   const q = [];
   if (packId) q.push("pack=" + encodeURIComponent(packId));
   if (nextMode) q.push("mode=" + encodeURIComponent(nextMode));

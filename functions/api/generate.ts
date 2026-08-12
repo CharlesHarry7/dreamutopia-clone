@@ -428,7 +428,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(session.userId)
       .first<{ credits: number }>();
     const credits = row ? Number(row.credits) : 0;
-    return json({ error: "insufficient credits", credits }, 402);
+    return json(
+      {
+        error: "insufficient_credits",
+        code: "insufficient_credits",
+        message:
+          "This model costs more credits than you currently have. Buy a pack on Pricing, or pick a cheaper model. Nothing was generated.",
+        credits,
+      },
+      402
+    );
   }
 
   const callBackUrl = kieCallbackUrl(new URL(request.url).origin);
@@ -469,6 +478,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   if (!created.ok) {
     await refundCredits(env, session.userId, cost);
+    const msg = created.message || "";
+    if (created.code === 402 || /insufficient|balance/i.test(msg)) {
+      return structuredError(
+        "kie_insufficient_balance",
+        "The video provider is out of credit right now. This is not your DreamUtopia balance — nothing was marked as successful. Try again later.",
+        502,
+        { providerCode: created.code ?? null }
+      );
+    }
     return createFailedResponse(created);
   }
 
@@ -673,6 +691,15 @@ async function handleGuestPost(
     callBackUrl: kieCallbackUrl(new URL(request.url).origin),
   });
   if (!created.ok) {
+    const msg = created.message || "";
+    if (created.code === 402 || /insufficient|balance/i.test(msg)) {
+      return structuredError(
+        "kie_insufficient_balance",
+        "The video provider is out of credit right now. This is not your DreamUtopia balance — nothing was marked as successful. Try again later.",
+        502,
+        { providerCode: created.code ?? null }
+      );
+    }
     return createFailedResponse(created);
   }
 

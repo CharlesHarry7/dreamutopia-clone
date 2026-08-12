@@ -383,6 +383,8 @@ nav{display:none}
 <li><a href="/#faq">FAQ</a></li>
 <li><a href="/pricing">Pricing</a></li>
 <li><a href="/workspace">Workspace</a></li>
+<li><a href="/auth?mode=register&amp;next=/workspace">Sign up</a></li>
+<li><a href="/auth?mode=login&amp;next=/workspace">Log in</a></li>
 </ul>
 </div>
 <div class="footer-col">
@@ -438,7 +440,7 @@ nav{display:none}
     if (!token) return hydrateHeader(false);
     if (loginBtn) {
       loginBtn.textContent = (window.DU && DU.t("hdr.logout", "Log Out")) || "Log Out";
-      loginBtn.href = "#";
+      loginBtn.href = "/auth?mode=login";
       loginBtn.onclick = function (e) {
         e.preventDefault();
         fetch("/api/auth/logout", {
@@ -509,7 +511,7 @@ nav{display:none}
         a.onclick = null;
         return;
       }
-      a.href = "#";
+      a.href = "/pricing";
       a.onclick = async function (e) {
         e.preventDefault();
         const token = localStorage.getItem(TOKEN_KEY);
