@@ -7,8 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/password-field";
 import { api, type ApiError } from "@/lib/api";
 
 function ResetForm() {
@@ -59,30 +58,20 @@ function ResetForm() {
           </div>
         ) : (
           <form className="space-y-4" onSubmit={onSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="password">New password</Label>
-              <Input
-                id="password"
-                type="password"
-                minLength={6}
-                required
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm password</Label>
-              <Input
-                id="confirm"
-                type="password"
-                minLength={6}
-                required
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-              />
-            </div>
+            <PasswordField
+              id="password"
+              label="New password"
+              autoComplete="new-password"
+              value={password}
+              onChange={setPassword}
+            />
+            <PasswordField
+              id="confirm"
+              label="Confirm password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={setConfirm}
+            />
             {error && (
               <p className="text-sm text-[var(--red)]" role="alert">
                 {error}

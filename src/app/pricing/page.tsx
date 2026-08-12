@@ -110,14 +110,18 @@ export default function PricingPage() {
               "Buy credits and use them across every video and image model. No subscriptions."
             )}
           </p>
-          {note && (
-            <p
-              className="mx-auto mt-5 max-w-2xl rounded-xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
-              role="status"
-            >
-              <b>{configured ? "Checkout is live." : "No fake charge."}</b> {note}
-            </p>
-          )}
+          <p
+            className="mx-auto mt-5 max-w-2xl rounded-xl border border-orange-400/35 bg-orange-400/10 px-4 py-3 text-sm text-[var(--orange)]"
+            role="status"
+          >
+            {note ? (
+              <>
+                <b>{configured ? "Checkout is live." : "No fake charge."}</b> {note}
+              </>
+            ) : (
+              "Checking checkout…"
+            )}
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -30,11 +30,24 @@ const FALLBACK_GALLERY = [
 export default function HomePage() {
   const { t } = useI18n();
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(true);
 
   useEffect(() => {
-    api<{ items?: GalleryItem[] }>("/gallery")
-      .then((data) => setGallery(Array.isArray(data.items) ? data.items : []))
-      .catch(() => setGallery([]));
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await api<{ items?: GalleryItem[] }>("/gallery");
+        if (cancelled) return;
+        setGallery(Array.isArray(data.items) ? data.items : []);
+      } catch {
+        if (!cancelled) setGallery([]);
+      } finally {
+        if (!cancelled) setGalleryLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const items =
@@ -156,39 +169,52 @@ export default function HomePage() {
               {t("gallery.p", "A gallery of stunning visuals our creators have made")}
             </p>
           </div>
+          {galleryLoading && (
+            <p className="mb-4 text-center text-xs text-muted-foreground" role="status">
+              Loading community gallery…
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {items.map((item) => {
-              const url = item.url;
-              const prompt = "prompt" in item ? item.prompt || "" : "";
-              const isVideo =
-                ("kind" in item && String(item.kind).toLowerCase() === "video") ||
-                /\.(mp4|webm|mov)(\?|$)/i.test(url);
-              return (
-                <a
-                  key={String(item.id)}
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group aspect-[3/4] overflow-hidden rounded-[10px] bg-[var(--bg2)] transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={prompt ? `Open gallery item: ${prompt}` : "Open gallery item"}
-                >
-                  {isVideo ? (
-                    <video
-                      src={url}
-                      muted
-                      playsInline
-                      loop
-                      autoPlay
-                      preload="metadata"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt={prompt} className="h-full w-full object-cover" />
-                  )}
-                </a>
-              );
-            })}
+            {galleryLoading
+              ? Array.from({ length: 12 }, (_, i) => (
+                  <div
+                    key={`sk-${i}`}
+                    className="aspect-[3/4] animate-pulse rounded-[10px] bg-white/5"
+                    aria-hidden
+                  />
+                ))
+              : items.map((item) => {
+                  const url = item.url;
+                  const prompt = "prompt" in item ? item.prompt || "" : "";
+                  const isVideo =
+                    ("kind" in item && String(item.kind).toLowerCase() === "video") ||
+                    /\.(mp4|webm|mov)(\?|$)/i.test(url);
+                  return (
+                    <a
+                      key={String(item.id)}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group aspect-[3/4] overflow-hidden rounded-[10px] bg-[var(--bg2)] transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={prompt ? `Open gallery item: ${prompt}` : "Open gallery item"}
+                    >
+                      {isVideo ? (
+                        <video
+                          src={url}
+                          muted
+                          playsInline
+                          loop
+                          autoPlay
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt={prompt} className="h-full w-full object-cover" />
+                      )}
+                    </a>
+                  );
+                })}
           </div>
         </section>
 

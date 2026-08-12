@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/password-field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, getStoredReferral, type ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -157,19 +158,14 @@ function AuthForm() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">{t("auth.password", "Password")}</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              required
-              minLength={6}
-              placeholder={t("auth.passPh", "At least 6 characters")}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          <PasswordField
+            id="password"
+            label={t("auth.password", "Password")}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            placeholder={t("auth.passPh", "At least 6 characters")}
+            value={password}
+            onChange={setPassword}
+          />
 
           {infoMsg && (
             <p className="text-sm text-[var(--green)]" role="status">

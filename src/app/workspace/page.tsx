@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PromoBar } from "@/components/promo-bar";
 import { SiteFooter } from "@/components/site-footer";
@@ -104,6 +104,8 @@ function WorkspaceInner() {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareDone, setShareDone] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
+  const startFileRef = useRef<HTMLInputElement>(null);
+  const lastFileRef = useRef<HTMLInputElement>(null);
 
   const activeModel = mode === "image" && model === "medium" ? "lite" : model;
   const inviteUrl = user?.referralUrl || "";
@@ -554,15 +556,30 @@ function WorkspaceInner() {
                   }}
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="start-image-file">
-                      {t("gen.upload", "Upload Start Image")}
-                      {!user
-                        ? " (required for free trial)"
-                        : mode === "video"
-                          ? " (optional for text-to-video)"
-                          : " (optional)"}
-                    </Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="start-image-file">
+                        {t("gen.upload", "Upload Start Image")}
+                        {!user
+                          ? " (required for free trial)"
+                          : mode === "video"
+                            ? " (optional for text-to-video)"
+                            : " (optional)"}
+                      </Label>
+                      {imageUrl.trim() ? (
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                          onClick={() => {
+                            setImageUrl("");
+                            if (startFileRef.current) startFileRef.current.value = "";
+                          }}
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
                     <Input
+                      ref={startFileRef}
                       id="start-image-file"
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff"
@@ -590,8 +607,23 @@ function WorkspaceInner() {
 
                   {mode === "video" && (activeModel === "medium" || activeModel === "pro") && (
                     <div className="space-y-2">
-                      <Label htmlFor="last-image-file">Last frame (optional)</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="last-image-file">Last frame (optional)</Label>
+                        {lastImageUrl.trim() ? (
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-[var(--primary2)] hover:underline"
+                            onClick={() => {
+                              setLastImageUrl("");
+                              if (lastFileRef.current) lastFileRef.current.value = "";
+                            }}
+                          >
+                            Clear
+                          </button>
+                        ) : null}
+                      </div>
                       <Input
+                        ref={lastFileRef}
                         id="last-image-file"
                         type="file"
                         accept="image/*"
@@ -607,6 +639,14 @@ function WorkspaceInner() {
                         value={lastImageUrl}
                         onChange={(e) => setLastImageUrl(e.target.value)}
                       />
+                      {lastImageUrl.trim() && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={lastImageUrl}
+                          alt="Last frame preview"
+                          className="mt-1 max-h-40 rounded-lg border border-white/10 object-contain"
+                        />
+                      )}
                     </div>
                   )}
 

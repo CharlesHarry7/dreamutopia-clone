@@ -1,7 +1,4 @@
-import Link from "next/link";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { Button } from "@/components/ui/button";
+import { SeoLanding } from "@/components/seo-landing";
 
 export const metadata = {
   title: "Image to Video",
@@ -15,26 +12,12 @@ export const metadata = {
 
 export default function ImageToVideoPage() {
   return (
-    <>
-      <SiteHeader />
-      <main className="mx-auto max-w-3xl px-5 py-16 text-center">
-        <h1 className="mb-4 text-4xl font-extrabold">
-          Image to <span className="gradient-text">Video</span>
-        </h1>
-        <p className="mb-8 text-muted-foreground">
-          Upload a start frame, describe the motion, and generate with Lite / Medium / Pro models.
-          Guests get 2 free Lite tries.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Button asChild size="lg">
-            <Link href="/workspace">Open workspace</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/auth?mode=register">Sign up for 10 credits</Link>
-          </Button>
-        </div>
-      </main>
-      <SiteFooter />
-    </>
+    <SeoLanding
+      title="Image to"
+      titleAccent="Video"
+      lead="Upload a start frame, describe the motion, and generate with Lite / Medium / Pro models. Guests get 2 free Lite tries."
+      primary={{ href: "/workspace", label: "Try free" }}
+      secondary={{ href: "/auth?mode=register", label: "Sign up" }}
+    />
   );
 }
