@@ -332,15 +332,15 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 </div>
 
 <!-- Tabs + Generator -->
-<div class="gen-tabs">
-<button class="gen-tab active" data-kind="video" data-i18n="tab.video">🎬 Video</button>
-<button class="gen-tab" data-kind="image" data-i18n="tab.image">🖼 Image</button>
+<div class="gen-tabs" role="tablist" aria-label="Generator type" data-i18n-aria="a11y.genType">
+<button type="button" class="gen-tab active" role="tab" id="homeTabVideo" data-kind="video" aria-selected="true" aria-controls="homeGenCard" tabindex="0" data-i18n="tab.video">🎬 Video</button>
+<button type="button" class="gen-tab" role="tab" id="homeTabImage" data-kind="image" aria-selected="false" aria-controls="homeGenCard" tabindex="-1" data-i18n="tab.image">🖼 Image</button>
 </div>
 
-<div class="gen-card">
+<div class="gen-card" id="homeGenCard" role="tabpanel" aria-labelledby="homeTabVideo">
 <h2 data-i18n="gen.videoTitle">AI Video Generator</h2>
 
-<div class="upload-area" id="homeUpload" role="button" tabindex="0">
+<div class="upload-area" id="homeUpload" role="button" tabindex="0" aria-labelledby="homeUploadLabel" aria-describedby="homeUploadHint">
 <input type="file" id="homeFile" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none">
 <div class="icon" id="homeUploadIcon">🖼</div>
 <div class="p1" id="homeUploadLabel" data-i18n="gen.upload">Upload Start Image</div>
@@ -352,18 +352,18 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <label for="homePrompt" data-i18n="gen.prompt">Describe Your Video</label>
 <span><span class="req" data-i18n="gen.required">Required</span> &nbsp; <span class="counter" id="homeCounter">0/8000</span></span>
 </div>
-<textarea class="prompt-input" id="homePrompt" maxlength="8000" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
+<textarea class="prompt-input" id="homePrompt" maxlength="8000" required aria-required="true" aria-describedby="homeCounter" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
 
 <button class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
 <p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
 <div class="gen-status" id="homeStatus" role="status" aria-live="polite">
-<div class="spinner"></div>
+<div class="spinner" aria-hidden="true"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
-<button type="button" class="gen-cancel" id="homeCancel" hidden data-i18n="progress.cancel">Stop waiting</button>
+<button type="button" class="gen-cancel" id="homeCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
 </div>
-<div class="gen-result" id="homeResult">
-<video id="homeVideo" controls playsinline></video>
+<div class="gen-result" id="homeResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
+<video id="homeVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
 <div class="result-actions">
 <a id="homeResultLink" href="#" target="_blank" rel="noopener" data-i18n="gen.open">Open result</a>
 <button type="button" id="homeDownload" data-i18n="gen.download">Download</button>
@@ -641,6 +641,13 @@ function syncHomeTab() {
   if (label) label.textContent = image ? DU.t("gen.uploadImage", "Reference image (optional)") : DU.t("gen.upload", "Upload Start Image");
   const promptLabel = document.querySelector(".gen-card .label-row label");
   if (promptLabel) promptLabel.textContent = image ? "Describe Your Image" : DU.t("gen.prompt", "Describe Your Video");
+  const panel = document.getElementById("homeGenCard");
+  document.querySelectorAll(".gen-tab").forEach(function (t) {
+    const on = t.classList.contains("active");
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    if (on && panel) panel.setAttribute("aria-labelledby", t.id);
+  });
 }
 
 function goWorkspace(extra) {
@@ -655,6 +662,7 @@ document.querySelectorAll(".gen-tab").forEach((tab) => {
     syncHomeTab();
   });
 });
+if (DU.bindTablist) DU.bindTablist(document.querySelector(".gen-tabs"));
 document.addEventListener("du:i18n", syncHomeTab);
 
 function updateGen(ta) {
@@ -718,6 +726,7 @@ function takeHomeFile(file) {
   homeFile = file;
   homeImageUrl = "";
   setHomePreview(file);
+  if (homeUpload) homeUpload.removeAttribute("aria-invalid");
 }
 
 if (homeUpload && homeFileInput) {
@@ -780,8 +789,15 @@ async function homeGenerate() {
   if (!homeFile && !homeImageUrl && !token) {
     const status = document.getElementById("homeStatus");
     const text = document.getElementById("homeStatusText");
-    status.classList.add("show");
-    text.textContent = DU.t("need.image", "Upload a start image for the free Lite trial.");
+    const upload = document.getElementById("homeUpload");
+    if (upload) upload.setAttribute("aria-invalid", "true");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, text, { error: true, text: DU.t("need.image", "Upload a start image for the free Lite trial.") });
+    } else {
+      status.classList.add("show");
+      text.textContent = DU.t("need.image", "Upload a start image for the free Lite trial.");
+    }
+    if (DU.focusEl && upload) DU.focusEl(upload);
     return;
   }
   homeBusy = true;
@@ -793,11 +809,17 @@ async function homeGenerate() {
   const result = document.getElementById("homeResult");
   const video = document.getElementById("homeVideo");
   const cancel = document.getElementById("homeCancel");
+  const card = document.getElementById("homeGenCard");
   btn.disabled = true;
-  status.classList.add("show");
+  if (card) card.setAttribute("aria-busy", "true");
   result.classList.remove("show");
   if (cancel) cancel.hidden = false;
-  text.textContent = DU.t("progress.starting", "Starting…");
+  if (DU.setLiveStatus) {
+    DU.setLiveStatus(status, text, { busy: true, text: DU.t("progress.starting", "Starting…") });
+  } else {
+    status.classList.add("show");
+    text.textContent = DU.t("progress.starting", "Starting…");
+  }
   try {
     let imageUrl = homeImageUrl;
     if (homeFile && !imageUrl) {
@@ -822,13 +844,26 @@ async function homeGenerate() {
       DU.downloadResult(done.resultUrl, "dreamutopia-" + (data.generationId || "video"));
     };
     result.classList.add("show");
-    text.innerHTML = '<span style="color:#22c55e">Done</span>';
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, text, {
+        busy: false,
+        html: true,
+        text: '<span style="color:#22c55e">' + DU.t("progress.done", "Done") + "</span>",
+      });
+    } else {
+      text.innerHTML = '<span style="color:#22c55e">' + DU.t("progress.done", "Done") + "</span>";
+    }
+    if (DU.focusEl) DU.focusEl(result);
   } catch (e) {
     const code = e && e.code ? String(e.code) : "";
-    text.textContent = DU.errorMessage(e, e.message || "Generation failed");
+    const msg = DU.errorMessage(e, e.message || "Generation failed");
+    if (DU.setLiveStatus) DU.setLiveStatus(status, text, { error: true, text: msg });
+    else text.textContent = msg;
+    if (DU.focusEl) DU.focusEl(text);
     if (code === "guest_limit") setGuestFoot(0);
     if (e && e.payload && e.payload.guestRemaining !== undefined) setGuestFoot(e.payload.guestRemaining);
   }
+  if (card) card.setAttribute("aria-busy", "false");
   if (cancel) cancel.hidden = true;
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));

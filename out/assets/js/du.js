@@ -312,6 +312,66 @@
     });
   }
 
+  function setLiveStatus(box, textEl, opts) {
+    opts = opts || {};
+    if (!box) return;
+    box.classList.add("show");
+    box.setAttribute("aria-busy", opts.busy ? "true" : "false");
+    if (opts.error) {
+      box.setAttribute("role", "alert");
+      box.setAttribute("aria-live", "assertive");
+    } else {
+      box.setAttribute("role", "status");
+      box.setAttribute("aria-live", "polite");
+    }
+    if (textEl && opts.text != null) {
+      if (opts.html) textEl.innerHTML = opts.text;
+      else textEl.textContent = opts.text;
+    }
+    if (opts.busy || opts.error) {
+      try {
+        box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch (e) {}
+    }
+  }
+
+  function focusEl(el) {
+    if (!el) return;
+    if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+    try {
+      el.focus();
+    } catch (e) {}
+  }
+
+  function bindTablist(root) {
+    if (!root) return;
+    root.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+      const tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]'));
+      if (!tabs.length) return;
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      let next = i;
+      if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") next = 0;
+      else next = tabs.length - 1;
+      tabs[next].focus();
+      tabs[next].click();
+    });
+  }
+
+  function bindActivate(el, fn) {
+    if (!el || typeof fn !== "function") return;
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fn(e);
+      }
+    });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -332,5 +392,9 @@
     bindImageDrop: bindImageDrop,
     bindImagePaste: bindImagePaste,
     bindModEnter: bindModEnter,
+    setLiveStatus: setLiveStatus,
+    focusEl: focusEl,
+    bindTablist: bindTablist,
+    bindActivate: bindActivate,
   };
 })(window);

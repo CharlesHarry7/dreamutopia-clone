@@ -353,37 +353,37 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 </section>
 
 <!-- Create / My Creations -->
-<div class="tabs-primary" role="tablist">
-<button type="button" class="active" id="tabCreate" onclick="switchPrimaryTab('create')" data-i18n="ws.tab.create">Create</button>
-<button type="button" id="tabHistory" onclick="switchPrimaryTab('history')" data-i18n="ws.tab.history">My Creations</button>
+<div class="tabs-primary" role="tablist" aria-label="Workspace" data-i18n-aria="a11y.workspace">
+<button type="button" class="active" role="tab" id="tabCreate" aria-selected="true" aria-controls="createView" tabindex="0" onclick="switchPrimaryTab('create')" data-i18n="ws.tab.create">Create</button>
+<button type="button" role="tab" id="tabHistory" aria-selected="false" aria-controls="historyView" tabindex="-1" onclick="switchPrimaryTab('history')" data-i18n="ws.tab.history">My Creations</button>
 </div>
 
 <!-- CREATE VIEW -->
-<section id="createView">
-<div class="mode-switch" role="tablist" aria-label="Generation mode">
-<button type="button" class="active" id="modeVideo" onclick="switchMode('video')">
+<section id="createView" role="tabpanel" aria-labelledby="tabCreate">
+<div class="mode-switch" role="tablist" aria-label="Generation mode" data-i18n-aria="a11y.mode">
+<button type="button" class="active" role="tab" id="modeVideo" aria-selected="true" aria-controls="wsGenCard" tabindex="0" onclick="switchMode('video')">
 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
 Video
 </button>
-<button type="button" id="modeImage" onclick="switchMode('image')">
+<button type="button" role="tab" id="modeImage" aria-selected="false" aria-controls="wsGenCard" tabindex="-1" onclick="switchMode('image')">
 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 Image
 </button>
 </div>
 
 <div class="gen-wrap">
-<div class="gen-card">
+<div class="gen-card" id="wsGenCard">
 <h2 id="genTitle">AI Video Generator</h2>
 
 <div class="upload-grid" id="uploadGrid">
-<div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+<div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-labelledby="uploadLabel" aria-describedby="uploadHint" onclick="document.getElementById('fileInput').click()">
 <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none" onchange="handleFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1" id="uploadLabel">Upload Start Image</div>
 <div class="p2" id="uploadHint" data-i18n="ws.upload.hint">Drop, paste, or browse · JPG, PNG, WebP, GIF, or TIFF · up to 20 MB</div>
 <button type="button" class="remove-btn" id="removeImgBtn" onclick="event.stopPropagation(); clearUpload()" aria-label="Remove image">✕</button>
 </div>
-<div class="upload-area last-slot" id="lastUploadArea" onclick="document.getElementById('lastFileInput').click()">
+<div class="upload-area last-slot" id="lastUploadArea" role="button" tabindex="0" aria-label="Upload last frame" onclick="document.getElementById('lastFileInput').click()">
 <input type="file" id="lastFileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none" onchange="handleLastFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1">Upload Last Frame</div>
@@ -392,8 +392,8 @@ Image
 </div>
 </div>
 <p class="url-hint" id="urlHint">Start image optional — skip it for text-to-video. Or paste a public https URL.</p>
-<input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/start-frame.png" autocomplete="off">
-<input class="url-input last-slot" type="url" id="lastImageUrlInput" placeholder="https://example.com/last-frame.png" autocomplete="off" style="margin-top:-8px">
+<input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/start-frame.png" autocomplete="off" data-i18n-aria="a11y.startUrl" aria-label="Start image URL">
+<input class="url-input last-slot" type="url" id="lastImageUrlInput" placeholder="https://example.com/last-frame.png" autocomplete="off" style="margin-top:-8px" data-i18n-aria="a11y.lastUrl" aria-label="Last frame URL">
 <div class="blend-row" id="blendRow">
 <button type="button" class="opt-chip" id="addBlendBtn" onclick="document.getElementById('blendInput').click()">+ Add blend images</button>
 <input type="file" id="blendInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" multiple style="display:none" onchange="handleBlendFiles(this)">
@@ -404,40 +404,40 @@ Image
 <div class="label-row">
 <label id="promptLabel" for="promptInput">Describe Your Video</label>
 </div>
-<textarea class="prompt-input" id="promptInput" maxlength="8000" placeholder="A futuristic city with flying cars..." oninput="onPromptInput()"></textarea>
+<textarea class="prompt-input" id="promptInput" maxlength="8000" required aria-required="true" aria-describedby="charCount" placeholder="A futuristic city with flying cars..." oninput="onPromptInput()"></textarea>
 <div class="char-row">
 <span>Required</span>
 <span><span id="charCount">0</span>/8000</span>
 </div>
 
-<div class="model-row" id="videoModels">
-<button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
+<div class="model-row" id="videoModels" role="group" aria-label="Model" data-i18n-aria="a11y.models">
+<button type="button" class="model-opt active" data-model="lite" aria-pressed="true" onclick="pickModel('lite')">
 <div class="n">Lite</div>
 <div class="c">3 credits</div>
 </button>
-<button type="button" class="model-opt" data-model="medium" onclick="pickModel('medium')">
+<button type="button" class="model-opt" data-model="medium" aria-pressed="false" onclick="pickModel('medium')">
 <div class="n">Medium</div>
 <div class="c">5 credits</div>
 </button>
-<button type="button" class="model-opt" data-model="pro" onclick="pickModel('pro')">
+<button type="button" class="model-opt" data-model="pro" aria-pressed="false" onclick="pickModel('pro')">
 <div class="n">Pro</div>
 <div class="c">16 credits</div>
 <div class="t">with Sound</div>
 </button>
 </div>
-<div class="model-row" id="imageModels" style="display:none">
-<button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
+<div class="model-row" id="imageModels" style="display:none" role="group" aria-label="Model" data-i18n-aria="a11y.models">
+<button type="button" class="model-opt active" data-model="lite" aria-pressed="true" onclick="pickModel('lite')">
 <div class="n">Lite</div>
 <div class="c">1 credit · 1K</div>
 </button>
-<button type="button" class="model-opt" data-model="pro" onclick="pickModel('pro')">
+<button type="button" class="model-opt" data-model="pro" aria-pressed="false" onclick="pickModel('pro')">
 <div class="n">Pro</div>
 <div class="c">2 credits · 2K / 4K</div>
 </button>
 </div>
-<div class="opt-row" id="durationRow">
-<button type="button" class="opt-chip active" data-dur="5" onclick="pickDuration(5)">5s</button>
-<button type="button" class="opt-chip" data-dur="10" onclick="pickDuration(10)">10s</button>
+<div class="opt-row" id="durationRow" role="group" aria-label="Duration" data-i18n-aria="a11y.duration">
+<button type="button" class="opt-chip active" data-dur="5" aria-pressed="true" onclick="pickDuration(5)">5s</button>
+<button type="button" class="opt-chip" data-dur="10" aria-pressed="false" onclick="pickDuration(10)">10s</button>
 </div>
 <div class="opt-row" id="aspectRow" style="display:none">
 <button type="button" class="opt-chip active" data-ar="16:9" onclick="pickAspect('16:9')">16:9</button>
@@ -452,12 +452,12 @@ Image
 <p class="gen-foot" id="genFoot">2 free Lite videos. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for 10 credits.</p>
 
 <div class="gen-status" id="genStatus" role="status" aria-live="polite">
-<div class="spinner" id="genSpinner"></div>
+<div class="spinner" id="genSpinner" aria-hidden="true"></div>
 <div class="cap" id="genStatusText">Generating…</div>
-<button type="button" class="gen-cancel" id="genCancel" hidden data-i18n="progress.cancel">Stop waiting</button>
+<button type="button" class="gen-cancel" id="genCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
 </div>
-<div class="gen-result" id="genResult">
-<video id="genResultVideo" controls playsinline></video>
+<div class="gen-result" id="genResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
+<video id="genResultVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
 <img id="genResultImage" class="preview-out" alt="Generated image" hidden>
 <div class="result-actions">
 <a id="genResultLink" href="#" target="_blank" rel="noopener" data-i18n="ws.result.open">Open result URL</a>
@@ -480,7 +480,7 @@ Image
 </section>
 
 <!-- HISTORY VIEW -->
-<section class="history-panel" id="historyView">
+<section class="history-panel" id="historyView" role="tabpanel" aria-labelledby="tabHistory">
 <div class="history-empty" id="historyEmpty">
 <h3 id="historyEmptyTitle" data-i18n="ws.history.signin.h">Sign in to view your history</h3>
 <p id="historyEmptyDesc" data-i18n="ws.history.signin.p">Your creations will appear here after you log in.</p>
@@ -872,8 +872,14 @@ function updateAuthUI(credits) {
 
 function switchPrimaryTab(tab) {
   const create = tab === "create";
-  document.getElementById("tabCreate").classList.toggle("active", create);
-  document.getElementById("tabHistory").classList.toggle("active", !create);
+  const tabCreate = document.getElementById("tabCreate");
+  const tabHistory = document.getElementById("tabHistory");
+  tabCreate.classList.toggle("active", create);
+  tabHistory.classList.toggle("active", !create);
+  tabCreate.setAttribute("aria-selected", create ? "true" : "false");
+  tabHistory.setAttribute("aria-selected", create ? "false" : "true");
+  tabCreate.tabIndex = create ? 0 : -1;
+  tabHistory.tabIndex = create ? -1 : 0;
   document.getElementById("createView").style.display = create ? "" : "none";
   document.getElementById("historyView").classList.toggle("show", !create);
   if (!create) loadHistory();
@@ -899,6 +905,10 @@ function switchMode(mode) {
   currentMode = mode === "image" ? "image" : "video";
   document.getElementById("modeVideo").classList.toggle("active", currentMode === "video");
   document.getElementById("modeImage").classList.toggle("active", currentMode === "image");
+  document.getElementById("modeVideo").setAttribute("aria-selected", currentMode === "video" ? "true" : "false");
+  document.getElementById("modeImage").setAttribute("aria-selected", currentMode === "image" ? "true" : "false");
+  document.getElementById("modeVideo").tabIndex = currentMode === "video" ? 0 : -1;
+  document.getElementById("modeImage").tabIndex = currentMode === "image" ? 0 : -1;
   document.getElementById("genTitle").textContent = currentMode === "video" ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
   document.getElementById("uploadLabel").textContent = currentMode === "video" ? "Upload Start Image" : "Reference image (optional)";
   document.getElementById("promptLabel").textContent = currentMode === "video" ? "Describe Your Video" : "Describe Your Image";
@@ -936,7 +946,9 @@ function pickModel(v) {
   const row = document.getElementById(currentMode === "image" ? "imageModels" : "videoModels");
   if (!row) return;
   row.querySelectorAll(".model-opt").forEach((el) => {
-    el.classList.toggle("active", el.dataset.model === v);
+    const on = el.dataset.model === v;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
   syncVideoOptions();
 }
@@ -944,7 +956,9 @@ function pickModel(v) {
 function pickDuration(n) {
   durationSec = n === 10 ? 10 : 5;
   document.querySelectorAll("#durationRow .opt-chip").forEach((el) => {
-    el.classList.toggle("active", Number(el.dataset.dur) === durationSec);
+    const on = Number(el.dataset.dur) === durationSec;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
 }
 
@@ -1016,6 +1030,8 @@ function handleFile(input) {
   uploadedImage = file;
   uploadedImageUrl = "";
   uploadedMediaKey = "";
+  const startArea = document.getElementById("uploadArea");
+  if (startArea) startArea.removeAttribute("aria-invalid");
   previewOnArea(document.getElementById("uploadArea"), file);
   syncVideoOptions();
 }
@@ -1097,6 +1113,18 @@ function bindUploadDrop() {
   if (DU.bindModEnter) {
     DU.bindModEnter(document.getElementById("promptInput"), generate);
   }
+  if (DU.bindActivate) {
+    DU.bindActivate(document.getElementById("uploadArea"), function () {
+      document.getElementById("fileInput").click();
+    });
+    DU.bindActivate(document.getElementById("lastUploadArea"), function () {
+      document.getElementById("lastFileInput").click();
+    });
+  }
+  if (DU.bindTablist) {
+    DU.bindTablist(document.querySelector(".tabs-primary"));
+    DU.bindTablist(document.querySelector(".mode-switch"));
+  }
 }
 
 async function uploadImageFile(file) {
@@ -1123,7 +1151,14 @@ async function generate() {
     return toast(DU.t("err.guest_lite_only", "Image generation needs a free account (10 credits)."), true);
   }
   if (!token && currentMode === "video" && !uploadedImage && !imageUrl) {
-    return toast(DU.t("err.image_url_required", "Free trial needs a start image."), true);
+    const msg = DU.t("err.image_url_required", "Free trial needs a start image.");
+    const area = document.getElementById("uploadArea");
+    if (area) area.setAttribute("aria-invalid", "true");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(document.getElementById("genStatus"), document.getElementById("genStatusText"), { error: true, text: msg });
+    }
+    if (DU.focusEl && area) DU.focusEl(area);
+    return toast(msg, true);
   }
 
   const btn = document.getElementById("genBtn");
@@ -1131,16 +1166,22 @@ async function generate() {
   const statusText = document.getElementById("genStatusText");
   const spinner = document.getElementById("genSpinner");
   const cancel = document.getElementById("genCancel");
+  const card = document.getElementById("wsGenCard");
   if (genPollAbort) genPollAbort.abort();
   genPollAbort = new AbortController();
   btn.disabled = true;
   btn.classList.remove("ready");
   document.getElementById("genBtnLabel").textContent = DU.t("progress.generating", "Generating…");
-  status.classList.add("show");
   spinner.style.display = "";
   if (cancel) cancel.hidden = false;
+  if (card) card.setAttribute("aria-busy", "true");
   showResult(null);
-  statusText.textContent = DU.t("progress.starting", "Starting…");
+  if (DU.setLiveStatus) {
+    DU.setLiveStatus(status, statusText, { busy: true, text: DU.t("progress.starting", "Starting…") });
+  } else {
+    status.classList.add("show");
+    statusText.textContent = DU.t("progress.starting", "Starting…");
+  }
 
   try {
     if (uploadedImage && !uploadedImageUrl) {
@@ -1207,8 +1248,18 @@ async function generate() {
     const done = await pollGeneration(data.generationId, statusText, genPollAbort && genPollAbort.signal);
     spinner.style.display = "none";
     const kind = done.kind || data.kind || currentMode;
-    statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
+    const doneLabel = DU.t("progress.done", "Done");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, statusText, {
+        busy: false,
+        html: true,
+        text: `<span style="color:var(--green)">${doneLabel}</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`,
+      });
+    } else {
+      statusText.innerHTML = `<span style="color:var(--green)">${doneLabel}</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
+    }
     showResult(done.resultUrl, kind, done.generation && done.generation.id || data.generationId);
+    if (DU.focusEl) DU.focusEl(document.getElementById("genResult"));
     toast(kind === "image" ? DU.t("ws.ready.image", "Image ready") : DU.t("ws.ready.video", "Video ready"));
     loadHistory();
   } catch (e) {
@@ -1223,8 +1274,10 @@ async function generate() {
       updateAuthUI();
     }
     statusText.textContent = msg;
+    if (DU.setLiveStatus) DU.setLiveStatus(status, statusText, { error: true, text: msg });
     toast(msg, true);
   }
+  if (card) card.setAttribute("aria-busy", "false");
   const cancelBtn = document.getElementById("genCancel");
   if (cancelBtn) cancelBtn.hidden = true;
   resetGenBtn();

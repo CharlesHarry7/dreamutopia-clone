@@ -68,6 +68,8 @@ function extractI18nKeys(src) {
     "offline.h",
     "a11y.menu",
     "notfound.h",
+    "progress.done",
+    "a11y.result",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -142,12 +144,18 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v10", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v11", "SW cache bump");
   mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
   mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
   mustContain("out/index.html", 'href="#main"', "homepage skip link");
   mustContain("out/index.html", "prefers-reduced-motion", "reduced motion");
   mustContain("out/index.html", 'aria-live="polite"', "live generate status");
+  mustContain("out/index.html", 'role="tablist"', "homepage gen tabs");
+  mustContain("out/index.html", 'aria-required="true"', "homepage prompt required");
+  mustContain("out/workspace.html", 'aria-required="true"', "workspace prompt required");
+  mustContain("out/workspace.html", "setLiveStatus", "workspace live status");
+  mustContain("out/assets/js/du.js", "setLiveStatus", "shared live status");
+  mustContain("out/assets/js/du.js", "bindTablist", "tablist keyboard");
   mustContain("out/index.html", "nav-toggle", "homepage hamburger");
   mustContain("out/workspace.html", "nav-toggle", "workspace hamburger");
   mustContain("out/pricing.html", "nav-toggle", "pricing hamburger");
