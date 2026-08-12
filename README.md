@@ -1,24 +1,33 @@
-# DreamUtopia Clone — Cloudflare Full Stack
+# DreamUtopia Clone — Cursor 临摹站（不是 pikbo）
 
-1:1 clone of **[dreamutopia.net](https://dreamutopia.net)** (AI image-to-video). Not taletok.io, not magicremover.
+这是 **Cursor 做的** [dreamutopia.net](https://dreamutopia.net) 1:1 临摹。  
+**不是** 主站 pikbo，**也不是** OpenCode 做的 Magic Remover。
 
-## 名字对照（避免搞混）
+## 你同时在做的三个网站
 
-| 你看到的 | 实际是什么 | 不是什么 |
-|---|---|---|
-| **dreamutopia.net** | 原站，抄的对象 | 不是我们的仓库/域名 |
-| **dreamutopia-clone** | GitHub 仓库名 + Cloudflare Pages 项目名 | 不是原站 |
-| **https://github.com/CharlesHarry7/dreamutopia-clone** | 代码仓库 | GitHub 简介里若还写 `taletok.io`，那是旧文案，忽略 |
-| **https://dreamutopia-clone.pages.dev** | **生产站**（`main` 分支） | 不是预览 |
-| **https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev** | **PR #12 预览**（当前开发分支） | 不是生产 |
-| **PR [#12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12)** | 游客 2 次试用 / 文生视频 / 首尾帧，待合并 | 合进 `main` 后生产才会更新 |
-| **dreamutopia-db** | D1 数据库 | — |
-| **dreamutopia-media** | R2 图片/视频桶 | — |
-| **SESSIONS** | KV：登录 session + 游客试用次数 | — |
-| **KIE_API_KEY** | 出图/出视频的密钥（生产有，预览没有） | — |
-| **magicremover-clone / pikbo / plaindoc / laoma-price-watch** | 你账号下的**别的仓库** | 和本站无关 |
+| # | 谁做的 | 仓库 | 抄谁 / 产品 | 线上 |
+|---|---|---|---|---|
+| 1 主站 | 你自己 | [**pikbo**](https://github.com/CharlesHarry7/pikbo) | 原创：潮玩私密 AI 视频 | [pikbo.ai](https://pikbo.ai) |
+| 2 本仓库 | **Cursor** | [**dreamutopia-clone**](https://github.com/CharlesHarry7/dreamutopia-clone) | 临摹 dreamutopia.net（图生视频） | [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) |
+| 3 另一个临摹 | **OpenCode** | [**magicremover-clone**](https://github.com/CharlesHarry7/magicremover-clone) | 临摹 magicremover.org（AI 去物体） | 看该仓库 README / 部署 |
 
-仓库曾从 `taletok-clone` 改名为 `dreamutopia-clone`。代码里一律用 DreamUtopia。
+记法：`pikbo` = 正业 · `dreamutopia-clone` = Cursor 抄 DreamUtopia · `magicremover-clone` = OpenCode 抄 Magic Remover。
+
+GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `taletok-clone` 改名而来。
+
+## 本仓库内部名字（DreamUtopia 这一站）
+
+| 名字 | 是什么 |
+|---|---|
+| dreamutopia.net | 原站（抄的对象，不是我们的） |
+| dreamutopia-clone | GitHub 仓库 + Cloudflare Pages 项目 |
+| https://dreamutopia-clone.pages.dev | **生产**（`main`，合 PR 前仍是旧版） |
+| https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev | **PR #12 预览**（最新功能） |
+| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | 游客试用 / 文生视频 / 首尾帧，待合并 |
+| dreamutopia-db | D1 数据库 |
+| dreamutopia-media | R2 媒体桶 |
+| SESSIONS | KV（登录 + 游客次数） |
+| KIE_API_KEY | 出图/出视频密钥（生产有，预览没有） |
 
 ## Tech Stack
 

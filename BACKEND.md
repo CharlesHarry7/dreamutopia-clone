@@ -1,6 +1,8 @@
 # Backend wiring — D1 + KV + KIE + R2 upload
 
-Cloudflare 资源名：Pages 项目 `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。原站是 dreamutopia.net，不是 taletok.io。
+本仓库 = Cursor 临摹的 DreamUtopia，不是 pikbo（主站），也不是 OpenCode 的 magicremover-clone。
+
+Cloudflare 资源名：Pages `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
 
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
