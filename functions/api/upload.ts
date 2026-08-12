@@ -36,7 +36,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     ok: true,
     mediaBound: hasMedia(env),
     maxBytes: MAX_UPLOAD_BYTES,
-    types: Object.keys(IMAGE_TYPES).filter((t) => t !== "image/jpg"),
+    types: Object.keys(IMAGE_TYPES).filter(
+      (t) => t !== "image/jpg" && t !== "image/tif" && t !== "image/x-tiff"
+    ),
     generateUsesMedia: hasMedia(env),
   });
 };
