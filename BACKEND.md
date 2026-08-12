@@ -1,5 +1,7 @@
 # Backend wiring — D1 + KV + KIE + R2 upload
 
+Cloudflare 资源名：Pages 项目 `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。原站是 dreamutopia.net，不是 taletok.io。
+
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
 - a file uploaded to R2 (`POST /api/upload` → public `GET /api/media?key=`), or

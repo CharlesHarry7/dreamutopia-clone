@@ -1,6 +1,24 @@
 # DreamUtopia Clone — Cloudflare Full Stack
 
-1:1 clone of [dreamutopia.net](https://dreamutopia.net) — AI image-to-video generator, built with pure HTML/CSS/JS + Cloudflare Pages Functions.
+1:1 clone of **[dreamutopia.net](https://dreamutopia.net)** (AI image-to-video). Not taletok.io, not magicremover.
+
+## 名字对照（避免搞混）
+
+| 你看到的 | 实际是什么 | 不是什么 |
+|---|---|---|
+| **dreamutopia.net** | 原站，抄的对象 | 不是我们的仓库/域名 |
+| **dreamutopia-clone** | GitHub 仓库名 + Cloudflare Pages 项目名 | 不是原站 |
+| **https://github.com/CharlesHarry7/dreamutopia-clone** | 代码仓库 | GitHub 简介里若还写 `taletok.io`，那是旧文案，忽略 |
+| **https://dreamutopia-clone.pages.dev** | **生产站**（`main` 分支） | 不是预览 |
+| **https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev** | **PR #12 预览**（当前开发分支） | 不是生产 |
+| **PR [#12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12)** | 游客 2 次试用 / 文生视频 / 首尾帧，待合并 | 合进 `main` 后生产才会更新 |
+| **dreamutopia-db** | D1 数据库 | — |
+| **dreamutopia-media** | R2 图片/视频桶 | — |
+| **SESSIONS** | KV：登录 session + 游客试用次数 | — |
+| **KIE_API_KEY** | 出图/出视频的密钥（生产有，预览没有） | — |
+| **magicremover-clone / pikbo / plaindoc / laoma-price-watch** | 你账号下的**别的仓库** | 和本站无关 |
+
+仓库曾从 `taletok-clone` 改名为 `dreamutopia-clone`。代码里一律用 DreamUtopia。
 
 ## Tech Stack
 
