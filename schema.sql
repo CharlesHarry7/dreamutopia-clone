@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS generations (
   model TEXT NOT NULL DEFAULT 'lite',       -- lite|medium|pro or image-lite|image-pro
   prompt TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',  -- pending | processing | done | failed
-  media_key TEXT,                          -- R2 object key (optional; unused on URL path)
+  media_key TEXT,                          -- R2 object key (optional)
   duration_sec INTEGER DEFAULT 5,
-  input_image_url TEXT,                    -- public HTTPS source image (temp path without R2)
+  input_image_url TEXT,                    -- start URL, or JSON {"first","last"}
   provider_job_id TEXT,                    -- KIE taskId
   result_url TEXT,                         -- provider result video URL (direct to client)
   error_message TEXT,

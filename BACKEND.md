@@ -1,9 +1,11 @@
 # Backend wiring — D1 + KV + KIE + R2 upload
 
-Auth, credits, and generation history need Cloudflare bindings. Image-to-video and text-to-image accept either:
+Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
 - a file uploaded to R2 (`POST /api/upload` → public `GET /api/media?key=`), or
-- any public `https` `imageUrl` that KIE can fetch (video requires this; image generation does not).
+- any public `https` `imageUrl` that KIE can fetch.
+
+Guests (no session) get **2 Lite image-to-video** tries per device cookie + IP, stored in KV (`du_guest`). Signed-in jobs go to D1.
 
 When a job finishes, the Function copies the provider file into R2 when `MEDIA` is bound, then stores that `/api/media` URL as `result_url`.
 
@@ -26,13 +28,28 @@ POST /api/upload          Authorization: Bearer <session>
 → { key, imageUrl }       // https://<host>/api/media?key=…
 
 POST /api/generate
-  Authorization: Bearer <session>
-  { "prompt", "kind": "video"|"image", "imageUrl?", "mediaKey?", "model", "durationSec?" }
+  Authorization: Bearer <session>   // optional — omit for guest Lite I2V
+  {
+    "prompt",
+    "kind": "video"|"image",
+    "imageUrl?",
+    "lastImageUrl?",
+    "imageUrls?",
+    "mediaKey?",
+    "model",
+    "durationSec?",
+    "aspectRatio?",
+    "resolution?"
+  }
 
-→ deduct credits (video Lite 3 / Med 5 / Pro 16 · image Lite 1 / Pro 2)
-→ KIE createTask (kling-2.6/image-to-video or nano-banana-2)
-→ INSERT generations
-→ { generationId, kind, status, providerJobId, credits }
+→ guest: Lite I2V only, 2 tries, KV job id `g_…`
+→ account: deduct credits (video Lite 3 / Med 5 / Pro 16 · image Lite 1 / Pro 2)
+→ KIE createTask:
+     video + lastImageUrl → kling-3.0/video (Medium/Pro)
+     video + imageUrl     → kling-2.6/image-to-video
+     video, no image      → kling-2.6/text-to-video
+     image                → nano-banana-2 (1K / 2K / 4K, optional blend)
+→ { generationId, kind, status, providerJobId, credits?, guestRemaining? }
 
 GET /api/generate?id=<generationId>
 → poll KIE recordInfo when still processing
@@ -125,6 +142,7 @@ Expect:
 - `authReady: true`
 - `kieConfigured: true` (after secret is set)
 - `generateReady: true`
+- `guestTrials: true`
 - `uploadReady: true` (MEDIA bound)
 - `checkoutConfigured: false`
 
@@ -163,7 +181,11 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 | Auth OK, no `KIE_API_KEY` | `kie_api_key_missing` 503 |
 | Auth + KIE, no MEDIA | Generate works with public `imageUrl`; upload returns `media_not_bound` |
 | Auth + KIE + MEDIA | Upload file **or** paste URL |
-| Missing `imageUrl` | `image_url_required` 400 |
+| Missing `imageUrl` on **guest** video | `image_url_required` 400 |
+| Guest 3rd try | `guest_limit` 402 |
+| Guest Medium/Pro/image | `guest_lite_only` 401 |
+| Missing `imageUrl` on signed-in video | text-to-video (allowed) |
+| First+last on Lite | `first_last_requires_medium` 400 |
 | D1 missing new columns | `schema_migration_required` 503 |
 | Checkout | `checkout_not_configured` 503 |
 
@@ -176,3 +198,4 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 - [ ] Redeploy
 - [ ] `/api/health` → `generateReady: true`, `uploadReady: true`
 - [ ] Logged-in POST `/api/upload` then `/api/generate` queues a KIE job; GET returns `resultUrl`
+- [ ] Logged-out POST `/api/generate` with `imageUrl` consumes one of two guest Lite tries

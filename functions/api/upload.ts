@@ -1,9 +1,7 @@
 import {
   json,
-  error,
   structuredError,
   preflight,
-  hasDb,
   hasSessions,
   hasMedia,
   bindingsUnavailable,
@@ -16,6 +14,14 @@ import {
   publicMediaUrl,
   makeObjectKey,
 } from "../../libs/media";
+import {
+  GUEST_USER_ID,
+  ensureGuestId,
+  guestHeaders,
+  guestQuota,
+  loadGuest,
+  clientIp,
+} from "../../libs/guest";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -33,11 +39,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
 /**
  * POST /api/upload
- * Auth required. Raw image body (Content-Type: image/jpeg|png|webp|gif).
+ * Signed-in users, or guests with remaining free trials.
+ * Raw image body (Content-Type: image/jpeg|png|webp|gif).
  * Stores in R2 and returns a public HTTPS URL KIE can fetch.
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  if (!hasDb(env) || !hasSessions(env)) return bindingsUnavailable("DB+SESSIONS");
+  if (!hasSessions(env)) return bindingsUnavailable("SESSIONS");
   if (!hasMedia(env)) {
     return structuredError(
       "media_not_bound",
@@ -49,7 +56,27 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
-  if (!session) return error("unauthorized", 401);
+  const guestId = ensureGuestId(request);
+  const extra = session ? undefined : guestHeaders(guestId, request);
+
+  if (!session) {
+    const rec = await loadGuest(env, guestId);
+    const quota = await guestQuota(env, rec, clientIp(request));
+    if (quota.blocked) {
+      return json(
+        {
+          error: "guest_limit",
+          code: "guest_limit",
+          message: "Free trial used up — sign up to upload and generate.",
+          guestRemaining: 0,
+        },
+        401,
+        extra
+      );
+    }
+  }
+
+  const ownerId = session ? session.userId : GUEST_USER_ID;
 
   const contentType = request.headers.get("content-type") || "";
   const ext = extForContentType(contentType);
@@ -90,7 +117,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
-  const key = makeObjectKey(session.userId, "img", ext);
+  const key = makeObjectKey(ownerId, "img", ext);
   const type = contentType.split(";")[0].trim().toLowerCase();
 
   try {
@@ -99,7 +126,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         contentType: type,
         cacheControl: "public, max-age=31536000, immutable",
       },
-      customMetadata: { userId: String(session.userId) },
+      customMetadata: { userId: String(ownerId) },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "R2 put failed";
@@ -107,11 +134,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const imageUrl = publicMediaUrl(new URL(request.url).origin, key);
-  return json({
-    ok: true,
-    key,
-    imageUrl,
-    bytes: buf.byteLength,
-    contentType: type,
-  });
+  return json(
+    {
+      ok: true,
+      key,
+      imageUrl,
+      bytes: buf.byteLength,
+      contentType: type,
+      guest: !session,
+    },
+    200,
+    extra
+  );
 };

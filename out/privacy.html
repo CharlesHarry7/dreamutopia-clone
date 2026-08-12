@@ -39,18 +39,19 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 </header>
 <main>
 <h1>Privacy Policy</h1>
-<p class="lead">Last updated 12 August 2026. This clone stores the minimum needed to run accounts and image-to-video jobs.</p>
+<p class="lead">Last updated 12 August 2026. This clone stores the minimum needed to run accounts, guest trials, and generation jobs.</p>
 <h2>What we store</h2>
 <ul>
 <li>Email and a PBKDF2 password hash (not the password itself)</li>
 <li>Credit balance and generation history (prompt, model, status, result URL)</li>
 <li>Session tokens in Cloudflare KV</li>
+<li>A guest-trial cookie (<code>du_guest</code>) plus an IP hash so each device gets 2 free Lite videos</li>
 <li>Uploaded start images in Cloudflare R2, served at unguessable <code>/api/media</code> URLs so the inference provider can fetch them</li>
 </ul>
 <h2>Providers</h2>
-<p>Video generation is performed by <a href="https://kie.ai">KIE</a>. Your prompt and source image URL are sent to that API. Result videos are hosted by the provider unless we later copy them into R2.</p>
+<p>Video and image generation is performed by <a href="https://kie.ai">KIE</a> (Kling 2.6 / Kling 3.0 / Nano Banana 2). Your prompt and source image URLs are sent to that API. Result files are copied into R2 when the media bucket is bound.</p>
 <h2>Cookies and local data</h2>
-<p>The session token and cached credit count live in your browser’s <code>localStorage</code>. We do not use advertising cookies.</p>
+<p>The session token and cached credit count live in your browser’s <code>localStorage</code>. The HttpOnly <code>du_guest</code> cookie tracks free Lite trials. We do not use advertising cookies.</p>
 <h2>Contact</h2>
 <p>This is a personal clone project, not the original DreamUtopia product. For data deletion, sign out and email the operator who deployed this Pages project.</p>
 </main>

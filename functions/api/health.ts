@@ -12,8 +12,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   };
   const authReady = bindings.DB && bindings.SESSIONS;
   const kieConfigured = hasKieKey(env);
-  // Generate needs auth + KIE; file upload needs MEDIA but is optional if the client has a public URL
-  const generateReady = authReady && kieConfigured;
+  // Guest trials need SESSIONS + KIE; signed-in generate also needs DB
+  const generateReady = bindings.SESSIONS && kieConfigured;
   const uploadReady = bindings.MEDIA;
 
   return json({
@@ -26,13 +26,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     generateReady,
     uploadReady,
     checkoutConfigured: false,
+    guestTrials: true,
+    guestLimit: 2,
     mediaRequiredForGenerate: false,
     message: !authReady
       ? "Functions up; bind DB + SESSIONS for auth/credits (see BACKEND.md)"
       : !kieConfigured
-        ? "Auth ready — set Pages secret KIE_API_KEY for image-to-video"
+        ? "Auth ready — set Pages secret KIE_API_KEY for generation"
         : uploadReady
-          ? "D1 + KV + KIE + R2 ready — upload a file or paste a public imageUrl"
+          ? "D1 + KV + KIE + R2 ready — 2 free Lite I2V tries, then sign in"
           : "D1 + KV + KIE ready — generate via public imageUrl (bind MEDIA for uploads)",
   });
 };

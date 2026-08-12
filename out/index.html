@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DreamUtopia — Free AI Image & Video Generator</title>
-<meta name="description" content="Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — 10 credits on signup.">
+<meta name="description" content="Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — no account needed, no credit card required.">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -99,6 +99,19 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-foot{margin-top:14px;font-size:13px;color:var(--text2);text-align:center}
 .gen-foot a{color:var(--primary2);font-weight:500}
 .gen-foot a:hover{text-decoration:underline}
+.gen-status{margin-top:16px;display:none;text-align:center;padding:16px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08)}
+.gen-status.show{display:block}
+.gen-status .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-status .cap{font-size:13px;color:var(--text2)}
+.gen-result{margin-top:14px;display:none;text-align:center}
+.gen-result.show{display:block}
+.gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;margin:0 auto}
+.gen-result a{display:inline-block;margin-top:8px;font-size:13px;color:var(--primary2)}
+.upload-area.has-img{border-style:solid;border-color:rgba(34,197,94,.45);padding:12px}
+.upload-area.has-img img{max-height:200px;width:auto;margin:0 auto;border-radius:10px;display:block}
+.upload-area .remove-btn{display:none;margin:8px auto 0;color:#fff;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 10px;font-size:12px}
+.upload-area.has-img .remove-btn{display:inline-block}
 
 /* Features 3-cards */
 .features-3{max-width:1100px;margin:80px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
@@ -265,13 +278,13 @@ nav{display:none}
 <!-- Hero -->
 <section class="hero">
 <div class="hero-meta">
-<span>AI Video Generator • 10 Free Credits • Sign up in seconds</span>
+<span>AI Video Generator • 2 Free Tries • No Signup Required</span>
 <span class="sep">·</span>
 <span class="new">NEW: Pro Model with Sound</span>
 </div>
 <h1>Turn Any Image Into<br><span class="gradient">Stunning AI Video</span></h1>
-<p class="sub">Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — 10 credits on signup, no credit card required.</p>
-<div class="free-tag"><span class="star">☆</span> 10 FREE credits when you create an account</div>
+<p class="sub">Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — no account needed, no credit card required.</p>
+<div class="free-tag"><span class="star">☆</span> 2 FREE generations for everyone — no login needed</div>
 <p class="credits-note">Sign up to get <b>10 free credits</b> — unlock more advanced models with full controls</p>
 <div class="hero-cta">
 <a href="/workspace" class="btn-primary-lg">Start Creating Free →</a>
@@ -287,21 +300,31 @@ nav{display:none}
 <div class="gen-card">
 <h2>AI Video Generator</h2>
 
-<div class="upload-area" id="homeUpload" role="link" tabindex="0">
-<div class="icon">🖼</div>
-<div class="p1">Upload Start Image</div>
-<div class="p2">Opens the workspace — JPG, PNG, or WebP</div>
+<div class="upload-area" id="homeUpload" role="button" tabindex="0">
+<input type="file" id="homeFile" accept="image/*" style="display:none">
+<div class="icon" id="homeUploadIcon">🖼</div>
+<div class="p1" id="homeUploadLabel">Upload Start Image</div>
+<div class="p2" id="homeUploadHint">Click to browse · JPG, PNG, or WebP</div>
+<button type="button" class="remove-btn" id="homeRemove" hidden>Remove</button>
 </div>
 
 <div class="label-row">
 <label>Describe Your Video</label>
-<span><span class="req">Required</span> &nbsp; <span class="counter">0/8000</span></span>
+<span><span class="req">Required</span> &nbsp; <span class="counter" id="homeCounter">0/8000</span></span>
 </div>
-<textarea class="prompt-input" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
+<textarea class="prompt-input" id="homePrompt" maxlength="8000" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
 
-<button class="gen-btn" id="genBtn">Generate Free Trial</button>
+<button class="gen-btn" id="genBtn" disabled>Generate Free Trial</button>
 
-<p class="gen-foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
+<p class="gen-foot" id="homeFoot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
+<div class="gen-status" id="homeStatus">
+<div class="spinner"></div>
+<div class="cap" id="homeStatusText">Generating…</div>
+</div>
+<div class="gen-result" id="homeResult">
+<video id="homeVideo" controls playsinline></video>
+<a id="homeResultLink" href="#" target="_blank" rel="noopener">Open result</a>
+</div>
 </div>
 </section>
 
@@ -335,18 +358,18 @@ nav{display:none}
 <div class="compare-head">
 <div class="tag">Newcomer Gift</div>
 <h2>Sign up and get 10 free credits — unlock the full experience</h2>
-<p>Sign up for 10 free credits, then spend them on Lite, Medium, or Pro. Newcomer credits go further on advanced models with full creative controls.</p>
+<p>The 2 free trials let anyone preview our entry-level model. Newcomer credits go further: spend them on our advanced models with full creative controls.</p>
 </div>
 <div class="compare-grid">
 <div class="compare-card left">
-<div class="head-tag">Guest</div>
-<div class="head-title">Browse the site</div>
-<div class="head-sub">Look around, then sign in to create</div>
+<div class="head-tag">Free Trial</div>
+<div class="head-title">2 free generations</div>
+<div class="head-sub">Quick preview, no account</div>
 <ul>
-<li><span class="check">✓</span> Gallery, pricing, and FAQ</li>
-<li><span class="check">✓</span> No credit card to explore</li>
-<li><span class="check">✓</span> Generation requires a free account</li>
-<li><span class="check">✓</span> History saved after you sign up</li>
+<li><span class="check">✓</span> 2 free generations</li>
+<li><span class="check">✓</span> Lite model only — entry-level quality</li>
+<li><span class="check">✓</span> Basic controls</li>
+<li><span class="check">✓</span> Generations not saved to history</li>
 </ul>
 </div>
 <div class="compare-vs">vs</div>
@@ -396,7 +419,7 @@ nav{display:none}
 <h2>Why creators choose DreamUtopia</h2>
 <p>DreamUtopia combines multiple state-of-the-art AI models with an intuitive interface, giving you studio-quality results with zero learning curve.</p>
 <ul>
-<li>10 free credits on signup — no credit card required</li>
+<li>2 free generations per device — no signup or credit card required</li>
 <li>3 premium AI models optimized for different styles and use cases</li>
 <li>Fast processing with live status updates while your video renders</li>
 <li>Your content stays private — encrypted transfers and full ownership</li>
@@ -418,7 +441,7 @@ nav{display:none}
 <section class="steps-section" id="get-started">
 <div class="steps-text">
 <h3>Create your first AI video in 3 simple steps</h3>
-<p>Create a free account (10 credits), then generate in three steps.</p>
+<p>No account needed. Start generating stunning AI videos right now — completely free for your first 2 creations.</p>
 <ol class="steps-list">
 <li><span class="num">1</span><span class="text">Upload any image — a photo, illustration, or screenshot</span></li>
 <li><span class="num">2</span><span class="text">Describe the motion: camera movement, action, mood, and style</span></li>
@@ -438,7 +461,7 @@ nav{display:none}
 <section>
 <div class="credits-cta">
 <h3>Get 10 free credits — try advanced models</h3>
-<p>Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. Credit packs are listed on Pricing; paid checkout is not live yet.</p>
+<p>Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. The free 2 trials only show the entry-level model; newcomer credits unlock the rest. Credit packs are listed on Pricing; paid checkout is not live yet.</p>
 <a href="/auth?mode=register" class="btn-primary-lg">Claim 10 Free Credits</a>
 <div class="login-link">Need more? <a href="/pricing">View credit packs</a> · Already have an account? <a href="/auth?mode=login">Log in</a></div>
 </div>
@@ -458,7 +481,7 @@ nav{display:none}
 <h3>Frequently Asked Questions</h3>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Is DreamUtopia really free to use?</div>
-<div class="faq-a">Yes. Create a free account and you instantly get 10 credits — no credit card required. Video: Lite 3 · Medium 5 · Pro 16. Image: Lite 1 · Pro 2. Paid checkout for extra packs is not live yet.</div>
+<div class="faq-a">Yes! Every device gets 2 free Lite video generations with no signup. Create an account for 10 credits (Lite 3 · Medium 5 · Pro 16 · Image Lite 1 · Pro 2). Paid checkout for extra packs is not live yet.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What AI models are available?</div>
@@ -485,8 +508,8 @@ nav{display:none}
 <div class="faq-a">Yes. DreamUtopia works in the browser on desktop, tablet, or phone. There is no separate iOS/Android app yet.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q">What happens after my free credits?</div>
-<div class="faq-a">Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). Paid checkout is not live yet — you can still sign up, generate with your 10 free credits, and save a pack as intent. Credits never expire.</div>
+<div class="faq-q">What happens after my 2 free tries?</div>
+<div class="faq-a">After 2 free Lite videos, create a free account for 10 credits. Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). Paid checkout is not live yet. Credits never expire.</div>
 </div>
 </section>
 
@@ -532,53 +555,164 @@ nav{display:none}
 </div>
 </footer>
 
+<script src="/assets/js/du.js"></script>
 <script>
-// Tab切换
-function goCreate(){
-  const token=localStorage.getItem("dreamutopia_token");
-  const imageTab=document.querySelector(".gen-tab.active");
-  const isImage=imageTab && /image/i.test(imageTab.textContent||"");
-  const dest=isImage?"/workspace?mode=image":"/workspace";
-  location.href=token?dest:"/auth?mode=register"+(isImage?"&next=image":"");
+let homeFile = null;
+let homeImageUrl = "";
+let homeBusy = false;
+
+function isImageTab() {
+  const tab = document.querySelector(".gen-tab.active");
+  return !!(tab && /image/i.test(tab.textContent || ""));
 }
 
-document.querySelectorAll('.gen-tab').forEach(tab=>{
-tab.addEventListener('click',()=>{
-document.querySelectorAll('.gen-tab').forEach(t=>t.classList.remove('active'));
-tab.classList.add('active');
-const card=document.querySelector('.gen-card h2');
-if(card) card.textContent=/image/i.test(tab.textContent||'')?"AI Image Generator":"AI Video Generator";
-});
-});
-
-// Generate按钮激活
-function updateGen(ta){
-const btn=document.getElementById('genBtn');
-if(ta.value.trim().length>0){
-btn.classList.add('ready');
-btn.disabled=false;
-btn.onclick=goCreate;
-}else{
-btn.classList.remove('ready');
-btn.disabled=true;
-btn.onclick=null;
-}
+function goWorkspace(extra) {
+  const dest = isImageTab() ? "/workspace?mode=image" : "/workspace";
+  location.href = extra && extra.prompt ? dest + (dest.indexOf("?") >= 0 ? "&" : "?") + "prompt=" + encodeURIComponent(extra.prompt) : dest;
 }
 
-const homeUpload=document.getElementById("homeUpload");
-if(homeUpload){
-  homeUpload.onclick=goCreate;
-  homeUpload.onkeydown=function(e){
-    if(e.key==="Enter"||e.key===" "){e.preventDefault();goCreate();}
-  };
-}
-
-// FAQ
-document.querySelectorAll('.faq-item').forEach(item=>{
-item.addEventListener('click',()=>item.classList.toggle('open'));
+document.querySelectorAll(".gen-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".gen-tab").forEach((t) => t.classList.remove("active"));
+    tab.classList.add("active");
+    const card = document.querySelector(".gen-card h2");
+    const image = /image/i.test(tab.textContent || "");
+    if (card) card.textContent = image ? "AI Image Generator" : "AI Video Generator";
+    const label = document.getElementById("homeUploadLabel");
+    if (label) label.textContent = image ? "Reference image (optional)" : "Upload Start Image";
+  });
 });
 
-// Logged-in header (same pattern as /pricing)
+function updateGen(ta) {
+  const btn = document.getElementById("genBtn");
+  const n = (ta.value || "").trim().length;
+  document.getElementById("homeCounter").textContent = (ta.value || "").length + "/8000";
+  if (n > 0) {
+    btn.classList.add("ready");
+    btn.disabled = false;
+  } else {
+    btn.classList.remove("ready");
+    btn.disabled = true;
+  }
+}
+
+function setHomePreview(file) {
+  const area = document.getElementById("homeUpload");
+  const existing = area.querySelector("img.preview");
+  if (existing) existing.remove();
+  if (!file) {
+    area.classList.remove("has-img");
+    document.getElementById("homeUploadIcon").style.display = "";
+    document.getElementById("homeUploadLabel").style.display = "";
+    document.getElementById("homeUploadHint").style.display = "";
+    document.getElementById("homeRemove").hidden = true;
+    return;
+  }
+  area.classList.add("has-img");
+  const img = document.createElement("img");
+  img.className = "preview";
+  img.alt = "start image";
+  img.src = URL.createObjectURL(file);
+  area.appendChild(img);
+  document.getElementById("homeUploadIcon").style.display = "none";
+  document.getElementById("homeUploadLabel").style.display = "none";
+  document.getElementById("homeUploadHint").style.display = "none";
+  document.getElementById("homeRemove").hidden = false;
+}
+
+const homeUpload = document.getElementById("homeUpload");
+const homeFileInput = document.getElementById("homeFile");
+if (homeUpload && homeFileInput) {
+  homeUpload.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "homeRemove") return;
+    homeFileInput.click();
+  });
+  homeUpload.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      homeFileInput.click();
+    }
+  });
+  homeFileInput.addEventListener("change", () => {
+    const file = homeFileInput.files && homeFileInput.files[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type || "")) return;
+    if (file.size > 10 * 1024 * 1024) return;
+    homeFile = file;
+    homeImageUrl = "";
+    setHomePreview(file);
+  });
+  document.getElementById("homeRemove").addEventListener("click", (e) => {
+    e.stopPropagation();
+    homeFile = null;
+    homeImageUrl = "";
+    homeFileInput.value = "";
+    setHomePreview(null);
+  });
+}
+
+async function homeGenerate() {
+  if (homeBusy) return;
+  const prompt = (document.getElementById("homePrompt").value || "").trim();
+  if (!prompt) return;
+  if (isImageTab()) {
+    goWorkspace({ prompt: prompt });
+    return;
+  }
+  const token = DU.getToken();
+  if (!homeFile && !homeImageUrl && !token) {
+    const status = document.getElementById("homeStatus");
+    const text = document.getElementById("homeStatusText");
+    status.classList.add("show");
+    text.textContent = "Upload a start image for the free Lite trial.";
+    return;
+  }
+  homeBusy = true;
+  const btn = document.getElementById("genBtn");
+  const status = document.getElementById("homeStatus");
+  const text = document.getElementById("homeStatusText");
+  const result = document.getElementById("homeResult");
+  const video = document.getElementById("homeVideo");
+  btn.disabled = true;
+  status.classList.add("show");
+  result.classList.remove("show");
+  text.textContent = "Starting…";
+  try {
+    let imageUrl = homeImageUrl;
+    if (homeFile && !imageUrl) {
+      text.textContent = "Uploading image…";
+      const up = await DU.uploadImage(homeFile);
+      imageUrl = up.imageUrl || "";
+      homeImageUrl = imageUrl;
+    }
+    text.textContent = "Starting KIE job…";
+    const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5 };
+    if (imageUrl) payload.imageUrl = imageUrl;
+    const data = await DU.api("/generate", { method: "POST", body: JSON.stringify(payload) });
+    if (data.guestRemaining !== undefined) {
+      const foot = document.getElementById("homeFoot");
+      const n = data.guestRemaining;
+      foot.innerHTML = n > 0
+        ? n + " free Lite video" + (n === 1 ? "" : "s") + " left. <a href=\"/auth?mode=register\">Sign up</a> for 10 credits."
+        : 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
+    }
+    text.textContent = "Queued · waiting for provider…";
+    const done = await DU.pollGeneration(data.generationId, (st) => {
+      text.textContent = "Generating… (" + st + ")";
+    });
+    video.src = done.resultUrl;
+    document.getElementById("homeResultLink").href = done.resultUrl;
+    result.classList.add("show");
+    text.innerHTML = '<span style="color:#22c55e">Done</span>';
+  } catch (e) {
+    text.textContent = e.message || "Generation failed";
+  }
+  homeBusy = false;
+  updateGen(document.getElementById("homePrompt"));
+}
+
+document.getElementById("genBtn").addEventListener("click", homeGenerate);
+
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
   const CREDITS_KEY = "dreamutopia_credits";

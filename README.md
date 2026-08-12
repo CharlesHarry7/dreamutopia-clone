@@ -10,7 +10,7 @@
 | Hosting | Cloudflare Pages (unlimited bandwidth, free) |
 | API | Cloudflare Pages Functions |
 | Database | Cloudflare D1 (SQLite at the edge) |
-| Sessions | Cloudflare KV |
+| Sessions | Cloudflare KV (login sessions + guest trial counters) |
 | Inference | [KIE](https://kie.ai) Market API (`KIE_API_KEY` secret) |
 | File Storage | Cloudflare R2 (`MEDIA`) for start-image uploads |
 | Auth | Session token + KV + PBKDF2 (Web Crypto) |
@@ -19,17 +19,18 @@
 
 ```
 /out               # Static pages (build output dir)
-  index.html       # Homepage
+  index.html       # Homepage (2 free Lite I2V on-page)
   pricing.html     # Pricing (checkout not live — honest CTAs)
-  workspace.html   # Generation workspace (upload + KIE)
+  workspace.html   # Generation workspace
   auth.html        # Login / register
   privacy.html     # Privacy
   terms.html       # Terms
+  assets/js/du.js  # Shared fetch / upload / poll helper
 /functions/api     # Cloudflare Pages Functions (API routes)
   health.ts        # GET /api/health
   auth/            # register / login / logout / me
-  credits.ts       # GET /api/credits
-  upload.ts        # GET probe + POST file → R2
+  credits.ts       # GET /api/credits (account or guest remaining)
+  upload.ts        # GET probe + POST file → R2 (auth or guest)
   media.ts         # GET/HEAD /api/media?key= (public image bytes)
   generate.ts      # POST/GET /api/generate (KIE)
   gallery.ts       # GET /api/gallery
@@ -43,20 +44,18 @@
 
 ## Generate path
 
-1. Sign up (10 credits) and open `/workspace`.
-2. **Video:** upload a start image (or paste a public URL) + motion prompt.
-   **Image:** prompt only (optional reference photo to edit).
-3. `POST /api/generate` deducts credits, calls KIE (`kling-2.6/image-to-video` or `nano-banana-2`), stores the job in D1.
-4. Client polls `GET /api/generate?id=…` until `status=done`. When R2 is bound, the provider file is copied to `/api/media` so the link does not expire with KIE.
+1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1.
+2. **Account:** sign up (10 credits). Video: text-to-video, image-to-video, or first+last frame (Medium/Pro). Image: T2I / I2I / blend, 1K–4K.
+3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
+4. Client polls `GET /api/generate?id=…` until `status=done`. When R2 is bound, the provider file is copied to `/api/media`.
 5. Paid checkout is **not live**.
 
 ## Backend setup
 
 See **[BACKEND.md](./BACKEND.md)** for bindings, the `KIE_API_KEY` Pages secret, and D1 migration `001_generations_kie.sql`.
 
-**Required for live generate:** `DB` + `SESSIONS` + `KIE_API_KEY`.  
-**Required for file upload:** `MEDIA` / R2 (already bound in `wrangler.toml`).  
-Public `imageUrl` still works without R2.
+**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
+**Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.
 
 ## Deploy
 
