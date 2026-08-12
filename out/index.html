@@ -904,6 +904,12 @@ async function homeGenerate() {
     if (DU.focusEl) DU.focusEl(text);
     if (code === "guest_limit") setGuestFoot(0);
     if (e && e.payload && e.payload.guestRemaining !== undefined) setGuestFoot(e.payload.guestRemaining);
+    if (code === "auth_required" || (e && e.status === 401)) {
+      try {
+        localStorage.removeItem("dreamutopia_token");
+        localStorage.removeItem("dreamutopia_credits");
+      } catch (x) {}
+    }
     const errWs = document.getElementById("homeStatusWorkspace");
     if (errWs) errWs.hidden = false;
   }

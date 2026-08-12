@@ -1,4 +1,4 @@
-import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable } from "../../../libs/utils";
+import { json, error, preflight, hasDb, hasSessions, bindingsUnavailable, structuredError } from "../../../libs/utils";
 import { hashPassword } from "../../../libs/password";
 import { createSession } from "../../../libs/auth";
 import {
@@ -19,19 +19,39 @@ const SIGNUP_CREDITS = 10;
 
 // POST /api/auth/register  { email, password, referralCode? }
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
+  try {
+    return await handleRegister({ request, env, waitUntil });
+  } catch {
+    return structuredError("auth_failed", "Could not create the account. Please try again.", 500);
+  }
+};
+
+async function handleRegister({
+  request,
+  env,
+  waitUntil,
+}: {
+  request: Request;
+  env: Env;
+  waitUntil: (p: Promise<unknown>) => void;
+}): Promise<Response> {
   if (!hasDb(env) || !hasSessions(env)) return bindingsUnavailable("DB+SESSIONS");
 
   const rl = await takeRateLimit(env.SESSIONS, `reg:ip:${clientIp(request) || "unknown"}`, 8, 3600);
   if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
-  let body: { email?: string; password?: string; referralCode?: string };
+  let parsed: unknown;
   try {
-    body = await request.json();
+    parsed = await request.json();
   } catch {
     return error("invalid json");
   }
-  const email = (body.email || "").trim().toLowerCase();
-  const password = body.password || "";
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return error("invalid json");
+  }
+  const body = parsed as { email?: unknown; password?: unknown; referralCode?: unknown };
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const password = typeof body.password === "string" ? body.password : "";
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return error("invalid email");
   if (password.length < 6) return error("password must be at least 6 characters");
 
@@ -41,7 +61,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
   const { hash, salt } = await hashPassword(password);
   const stored = `${salt}:${hash}`;
   const referralCode = makeReferralCode();
-  const referredBy = await lookupReferrer(env.DB, body.referralCode).catch((err) => {
+  const referredBy = await lookupReferrer(
+    env.DB,
+    typeof body.referralCode === "string" ? body.referralCode : undefined
+  ).catch((err) => {
     if (isSchemaError(err)) return null;
     throw err;
   });
@@ -108,4 +131,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
     referralCode: code,
     referralUrl: `${origin}/auth?mode=register&ref=${encodeURIComponent(code)}`,
   });
-};
+}

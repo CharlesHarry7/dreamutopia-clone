@@ -81,6 +81,8 @@ function extractI18nKeys(src) {
     "ws.history.reuse",
     "ws.history.reused",
     "ws.history.refresh",
+    "err.auth_required",
+    "err.insufficient_credits",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -147,6 +149,13 @@ function extractI18nKeys(src) {
       fail.push("createFailedResponse must Number() coerce provider code (KIE may send string 402)");
     } else ok.push("createFailedResponse Number() coerces provider code");
   }
+  mustContain("libs/auth.ts", "auth_required", "stale Bearer is 401 not guest");
+  mustContain("functions/api/generate.ts", "insufficient_credits", "account generate deducts credits");
+  mustContain("functions/api/generate.ts", "expiredSessionResponse", "auth gate helper");
+  mustContain("functions/api/credits.ts", "expiredSessionResponse", "credits auth gate");
+  mustContain("out/workspace.html", 'api("/history")', "history alias fetch");
+  mustContain("out/workspace.html", "handleAuthExpired", "stale session clears token var");
+  mustContain("out/workspace.html", "refreshCredits", "credits refresh after generate/history");
   mustContain("functions/api/generate.ts", "generate_failed", "POST/GET generate never 1101");
   mustContain("functions/api/generate.ts", 'typeof parsed !== "object"', "generate body object guard");
   mustContain("functions/api/generate.ts", "handleGeneratePost", "generate POST try/catch wrapper");
@@ -206,7 +215,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v17", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v18", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

@@ -666,7 +666,25 @@ async function api(path, options = {}) {
 
 function isUnauthorizedError(err) {
   // Real auth rejection only. Network/timeout/5xx errors have no 401 status.
-  return !!(err && err.status === 401);
+  return !!(err && (err.status === 401 || err.code === "auth_required"));
+}
+
+function handleAuthExpired() {
+  token = "";
+  userCredits = null;
+  clearAuthLocal();
+  updateAuthUI();
+  showPackBanner();
+}
+
+async function refreshCredits() {
+  if (!token) return;
+  try {
+    const cred = await api("/credits");
+    if (cred && cred.guest === false && cred.credits !== undefined) updateAuthUI(cred.credits);
+  } catch (e) {
+    if (isUnauthorizedError(e)) handleAuthExpired();
+  }
 }
 
 async function fetchAuthMe(retriesLeft) {
@@ -1329,6 +1347,7 @@ async function generate() {
     }
 
     statusText.textContent = DU.t("progress.queued", "Queued · waiting for provider…");
+    loadHistory();
     const done = await pollGeneration(data.generationId, statusText, genPollAbort && genPollAbort.signal);
     spinner.style.display = "none";
     const kind = done.kind || data.kind || currentMode;
@@ -1346,10 +1365,18 @@ async function generate() {
     if (DU.focusEl) DU.focusEl(document.getElementById("genResult"));
     toast(kind === "image" ? DU.t("ws.ready.image", "Image ready") : DU.t("ws.ready.video", "Video ready"));
     loadHistory();
+    refreshCredits();
   } catch (e) {
     spinner.style.display = "none";
     const code = e && e.code ? String(e.code) : "";
     let msg = DU.errorMessage(e, e.message || "Generation failed");
+    if (isUnauthorizedError(e) || code === "auth_required") {
+      handleAuthExpired();
+    } else if (e && e.payload && e.payload.credits !== undefined && e.payload.credits !== null) {
+      updateAuthUI(e.payload.credits);
+    } else {
+      refreshCredits();
+    }
     if (code === "guest_limit") {
       guestRemaining = 0;
       updateAuthUI();
@@ -1360,6 +1387,7 @@ async function generate() {
     statusText.textContent = msg;
     if (DU.setLiveStatus) DU.setLiveStatus(status, statusText, { error: true, text: msg });
     toast(msg, true);
+    loadHistory();
   }
   if (card) card.setAttribute("aria-busy", "false");
   const cancelBtn = document.getElementById("genCancel");
@@ -1459,11 +1487,24 @@ async function loadHistory() {
   const empty = document.getElementById("historyEmpty");
   const list = document.getElementById("historyList");
   try {
-    const data = await api("/generate");
+    let data;
+    try {
+      data = await api("/history");
+    } catch (e) {
+      if (isUnauthorizedError(e)) {
+        handleAuthExpired();
+        data = await api("/generate");
+      } else if (e && e.status === 404) {
+        data = await api("/generate");
+      } else {
+        throw e;
+      }
+    }
     if (data.guestRemaining !== undefined && !token) {
       guestRemaining = data.guestRemaining;
       updateAuthUI();
     }
+    if (token) refreshCredits();
     const gens = data.generations || [];
     historyById = Object.create(null);
     gens.forEach(function (g) {
@@ -1623,9 +1664,7 @@ function escapeHtml(s) {
       loadHistory();
     } catch (e) {
       if (isUnauthorizedError(e)) {
-        clearAuthLocal();
-        updateAuthUI();
-        showPackBanner();
+        handleAuthExpired();
       }
       // else: keep sync-hydrated / cached logged-in UI
     }

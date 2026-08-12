@@ -7,7 +7,7 @@ import {
   hasMedia,
   bindingsUnavailable,
 } from "../../libs/utils";
-import { getSession, tokenFromRequest } from "../../libs/auth";
+import { expiredSessionResponse, getSession, tokenFromRequest } from "../../libs/auth";
 import {
   MAX_UPLOAD_BYTES,
   IMAGE_TYPES,
@@ -88,6 +88,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
+  if (token && !session) return expiredSessionResponse();
   const guestId = ensureGuestId(request);
   const extra = session ? undefined : guestHeaders(guestId, request);
   let guestRec = session ? null : await loadGuest(env, guestId);

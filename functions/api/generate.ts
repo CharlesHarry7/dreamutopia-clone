@@ -8,7 +8,7 @@ import {
   hasSessions,
   hasKieKey,
 } from "../../libs/utils";
-import { getSession, tokenFromRequest } from "../../libs/auth";
+import { expiredSessionResponse, getSession, tokenFromRequest } from "../../libs/auth";
 import {
   createImageToVideoTask,
   createTextToVideoTask,
@@ -390,6 +390,9 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
+  if (token && !session) {
+    return expiredSessionResponse({ mediaRequired: false });
+  }
   const ip = clientIp(request);
   const rl = await takeRateLimit(
     env.SESSIONS,
@@ -505,7 +508,12 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
       .bind(session.userId)
       .first<{ credits: number }>();
     const credits = row ? Number(row.credits) : 0;
-    return json({ error: "insufficient credits", credits }, 402);
+    return structuredError(
+      "insufficient_credits",
+      "Not enough credits for this generation.",
+      402,
+      { credits, cost, mediaRequired: false }
+    );
   }
 
   const callBackUrl = kieCallbackUrl(new URL(request.url).origin);
@@ -546,7 +554,13 @@ async function handleGeneratePost({ request, env }: { request: Request; env: Env
 
   if (!created.ok) {
     await refundCredits(env, session.userId, cost);
-    return createFailedResponse(created);
+    const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+      .bind(session.userId)
+      .first<{ credits: number }>();
+    return createFailedResponse(created, {
+      credits: bal ? Number(bal.credits) : 0,
+      cost,
+    });
   }
 
   const storedInput = encodeInputImages(imageUrl || null, lastImageUrl || null);
@@ -831,6 +845,9 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
 
   const token = tokenFromRequest(request);
   const session = await getSession(env, token);
+  if (token && !session) {
+    return expiredSessionResponse();
+  }
   const url = new URL(request.url);
   const idParam = url.searchParams.get("id");
   const origin = url.origin;
