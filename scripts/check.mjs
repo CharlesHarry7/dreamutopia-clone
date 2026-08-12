@@ -143,7 +143,21 @@ function extractI18nKeys(src) {
     if (/kie_create_failed[\s\S]{0,80}created\.message/.test(fn)) {
       fail.push("createFailedResponse must not return raw created.message on kie_create_failed");
     } else ok.push("kie_create_failed does not leak raw KIE message");
+    if (!/Number\(created\.code\)/.test(fn) && !fn.includes("codeNum")) {
+      fail.push("createFailedResponse must Number() coerce provider code (KIE may send string 402)");
+    } else ok.push("createFailedResponse Number() coerces provider code");
   }
+  mustContain("functions/api/generate.ts", "generate_failed", "POST/GET generate never 1101");
+  mustContain("functions/api/generate.ts", 'typeof parsed !== "object"', "generate body object guard");
+  mustContain("functions/api/generate.ts", "handleGeneratePost", "generate POST try/catch wrapper");
+  mustContain("functions/api/generate.ts", "function asTrimmed", "generate string fields never .trim() on non-strings");
+  mustContain("libs/rateLimit.ts", "Math.max(60", "KV expirationTtl min 60s (else 1101)");
+  mustContain("functions/api/history.ts", "onRequestHead", "history alias HEAD");
+  mustContain("functions/api/history.ts", "onRequestGet", "history alias GET");
+  mustContain("functions/api/jobs.ts", "onRequestHead", "jobs alias HEAD");
+  mustContain("functions/api/jobs.ts", "onRequestGet", "jobs alias GET");
+  mustContain("functions/api/creations.ts", "onRequestHead", "creations alias HEAD");
+  mustContain("functions/api/creations.ts", "onRequestGet", "creations alias GET");
 }
 
 // --- upload guest remaining ---

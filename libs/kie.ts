@@ -139,14 +139,15 @@ async function createKieTask(
   }
 
   const taskId = body.data?.taskId;
-  if (res.ok && body.code === 200 && taskId) {
+  const codeNum = body.code == null ? NaN : Number(body.code);
+  if (res.ok && codeNum === 200 && taskId) {
     return { ok: true, taskId };
   }
 
   return {
     ok: false,
     status: res.status || 502,
-    code: body.code,
+    code: Number.isFinite(codeNum) ? codeNum : undefined,
     message: body.msg || body.message || `KIE createTask failed (${res.status})`,
   };
 }
@@ -307,7 +308,7 @@ export async function getTaskInfo(
 export function publicProviderFailMessage(raw: string | null | undefined): string {
   const s = (raw || "").trim();
   if (!s) return "Generation failed";
-  if (/credits insufficient|balance isn.?t enough|top[- ]?up|\b402\b/i.test(s)) {
+  if (/credits insufficient|balance isn.?t enough|top[- ]?up|please top up|\b402\b/i.test(s)) {
     return "Generation is temporarily unavailable. Please try again later.";
   }
   return s;

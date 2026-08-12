@@ -217,6 +217,10 @@ type GenerateBody = {
   idempotency_key?: string;
 };
 
+function asTrimmed(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function collectHttpsUrls(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   const out: string[] = [];
@@ -239,11 +243,12 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 }
 
 function createFailedResponse(
-  created: { message: string; code?: number; status: number },
+  created: { message: string; code?: number | string; status: number },
   extra?: Record<string, unknown>,
   extraHeaders?: Record<string, string>
 ): Response {
-  const providerCode = created.code ?? null;
+  const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
+  const providerCode = Number.isFinite(codeNum) ? codeNum : null;
   const more = extra || {};
   const raw = created.message || "";
   const safe = publicProviderFailMessage(raw);
@@ -284,21 +289,38 @@ function createFailedResponse(
  * Guests (no session): 2 Lite image-to-video tries per device/IP.
  * Signed-in: T2V, I2V, first+last (Medium/Pro), image T2I/I2I/blend.
  */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let body: GenerateBody;
+export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   try {
-    body = await request.json();
+    return await handleGeneratePost(ctx);
+  } catch {
+    return structuredError(
+      "generate_failed",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
+    );
+  }
+};
+
+async function handleGeneratePost({ request, env }: { request: Request; env: Env }): Promise<Response> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
   } catch {
     return error("invalid json");
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return error("invalid json");
+  }
+  const body = parsed as GenerateBody;
 
-  const prompt = (body.prompt || "").trim();
+  const prompt = asTrimmed(body.prompt);
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
   const kind: GenerationKind = body.kind === "image" ? "image" : "video";
-  const imageUrl = (body.imageUrl || body.image_url || "").trim();
-  const lastImageUrl = (body.lastImageUrl || body.last_image_url || "").trim();
+  const imageUrl = asTrimmed(body.imageUrl) || asTrimmed(body.image_url);
+  const lastImageUrl = asTrimmed(body.lastImageUrl) || asTrimmed(body.last_image_url);
   const extraUrls = collectHttpsUrls(body.imageUrls || body.image_urls);
 
   if (imageUrl && !isPublicHttpsUrl(imageUrl)) {
@@ -316,7 +338,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
-  const requestedKey = (body.mediaKey || body.media_key || "").trim();
+  const requestedKey = asTrimmed(body.mediaKey) || asTrimmed(body.media_key);
   if (requestedKey && !isSafeMediaKey(requestedKey)) {
     return structuredError("media_key_invalid", "mediaKey is not a valid upload key.", 400);
   }
@@ -586,7 +608,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       guest: false,
     })
   );
-};
+}
 
 async function guestRequestError(
   env: Env & { SESSIONS: KVNamespace },
@@ -786,7 +808,19 @@ function randomGuestJobId(): string {
  * GET /api/generate — history (account or this device's guest jobs)
  * GET /api/generate?id=N — single job; polls KIE when still processing
  */
-export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await handleGenerateGet(ctx);
+  } catch {
+    return structuredError(
+      "generate_failed",
+      "Could not load history. Please try again.",
+      500
+    );
+  }
+};
+
+async function handleGenerateGet({ request, env }: { request: Request; env: Env }): Promise<Response> {
   if (!hasSessions(env)) {
     return structuredError(
       "bindings_missing",
@@ -844,7 +878,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           503
         );
       }
-      throw e;
+      return structuredError("generate_failed", msg || "Could not load history. Please try again.", 500);
     }
 
     if (!row) return error("not found", 404);
@@ -887,7 +921,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         503
       );
     }
-    throw e;
+    return structuredError("generate_failed", msg || "Could not load history. Please try again.", 500);
   }
 
   const list = rows.results || [];
@@ -916,7 +950,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     guest: false,
     generations: list.map(publicGeneration),
   });
-};
+}
 
 async function handleGuestGet(
   env: Env & { SESSIONS: KVNamespace },
