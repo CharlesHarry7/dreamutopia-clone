@@ -332,6 +332,8 @@ function guestLiteOnlyResponse(): Response {
  * Body: { prompt, kind?, imageUrl?, lastImageUrl?, imageUrls?, mediaKey?, model?, durationSec?, aspectRatio?, resolution? }
  * Guests (no session): 2 Lite image-to-video tries per device/IP.
  * Signed-in: T2V, I2V, first+last (Medium/Pro), image T2I/I2I/blend.
+ * PR#13 Pages A-line (cursor/overnight-prod-polish-db63): outer catch always JSON, never CF 1101.
+ * Do not land this contract only on cursor/r2-upload-product-polish-db63 (PR#12/#16).
  */
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   try {

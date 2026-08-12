@@ -7,7 +7,7 @@ import {
   onRequestOptions as generateOptions,
 } from "./generate";
 
-/** Canonical history JSON: GET /api/history (never SPA HTML). Aliases: /api/jobs, /api/creations, /api/generations, GET /api/generate. */
+/** Canonical history JSON: GET /api/history (never SPA HTML). Aliases: /api/jobs, /api/creations, /api/generations, GET /api/generate. PR#13 A-line: cursor/overnight-prod-polish-db63 (not r2-upload). */
 export const onRequestOptions: PagesFunction<Env> = (ctx) => generateOptions(ctx);
 export const onRequestGet: PagesFunction<Env> = async (ctx) => {
   try {

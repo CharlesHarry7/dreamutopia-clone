@@ -3,6 +3,8 @@
  * Static product checks — no network, no secrets (CI source of truth).
  * Do not treat a Pages preview curl as green: preview can lag the git tree.
  * Optional live burst: CHECK_API_BASE=https://… node scripts/check.mjs
+ * PR#13 Pages A-line branch: cursor/overnight-prod-polish-db63
+ * (not cursor/r2-upload-product-polish-db63 — that is PR#12/#16).
  * Run: node scripts/check.mjs
  */
 import fs from "node:fs";
@@ -499,6 +501,9 @@ function extractI18nKeys(src) {
   mustContain("out/assets/css/chrome.css", "nav-toggle", "shared mobile nav");
   mustContain("out/assets/js/nav.js", "nav-open", "nav drawer toggle");
   mustContain("out/_headers", "X-Content-Type-Options", "nosniff header");
+  mustContain("functions/api/generate.ts", "cursor/overnight-prod-polish-db63", "generate POST catch is on PR#13 overnight A-line");
+  mustContain("functions/api/history.ts", "cursor/overnight-prod-polish-db63", "history JSON route is on PR#13 overnight A-line");
+  mustContain("wrangler.toml", "overnight-prod-polish-db63", "wrangler names PR#13 overnight A-line");
   mustContain("wrangler.toml", 'pages_build_output_dir = "out"', "Pages output dir");
   if (/^\s*main\s*=\s*"\.open-next\/worker\.js"/m.test(read("wrangler.toml"))) {
     fail.push("wrangler.toml must stay Cloudflare Pages (not OpenNext worker main from PR #14)");
