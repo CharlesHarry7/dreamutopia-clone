@@ -162,7 +162,11 @@ export default function HomePage() {
                 className="aspect-[3/4] overflow-hidden rounded-[10px] bg-[var(--bg2)] transition-transform hover:scale-[1.03]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.url} alt={item.prompt || ""} className="h-full w-full object-cover" />
+                <img
+                  src={item.url}
+                  alt={"prompt" in item ? item.prompt || "" : ""}
+                  className="h-full w-full object-cover"
+                />
               </div>
             ))}
           </div>

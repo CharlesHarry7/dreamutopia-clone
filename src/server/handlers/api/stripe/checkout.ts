@@ -6,6 +6,6 @@ import {
 } from "../checkout";
 
 /** Template-compatible alias: /api/stripe/checkout → /api/checkout */
-export const onRequestOptions: PagesFunction<Env> = (ctx) => checkoutOptions(ctx);
+export const onRequestOptions: PagesFunction<Env> = () => checkoutOptions();
 export const onRequestGet: PagesFunction<Env> = (ctx) => checkoutGet(ctx);
 export const onRequestPost: PagesFunction<Env> = (ctx) => checkoutPost(ctx);

@@ -21,7 +21,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       {
         error: "email_not_configured",
         code: "email_not_configured",
-        message: "Set Pages secrets RESEND_API_KEY and MAIL_FROM to send reset emails.",
+        message: "Set Workers secrets RESEND_API_KEY and MAIL_FROM to send reset emails.",
       },
       503
     );

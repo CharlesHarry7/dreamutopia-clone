@@ -6,7 +6,7 @@ export interface Env {
   SESSIONS?: KVNamespace;
   /** R2 media bucket — file uploads (POST /api/upload). Generate can still use a public imageUrl without MEDIA. */
   MEDIA?: R2Bucket;
-  /** Pages secret — required for real KIE image-to-video */
+  /** Workers secret — required for real KIE image-to-video */
   KIE_API_KEY?: string;
   KIE_API_BASE?: string;
   /** Stripe Checkout (optional). Without it, GET /api/checkout returns configured:false. */

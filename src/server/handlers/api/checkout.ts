@@ -25,7 +25,7 @@ function catalog(configured: boolean) {
       : {
           error: "checkout_not_configured",
           code: "checkout_not_configured",
-          message: "Set Pages secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
+          message: "Set Workers secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
         }),
   };
 }
@@ -43,7 +43,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
         error: "checkout_not_configured",
         code: "checkout_not_configured",
         configured: false,
-        message: "Set Pages secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
+        message: "Set Workers secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET (see BACKEND.md).",
       },
       503
     );

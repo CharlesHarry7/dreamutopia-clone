@@ -76,7 +76,7 @@ function decodeInputImages(raw: string | null): InputImages {
 function kieMissingResponse(): Response {
   return structuredError(
     "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
+    "KIE_API_KEY is not configured. Set it as a Cloudflare Workers secret to enable generation.",
     503,
     { kieConfigured: false, mediaRequired: false }
   );

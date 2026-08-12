@@ -17,7 +17,7 @@ import { loadGuest, clientIp } from "@/server/libs/guest";
 /**
  * POST /api/webhooks/kie — KIE Market callBackUrl.
  * Always re-fetches recordInfo (never trust the body for credits).
- * If Pages secret KIE_WEBHOOK_HMAC_KEY is set, require X-Webhook-Signature
+ * If Workers secret KIE_WEBHOOK_HMAC_KEY is set, require X-Webhook-Signature
  * (https://docs.kie.ai/common-api/webhook-verification).
  */
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {

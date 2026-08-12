@@ -40,7 +40,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     message: !authReady
       ? "Functions up; bind DB + SESSIONS for auth/credits (see BACKEND.md)"
       : !kieConfigured
-        ? "Auth ready — set Pages secret KIE_API_KEY for generation"
+        ? "Auth ready — set Workers secret KIE_API_KEY for generation"
         : uploadReady
           ? "D1 + KV + KIE + R2 ready — 2 free Lite I2V tries, then sign in"
           : "D1 + KV + KIE ready — generate via public imageUrl (bind MEDIA for uploads)",
