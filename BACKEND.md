@@ -2,11 +2,13 @@
 
 本仓库 = Cursor 临摹的 DreamUtopia，不是 pikbo（主站），也不是 OpenCode 的 magicremover-clone。
 
-**Runtime (2026 migration):** Next.js App Router on **Cloudflare Workers** via OpenNext (`npm run deploy`). API handlers live in `src/server/handlers` and are exposed through `src/app/api/**/route.ts`. Bindings are still D1 / KV / R2 — same resource IDs in `wrangler.toml`.
+**Runtime (2026 migration):** Next.js App Router on **Cloudflare Workers** via OpenNext (`npm run cf:deploy`). API handlers live in `src/server/handlers` → `src/app/api/**/route.ts`. Bindings stay D1 / KV / R2 (same IDs in `wrangler.toml`).
 
-Cloudflare 资源名：Workers/Pages project `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+**Production today is still Pages** ([dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev)). The Worker is a parallel/staging target until the manual cutover in **DEPLOY.md**. Merging this tree does not flip live traffic.
 
-Legacy Pages Functions + static HTML remain under `legacy/` for reference only.
+Cloudflare 资源名：Pages (live) + Worker (Next) `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+
+Legacy Pages snapshot: `legacy/out` + `legacy/functions` (see `legacy/README.md`).
 
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 

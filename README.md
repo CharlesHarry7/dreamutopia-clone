@@ -1,16 +1,24 @@
 # DreamUtopia Clone — Next.js + Tailwind + shadcn/ui
 
-Cursor’s [dreamutopia.net](https://dreamutopia.net) image-to-video clone, migrated to:
+Cursor’s [dreamutopia.net](https://dreamutopia.net) image-to-video clone, migrated in-repo to:
 
 **Next.js (App Router) · Tailwind CSS · shadcn/ui · Cloudflare Workers (OpenNext)**
 
 > Not pikbo, not magicremover-clone.
 
+## Live site vs this branch
+
+| | |
+|---|---|
+| **Production today** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) (`legacy/out` + Pages Functions) |
+| **This codebase** | Next + shadcn Worker path (`npm run cf:deploy`) — staging/cutover only until DNS/dashboard is switched |
+| **Merging `main`** | Does **not** auto-cut over production. See **[DEPLOY.md](./DEPLOY.md)**. Blind merge while Pages still expects `out/` can break Pages. |
+
 ## Why Cloudflare (not Vercel)
 
-Production already has **D1** (`dreamutopia-db`), **KV** (`SESSIONS`), **R2** (`dreamutopia-media`), and **KIE / Stripe / Resend** secrets wired for this project. The generate, guest-trial, upload, and auth paths depend on those bindings.
+Production already has **D1** (`dreamutopia-db`), **KV** (`SESSIONS`), **R2** (`dreamutopia-media`), and **KIE / Stripe / Resend** secrets. The generate, guest-trial, upload, and auth paths depend on those bindings.
 
-Keeping **Cloudflare Workers via OpenNext** reuses the same bindings and secrets with the least product risk. A Vercel move would require replacing D1/KV/R2 (e.g. Postgres + Redis + S3) and rewriting session/guest/upload code — a larger, riskier cutover for no product gain.
+**OpenNext on Workers** reuses the same bindings with the least product risk. Vercel would require replacing D1/KV/R2 — a larger cutover for no product gain.
 
 | Layer | Stack |
 |---|---|
@@ -67,13 +75,15 @@ Without bindings/secrets, UI still loads; `/api/health` reports readiness, and g
 
 ## Build & deploy (Cloudflare Workers)
 
-Full cutover steps (secrets, Workers Builds, Pages → Workers): **[DEPLOY.md](./DEPLOY.md)**.
+Staging Worker + **manual** Pages → Workers cutover: **[DEPLOY.md](./DEPLOY.md)**.  
+`cf:deploy` does **not** replace [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).
 
 ```bash
 npm run cf:preview   # OpenNext build + local Workers runtime
-npm run cf:deploy    # OpenNext build + deploy Worker
+npm run cf:deploy    # deploy Worker only (Pages stays live)
 npm run cf:secret:kie
 npm run check:health -- https://<your-worker-host>
+# Worker health should show: "runtime": "next-opennext-workers"
 ```
 
 | Binding / secret | Required for |

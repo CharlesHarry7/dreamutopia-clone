@@ -81,10 +81,10 @@ export function hasMedia(env: Env): env is Env & { MEDIA: R2Bucket } {
   return !!env.MEDIA;
 }
 
-/** 503 when D1 / KV not bound yet (see BACKEND.md) */
+/** 503 when D1 / KV not bound yet (see BACKEND.md / DEPLOY.md) */
 export function bindingsUnavailable(which: "DB" | "SESSIONS" | "DB+SESSIONS"): Response {
   return error(
-    `backend not configured: missing ${which} binding — create D1/KV and bind in Pages settings (see BACKEND.md)`,
+    `backend not configured: missing ${which} binding — create D1/KV and bind for the Worker (see DEPLOY.md)`,
     503
   );
 }

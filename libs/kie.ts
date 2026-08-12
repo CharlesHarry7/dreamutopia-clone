@@ -81,6 +81,24 @@ export function isPublicHttpsUrl(value: string): boolean {
   }
 }
 
+/**
+ * Detect KIE empty-wallet / quota failures from createTask (or similar) errors.
+ * Callers must surface an honest error — never invent a successful generate.
+ */
+export function isKieInsufficientBalance(err: {
+  message?: string;
+  code?: number;
+  status?: number;
+}): boolean {
+  const msg = err.message || "";
+  const providerCode = err.code ?? err.status ?? null;
+  return (
+    providerCode === 402 ||
+    err.status === 402 ||
+    /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg)
+  );
+}
+
 function authHeaders(apiKey: string): HeadersInit {
   return {
     Authorization: `Bearer ${apiKey}`,

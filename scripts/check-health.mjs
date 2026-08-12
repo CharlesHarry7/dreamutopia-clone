@@ -9,6 +9,14 @@ async function main() {
   const healthRes = await fetch(`${base}/api/health`);
   const health = await healthRes.json().catch(() => ({}));
   console.log("GET /api/health", healthRes.status);
+  if (health.runtime) {
+    console.log("runtime:", health.runtime);
+    if (health.runtime === "next-opennext-workers") {
+      console.log("(Next OpenNext Worker — not legacy Pages)");
+    }
+  } else {
+    console.log("runtime: (none) — likely legacy Pages Functions");
+  }
   console.log(JSON.stringify(health, null, 2));
 
   const checkoutRes = await fetch(`${base}/api/checkout`);

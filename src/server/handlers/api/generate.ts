@@ -13,6 +13,7 @@ import {
   createTextToVideoTask,
   createFirstLastVideoTask,
   createImageTask,
+  isKieInsufficientBalance,
   isPublicHttpsUrl,
   parseAspectRatio,
   parseImageResolution,
@@ -220,19 +221,14 @@ function createFailedResponse(
 ): Response {
   const msg = created.message || "Failed to create KIE generation task";
   const providerCode = created.code ?? created.status ?? null;
-  const looksLikeEmptyWallet =
-    providerCode === 402 ||
-    created.status === 402 ||
-    /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg);
 
   // Honest provider failure — never pretend generate succeeded when KIE rejects the job
   // (empty wallet / quota). Site credits are refunded by the caller before this returns.
-  if (looksLikeEmptyWallet) {
+  if (isKieInsufficientBalance(created)) {
     return structuredError(
       "kie_insufficient_balance",
-      /insufficient|balance|credit|wallet|quota|top\s*up|payment required/i.test(msg)
-        ? msg
-        : "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate.",
+      msg ||
+        "KIE wallet has insufficient balance. Top up at kie.ai — this app will not invent a successful generate.",
       502,
       { providerCode, kieConfigured: true, fakeResult: false }
     );
@@ -241,6 +237,7 @@ function createFailedResponse(
   return structuredError("kie_create_failed", msg, 502, {
     providerCode,
     kieConfigured: true,
+    fakeResult: false,
   });
 }
 

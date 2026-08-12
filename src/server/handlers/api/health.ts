@@ -25,6 +25,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   return json({
     ok: true,
     service: "dreamutopia-clone",
+    /** Distinguishes Next OpenNext Worker from legacy Pages Functions. */
+    runtime: "next-opennext-workers",
     time: Date.now(),
     bindings,
     authReady,
@@ -38,9 +40,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     guestLimit: 2,
     mediaRequiredForGenerate: false,
     message: !authReady
-      ? "Functions up; bind DB + SESSIONS for auth/credits (see BACKEND.md)"
+      ? "Worker up; bind DB + SESSIONS for auth/credits (see BACKEND.md / DEPLOY.md)"
       : !kieConfigured
-        ? "Auth ready — set Workers secret KIE_API_KEY for generation"
+        ? "Auth ready — set Workers secret KIE_API_KEY for generation (Pages secrets are separate)"
         : uploadReady
           ? "D1 + KV + KIE + R2 ready — 2 free Lite I2V tries, then sign in"
           : "D1 + KV + KIE ready — generate via public imageUrl (bind MEDIA for uploads)",
