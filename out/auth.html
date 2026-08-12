@@ -113,6 +113,7 @@ nav{display:none}
 
 <script>
 const TOKEN_KEY = "dreamutopia_token";
+const CREDITS_KEY = "dreamutopia_credits";
 const params = new URLSearchParams(location.search);
 let mode = params.get("mode") === "login" ? "login" : "register";
 
@@ -196,6 +197,9 @@ document.getElementById("authForm").onsubmit = async (e) => {
     const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
     const data = await api(endpoint, { email, password });
     localStorage.setItem(TOKEN_KEY, data.token);
+    if (data.credits !== undefined && data.credits !== null) {
+      localStorage.setItem(CREDITS_KEY, String(data.credits));
+    }
     location.href = "/workspace";
   } catch (err) {
     formError.textContent = err.message || "Something went wrong";
@@ -218,6 +222,7 @@ document.getElementById("authForm").onsubmit = async (e) => {
       return;
     }
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(CREDITS_KEY);
   } catch (e) {}
 })();
 </script>
