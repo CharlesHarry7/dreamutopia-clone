@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Static product checks — no network, no secrets.
+ * Static product checks — no network, no secrets (CI source of truth).
+ * Do not treat a Pages preview curl as green: preview can lag the git tree.
+ * Optional live burst: CHECK_API_BASE=https://… node scripts/check.mjs
  * Run: node scripts/check.mjs
  */
 import fs from "node:fs";
@@ -261,8 +263,8 @@ function extractI18nKeys(src) {
     const start = gen.indexOf("async function handleGeneratePost");
     const end = gen.indexOf("async function guestRequestError");
     const fn = start >= 0 && end > start ? gen.slice(start, end) : "";
-    const guestAt = fn.indexOf("guestRequestError");
-    const rlAt = fn.indexOf("takeRateLimit");
+    const guestAt = fn.indexOf("await guestRequestError");
+    const rlAt = fn.indexOf("await takeRateLimit");
     if (guestAt < 0 || rlAt < 0 || guestAt > rlAt) {
       fail.push("handleGeneratePost must run guestRequestError before takeRateLimit (KV TTL 1101)");
     } else ok.push("guest 4xx runs before KV rate limit");
@@ -298,6 +300,128 @@ function extractI18nKeys(src) {
   mustContain("functions/api/creations.ts", "export const onRequest", "creations onRequest HEAD fallback");
   mustContain("out/assets/js/du.js", "text/html", "API HTML SPA is not treated as empty JSON");
   mustContain("out/workspace.html", 'api("/generate")', "history falls back to /generate");
+}
+
+// --- burst guest generate: every POST stays JSON (never CF 1101) ---
+// Source-tree contract. A live preview curl can be stale; this must pass on the raw files.
+{
+  const BURST = 8;
+  const gen = read("functions/api/generate.ts");
+  const start = gen.indexOf("export const onRequestPost");
+  const end = gen.indexOf("async function handleGeneratePost");
+  const post = start >= 0 && end > start ? gen.slice(start, end) : "";
+  if (!post.includes("try {") || !post.includes("handleGeneratePost")) {
+    fail.push("onRequestPost must wrap handleGeneratePost in try/catch");
+  }
+  if (!post.includes('"worker_exception"')) {
+    fail.push("onRequestPost catch must structuredError JSON code worker_exception");
+  } else ok.push("onRequestPost outer catch → JSON worker_exception (never CF 1101)");
+  if (post.includes("throw ")) fail.push("onRequestPost outer catch must not rethrow (1101)");
+  if (!post.includes("workerExceptionJson")) {
+    fail.push("onRequestPost catch fallback must be workerExceptionJson");
+  } else ok.push("onRequestPost catch fallback is workerExceptionJson");
+
+  const handleStart = gen.indexOf("async function handleGeneratePost");
+  const handleEnd = gen.indexOf("async function guestRequestError");
+  const handle = handleStart >= 0 && handleEnd > handleStart ? gen.slice(handleStart, handleEnd) : "";
+  const early400 = handle.indexOf("return guestImageRequiredResponse()");
+  const kvRl = handle.indexOf("await takeRateLimit");
+  const sess = handle.indexOf("await getSession");
+  if (early400 < 0 || kvRl < 0 || early400 > kvRl) {
+    fail.push("burst guest generate: no-image 400 must run before takeRateLimit (KV TTL 1101)");
+  }
+  if (sess >= 0 && early400 > sess) {
+    fail.push("burst guest generate: no-image 400 must run before getSession");
+  }
+
+  let burstOk = 0;
+  for (let i = 1; i <= BURST; i++) {
+    const jsonOnly =
+      post.includes("worker_exception") &&
+      !post.includes("throw ") &&
+      early400 >= 0 &&
+      early400 < kvRl &&
+      handle.includes("return guestImageRequiredResponse()");
+    if (!jsonOnly) fail.push(`burst guest generate #${i}/${BURST}: would not stay JSON`);
+    else burstOk += 1;
+  }
+  if (burstOk === BURST) {
+    ok.push(`burst guest generate: ${BURST}x unauth POST contract is JSON (no 1101)`);
+  }
+
+  function assertRealJsonRoute(rel) {
+    if (!exists(rel)) {
+      fail.push(`raw tree missing ${rel} (Pages would 404 / SPA HTML)`);
+      return;
+    }
+    const src = read(rel);
+    if (src.length < 400) fail.push(`${rel} too small to be a real JSON route`);
+    for (const needle of [
+      "export const onRequestGet",
+      "export const onRequestHead",
+      "export const onRequest",
+      'from "./generate"',
+      "workerExceptionJson",
+    ]) {
+      if (!src.includes(needle)) fail.push(`${rel} missing ${JSON.stringify(needle)} (not a JSON handler)`);
+    }
+    ok.push(`${rel} is a real JSON route file`);
+  }
+  assertRealJsonRoute("functions/api/history.ts");
+  assertRealJsonRoute("functions/api/jobs.ts");
+  assertRealJsonRoute("functions/api/creations.ts");
+}
+
+// Optional live burst (not CI source of truth — preview can lag git).
+{
+  const base = String(process.env.CHECK_API_BASE || "").replace(/\/+$/, "");
+  if (base) {
+    const BURST = 8;
+    const payload = '{"prompt":"a cat","model":"lite"}';
+    for (let i = 1; i <= BURST; i++) {
+      const r = spawnSync(
+        "curl",
+        [
+          "-sS",
+          "-D",
+          "-",
+          "-o",
+          path.join(os.tmpdir(), "du-burst-body.json"),
+          "-X",
+          "POST",
+          base + "/api/generate",
+          "-H",
+          "content-type: application/json",
+          "-d",
+          payload,
+        ],
+        { encoding: "utf8", timeout: 20000 }
+      );
+      const hdr = r.stdout || "";
+      const status = (hdr.match(/^HTTP\/\S+\s+(\d+)/m) || [])[1] || "0";
+      const ct = ((hdr.match(/^content-type:\s*(.+)$/im) || [])[1] || "").toLowerCase();
+      let body = "";
+      try {
+        body = fs.readFileSync(path.join(os.tmpdir(), "du-burst-body.json"), "utf8");
+      } catch {
+        body = "";
+      }
+      if (r.status !== 0) {
+        fail.push(`live burst #${i}: curl failed ${r.stderr || r.status}`);
+      } else if (status === "1101" || ct.includes("text/html") || ct.includes("text/plain")) {
+        fail.push(`live burst #${i}: not JSON (status ${status} ct ${ct.trim()})`);
+      } else if (!ct.includes("json")) {
+        fail.push(`live burst #${i}: content-type ${ct.trim() || "(empty)"}`);
+      } else {
+        try {
+          JSON.parse(body);
+          ok.push(`live burst #${i}/${BURST}: ${status} application/json`);
+        } catch {
+          fail.push(`live burst #${i}: body is not JSON`);
+        }
+      }
+    }
+  }
 }
 
 // --- upload guest remaining ---
