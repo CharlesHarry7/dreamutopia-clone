@@ -13,6 +13,7 @@ import {
   getTaskInfo,
   isPublicHttpsUrl,
 } from "../../libs/kie";
+import { isSafeMediaKey, mediaKeyFromUrl } from "../../libs/media";
 import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
@@ -103,8 +104,8 @@ function publicGeneration(row: GenerationRow) {
 
 /**
  * POST /api/generate
- * Body: { prompt, imageUrl, model?, durationSec? }
- * Temp path (no MEDIA/R2): public image URL → KIE → D1 status → provider result URL.
+ * Body: { prompt, imageUrl, mediaKey?, model?, durationSec? }
+ * imageUrl: public HTTPS (uploaded via POST /api/upload or any KIE-fetchable URL).
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   let body: {
@@ -113,6 +114,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     durationSec?: number;
     imageUrl?: string;
     image_url?: string;
+    mediaKey?: string;
+    media_key?: string;
   };
   try {
     body = await request.json();
@@ -128,7 +131,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!imageUrl) {
     return structuredError(
       "image_url_required",
-      "imageUrl is required (public HTTPS image). R2/MEDIA upload is not available on this path — paste a publicly reachable image URL.",
+      "imageUrl is required. Upload a file via POST /api/upload or paste a public https image URL that KIE can fetch.",
       400,
       { mediaRequired: false }
     );
@@ -140,6 +143,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       400
     );
   }
+
+  const requestedKey = (body.mediaKey || body.media_key || "").trim();
+  if (requestedKey && !isSafeMediaKey(requestedKey)) {
+    return structuredError("media_key_invalid", "mediaKey is not a valid upload key.", 400);
+  }
+  const mediaKey = requestedKey || mediaKeyFromUrl(imageUrl) || null;
 
   const model = body.model && MODEL_COST[body.model] ? body.model : "lite";
   const cost = MODEL_COST[model];
@@ -209,9 +218,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     insert = await env.DB.prepare(
       `INSERT INTO generations
         (user_id, model, prompt, status, media_key, duration_sec, input_image_url, provider_job_id, result_url, error_message)
-       VALUES (?, ?, ?, 'processing', NULL, ?, ?, ?, NULL, NULL)`
+       VALUES (?, ?, ?, 'processing', ?, ?, ?, ?, NULL, NULL)`
     )
-      .bind(session.userId, model, prompt, durationSec, imageUrl, created.taskId)
+      .bind(session.userId, model, prompt, mediaKey, durationSec, imageUrl, created.taskId)
       .run();
   } catch (e) {
     await refundCredits(env, session.userId, cost);
@@ -248,6 +257,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     status: "processing",
     providerJobId: created.taskId,
     imageUrl,
+    mediaKey,
     resultUrl: null,
     mediaRequired: false,
     message:

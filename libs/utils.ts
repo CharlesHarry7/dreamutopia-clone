@@ -4,7 +4,7 @@
 export interface Env {
   DB?: D1Database;
   SESSIONS?: KVNamespace;
-  /** R2 media bucket — optional; generate can use public image URLs without MEDIA */
+  /** R2 media bucket — file uploads (POST /api/upload). Generate can still use a public imageUrl without MEDIA. */
   MEDIA?: R2Bucket;
   /** Pages secret — required for real KIE image-to-video */
   KIE_API_KEY?: string;

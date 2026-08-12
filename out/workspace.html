@@ -96,6 +96,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .upload-area.has-img img{max-height:220px;width:auto;margin:0 auto;border-radius:10px}
 .upload-area .remove-btn{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:14px;display:none}
 .upload-area.has-img .remove-btn{display:flex;align-items:center;justify-content:center}
+.upload-area.drag{border-color:rgba(168,85,247,.7);background:rgba(168,85,247,.08)}
+.mode-note{display:none;max-width:820px;margin:0 auto 16px;padding:12px 16px;border-radius:12px;border:1px solid rgba(251,146,60,.4);background:rgba(251,146,60,.08);color:var(--text2);font-size:13.5px;line-height:1.5;text-align:center}
+.mode-note.show{display:block}
+.mode-note b{color:var(--orange)}
 .url-hint{max-width:420px;margin:-6px auto 10px;font-size:12px;color:rgba(255,255,255,.45);text-align:center;line-height:1.4}
 .url-input{width:100%;max-width:420px;margin:0 auto 18px;display:block;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit}
 .url-input:focus{outline:none;border-color:rgba(168,85,247,.5);box-shadow:0 0 0 1px rgba(168,85,247,.35)}
@@ -266,7 +270,7 @@ nav{display:none}
 <section class="welcome" id="welcomeBanner">
 <div>
 <h2>Welcome to DreamUtopia Workspace</h2>
-<p>Try our AI video generator for free (2 free generations). Sign up to unlock all features and models.</p>
+<p>Sign up for 10 free credits, then upload an image and generate video. No credit card required.</p>
 </div>
 <div class="welcome-actions">
 <a href="/auth?mode=login" class="btn-outline" id="welcomeLogin">Log In</a>
@@ -309,11 +313,12 @@ Image
 <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1" id="uploadLabel">Upload Start Image</div>
-<div class="p2">Preview only — R2 upload optional later</div>
+<div class="p2" id="uploadHint">JPG, PNG, or WebP · up to 10 MB</div>
 <button type="button" class="remove-btn" id="removeImgBtn" onclick="event.stopPropagation(); clearUpload()" aria-label="Remove image">✕</button>
 </div>
-<p class="url-hint">Until MEDIA/R2 is available, paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> below (KIE must be able to fetch it).</p>
+<p class="url-hint" id="urlHint">Or paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> if you already have one hosted.</p>
 <input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/your-image.png" autocomplete="off">
+<p class="mode-note" id="modeNote" role="status"></p>
 
 <div class="label-row">
 <label id="promptLabel" for="promptInput">Describe Your Video</label>
@@ -416,8 +421,8 @@ Image
 <div class="footer-col">
 <h4>Legal</h4>
 <ul>
-<li><a href="#">Privacy Policy</a></li>
-<li><a href="#">Terms of Service</a></li>
+<li><a href="/privacy">Privacy Policy</a></li>
+<li><a href="/terms">Terms of Service</a></li>
 </ul>
 </div>
 </div>
@@ -439,6 +444,9 @@ const packId = (() => {
 const selectedPack = packId ? PACKS[packId] : null;
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let uploadedImage = null;
+let uploadedImageUrl = "";
+let uploadedMediaKey = "";
+let uploadReady = false;
 let currentModel = "lite";
 let currentMode = "video";
 let userCredits = null;
@@ -658,7 +666,15 @@ function switchMode(mode) {
     ? "A futuristic city with flying cars..."
     : "A cinematic portrait with soft lighting...";
   document.getElementById("modelRow").style.display = mode === "video" ? "grid" : "none";
-  if (mode === "image") currentModel = "lite";
+  const note = document.getElementById("modeNote");
+  if (mode === "image") {
+    currentModel = "lite";
+    note.classList.add("show");
+    note.innerHTML = "<b>Image generation isn’t live yet.</b> Switch back to Video to create with KIE (image-to-video).";
+  } else {
+    note.classList.remove("show");
+    note.textContent = "";
+  }
 }
 
 function pickModel(v) {
@@ -682,13 +698,17 @@ function onPromptInput() {
 }
 
 function handleFile(input) {
-  const file = input.files[0];
+  const file = input.files && input.files[0];
   if (!file) return;
-  if (file.size > 20 * 1024 * 1024) return toast("Image must be less than 20MB", true);
+  if (!/^image\/(jpeg|jpg|png|webp|gif)$/i.test(file.type || "")) {
+    return toast("Use a JPG, PNG, WebP, or GIF image.", true);
+  }
+  if (file.size > 10 * 1024 * 1024) return toast("Image must be 10 MB or smaller.", true);
   uploadedImage = file;
+  uploadedImageUrl = "";
+  uploadedMediaKey = "";
   const area = document.getElementById("uploadArea");
   area.classList.add("has-img");
-  // keep remove button; replace preview content carefully
   const existing = area.querySelector("img.preview");
   if (existing) existing.remove();
   const img = document.createElement("img");
@@ -703,6 +723,8 @@ function handleFile(input) {
 
 function clearUpload() {
   uploadedImage = null;
+  uploadedImageUrl = "";
+  uploadedMediaKey = "";
   const area = document.getElementById("uploadArea");
   area.classList.remove("has-img");
   const img = area.querySelector("img.preview");
@@ -713,13 +735,46 @@ function clearUpload() {
   document.getElementById("fileInput").value = "";
 }
 
+function bindUploadDrop() {
+  const area = document.getElementById("uploadArea");
+  if (!area) return;
+  area.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    area.classList.add("drag");
+  });
+  area.addEventListener("dragleave", () => area.classList.remove("drag"));
+  area.addEventListener("drop", (e) => {
+    e.preventDefault();
+    area.classList.remove("drag");
+    handleFile({ files: e.dataTransfer && e.dataTransfer.files });
+  });
+}
+
+async function uploadImageFile(file) {
+  const headers = { authorization: "Bearer " + token };
+  if (file.type) headers["content-type"] = file.type;
+  const res = await fetch("/api/upload", { method: "POST", headers, body: file });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || "upload failed");
+    err.status = res.status;
+    err.code = data.code || data.error || null;
+    throw err;
+  }
+  return data;
+}
+
 async function generate() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return toast("Please enter a prompt.", true);
 
-  const imageUrl = document.getElementById("imageUrlInput").value.trim();
-  if (token && !imageUrl) {
-    return toast("Paste a public https image URL (R2 upload not required).", true);
+  if (currentMode === "image") {
+    return toast("Image generation isn’t live yet — switch to Video.", true);
+  }
+
+  let imageUrl = document.getElementById("imageUrlInput").value.trim();
+  if (token && !uploadedImage && !imageUrl) {
+    return toast("Upload an image or paste a public https URL.", true);
   }
 
   const btn = document.getElementById("genBtn");
@@ -732,25 +787,48 @@ async function generate() {
   status.classList.add("show");
   spinner.style.display = "";
   showResultVideo(null);
-  statusText.textContent = currentMode === "video" ? "Starting KIE job…" : "Generating your image…";
+  statusText.textContent = "Starting KIE job…";
 
   try {
     if (!token) {
-      // Guest path: send to auth — no fake demo alert
       statusText.innerHTML = 'Sign in required — <a href="' + authHref("register") + '" style="color:var(--primary2)">create an account</a> to generate.';
       toast("Sign up to generate with KIE");
       resetGenBtn();
       return;
     }
 
+    if (uploadedImage && !uploadedImageUrl) {
+      statusText.textContent = "Uploading image…";
+      try {
+        const up = await uploadImageFile(uploadedImage);
+        uploadedImageUrl = up.imageUrl || "";
+        uploadedMediaKey = up.key || "";
+        if (uploadedImageUrl) document.getElementById("imageUrlInput").value = uploadedImageUrl;
+        imageUrl = uploadedImageUrl || imageUrl;
+      } catch (upErr) {
+        if (upErr && upErr.code === "media_not_bound" && imageUrl) {
+          statusText.textContent = "Upload unavailable — using pasted URL…";
+        } else {
+          throw upErr;
+        }
+      }
+    }
+
+    if (!imageUrl) {
+      throw Object.assign(new Error("Upload an image or paste a public https URL."), { code: "image_url_required" });
+    }
+
+    statusText.textContent = "Starting KIE job…";
+    const payload = {
+      prompt,
+      model: currentModel,
+      durationSec: currentModel === "lite" ? 5 : 10,
+      imageUrl,
+    };
+    if (uploadedMediaKey) payload.mediaKey = uploadedMediaKey;
     const data = await api("/generate", {
       method: "POST",
-      body: JSON.stringify({
-        prompt,
-        model: currentModel,
-        durationSec: currentModel === "lite" ? 5 : 10,
-        imageUrl,
-      }),
+      body: JSON.stringify(payload),
     });
     if (data.credits !== undefined) updateAuthUI(data.credits);
 
@@ -766,11 +844,15 @@ async function generate() {
     const code = e && e.code ? String(e.code) : "";
     let msg = e.message || "Generation failed";
     if (code === "kie_api_key_missing") {
-      msg = "KIE_API_KEY missing — set it as a Pages secret (MEDIA/R2 not required).";
+      msg = "KIE_API_KEY missing — set it as a Pages secret.";
     } else if (code === "schema_migration_required") {
       msg = "D1 migration needed — run migrations/001_generations_kie.sql";
+    } else if (code === "media_not_bound") {
+      msg = "File upload isn’t bound — paste a public https image URL instead.";
     } else if (code === "image_url_required" || code === "image_url_invalid") {
-      msg = e.message || "Valid public https imageUrl required";
+      msg = e.message || "Upload an image or paste a public https URL.";
+    } else if (code === "unsupported_type" || code === "file_too_large") {
+      msg = e.message || "Use a JPG/PNG/WebP/GIF under 10 MB.";
     }
     statusText.textContent = msg;
     toast(msg, true);
@@ -835,6 +917,7 @@ async function loadHistory() {
           <span class="h-status ${escapeHtml(String(g.status))}">${escapeHtml(String(g.status))}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
+        ${url ? `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>` : ""}
         ${link}
       </div>`;
     }).join("");
@@ -854,9 +937,20 @@ function escapeHtml(s) {
 
 (async function init() {
   bindAuthTriggers();
+  bindUploadDrop();
   if (token) userCredits = readCachedCredits();
   updateAuthUI();
   showPackBanner();
+  try {
+    const cap = await fetch("/api/upload").then((r) => r.json());
+    uploadReady = !!(cap && cap.mediaBound);
+  } catch (e) {
+    uploadReady = false;
+  }
+  const hint = document.getElementById("urlHint");
+  if (hint && !uploadReady) {
+    hint.innerHTML = 'File upload isn’t bound yet — paste a <strong style="color:rgba(255,255,255,.7);font-weight:600">public https image URL</strong> that KIE can fetch.';
+  }
   if (token) {
     try {
       // Only a real unauthorized response may wipe the session. Transient

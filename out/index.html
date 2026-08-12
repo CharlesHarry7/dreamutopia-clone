@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DreamUtopia — Free AI Image & Video Generator</title>
-<meta name="description" content="Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — no account needed.">
+<meta name="description" content="Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — 10 credits on signup.">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -191,7 +191,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .faq-q::after{content:'+';font-size:20px;color:var(--text3);transition:transform .3s}
 .faq-item.open .faq-q::after{content:'−'}
 .faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease;color:var(--text2);font-size:14px;line-height:1.65}
-.faq-item.open .faq-a{max-height:200px;margin-top:12px}
+.faq-item.open .faq-a{max-height:360px;margin-top:12px}
 
 /* Footer */
 footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);padding:56px 20px 28px}
@@ -265,13 +265,13 @@ nav{display:none}
 <!-- Hero -->
 <section class="hero">
 <div class="hero-meta">
-<span>AI Video Generator • 2 Free Tries • No Signup Required</span>
+<span>AI Video Generator • 10 Free Credits • Sign up in seconds</span>
 <span class="sep">·</span>
 <span class="new">NEW: Pro Model with Sound</span>
 </div>
 <h1>Turn Any Image Into<br><span class="gradient">Stunning AI Video</span></h1>
-<p class="sub">Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — no account needed, no credit card required.</p>
-<div class="free-tag"><span class="star">☆</span> 2 FREE generations for everyone — no login needed</div>
+<p class="sub">Transform your photos into cinematic AI-powered videos in seconds. Choose from multiple premium AI models. Start free — 10 credits on signup, no credit card required.</p>
+<div class="free-tag"><span class="star">☆</span> 10 FREE credits when you create an account</div>
 <p class="credits-note">Sign up to get <b>10 free credits</b> — unlock more advanced models with full controls</p>
 <div class="hero-cta">
 <a href="/workspace" class="btn-primary-lg">Start Creating Free →</a>
@@ -287,10 +287,10 @@ nav{display:none}
 <div class="gen-card">
 <h2>AI Video Generator</h2>
 
-<div class="upload-area">
+<div class="upload-area" id="homeUpload" role="link" tabindex="0">
 <div class="icon">🖼</div>
 <div class="p1">Upload Start Image</div>
-<div class="p2">Click to browse</div>
+<div class="p2">Opens the workspace — JPG, PNG, or WebP</div>
 </div>
 
 <div class="label-row">
@@ -335,18 +335,18 @@ nav{display:none}
 <div class="compare-head">
 <div class="tag">Newcomer Gift</div>
 <h2>Sign up and get 10 free credits — unlock the full experience</h2>
-<p>The 2 free trials let anyone preview our entry-level model. Newcomer credits go further: spend them on our advanced models with full creative controls.</p>
+<p>Sign up for 10 free credits, then spend them on Lite, Medium, or Pro. Newcomer credits go further on advanced models with full creative controls.</p>
 </div>
 <div class="compare-grid">
 <div class="compare-card left">
-<div class="head-tag">Free Trial</div>
-<div class="head-title">2 free generations</div>
-<div class="head-sub">Quick preview, no account</div>
+<div class="head-tag">Guest</div>
+<div class="head-title">Browse the site</div>
+<div class="head-sub">Look around, then sign in to create</div>
 <ul>
-<li><span class="check">✓</span> 2 free generations</li>
-<li><span class="check">✓</span> Lite model only — entry-level quality</li>
-<li><span class="check">✓</span> Basic controls</li>
-<li><span class="check">✓</span> Generations not saved to history</li>
+<li><span class="check">✓</span> Gallery, pricing, and FAQ</li>
+<li><span class="check">✓</span> No credit card to explore</li>
+<li><span class="check">✓</span> Generation requires a free account</li>
+<li><span class="check">✓</span> History saved after you sign up</li>
 </ul>
 </div>
 <div class="compare-vs">vs</div>
@@ -396,9 +396,9 @@ nav{display:none}
 <h2>Why creators choose DreamUtopia</h2>
 <p>DreamUtopia combines multiple state-of-the-art AI models with an intuitive interface, giving you studio-quality results with zero learning curve.</p>
 <ul>
-<li>2 free generations per device — no signup or credit card required</li>
+<li>10 free credits on signup — no credit card required</li>
 <li>3 premium AI models optimized for different styles and use cases</li>
-<li>Fast processing with real-time progress tracking via SSE</li>
+<li>Fast processing with live status updates while your video renders</li>
 <li>Your content stays private — encrypted transfers and full ownership</li>
 </ul>
 <div class="why-actions">
@@ -418,7 +418,7 @@ nav{display:none}
 <section class="steps-section" id="get-started">
 <div class="steps-text">
 <h3>Create your first AI video in 3 simple steps</h3>
-<p>No account needed. Start generating stunning AI videos right now — completely free for your first 2 creations.</p>
+<p>Create a free account (10 credits), then generate in three steps.</p>
 <ol class="steps-list">
 <li><span class="num">1</span><span class="text">Upload any image — a photo, illustration, or screenshot</span></li>
 <li><span class="num">2</span><span class="text">Describe the motion: camera movement, action, mood, and style</span></li>
@@ -438,7 +438,7 @@ nav{display:none}
 <section>
 <div class="credits-cta">
 <h3>Get 10 free credits — try advanced models</h3>
-<p>Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. When you need more, buy one-time credit packs from $5 — no subscriptions.</p>
+<p>Create a free account and instantly receive 10 credits — enough to try our advanced models with full creative controls. Credit packs are listed on Pricing; paid checkout is not live yet.</p>
 <a href="/auth?mode=register" class="btn-primary-lg">Claim 10 Free Credits</a>
 <div class="login-link">Need more? <a href="/pricing">View credit packs</a> · Already have an account? <a href="/auth?mode=login">Log in</a></div>
 </div>
@@ -447,9 +447,9 @@ nav{display:none}
 <!-- App banner -->
 <section>
 <div class="app-banner">
-<h2>Get the DreamUtopia App</h2>
-<p>Create AI videos on the go with our mobile app</p>
-<button class="btn-primary-lg">Install app</button>
+<h2>Works on your phone</h2>
+<p>Open the workspace in any mobile browser — no app install required.</p>
+<a href="/workspace" class="btn-primary-lg">Open workspace</a>
 </div>
 </section>
 
@@ -458,7 +458,7 @@ nav{display:none}
 <h3>Frequently Asked Questions</h3>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Is DreamUtopia really free to use?</div>
-<div class="faq-a">Yes! Every device gets 2 free video generations with no signup, no login, and no credit card required. Just upload an image and start creating.</div>
+<div class="faq-a">Yes. Create a free account and you instantly get 10 credits — no credit card required. Video costs: Lite 3 · Medium 5 · Pro 16. Paid checkout for extra packs is not live yet.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What AI models are available?</div>
@@ -470,7 +470,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What image formats can I upload?</div>
-<div class="faq-a">We accept JPG, PNG, WebP, and TIFF files up to 20 MB. For best results, use clear, high-resolution images.</div>
+<div class="faq-a">We accept JPG, PNG, WebP, and GIF files up to 10 MB. For best results, use a clear, high-resolution image. You can also paste a public https image URL.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do I own the videos I create?</div>
@@ -482,11 +482,11 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Can I use DreamUtopia on mobile?</div>
-<div class="faq-a">Yes. DreamUtopia works on any device — desktop, tablet, or phone. We also offer dedicated Android and iOS apps for on-the-go creation.</div>
+<div class="faq-a">Yes. DreamUtopia works in the browser on desktop, tablet, or phone. There is no separate iOS/Android app yet.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q">What happens after my 2 free tries?</div>
-<div class="faq-a">You can buy one-time credit packs to continue generating — Starter ($5 / 10 credits), Plus ($25 / 50), Pro ($90 / 200), or Premium ($200 / 500). Video costs: Lite 3 · Medium 5 · Pro 16. Credits never expire.</div>
+<div class="faq-q">What happens after my free credits?</div>
+<div class="faq-a">Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). Paid checkout is not live yet — you can still sign up, generate with your 10 free credits, and save a pack as intent. Credits never expire.</div>
 </div>
 </section>
 
@@ -525,8 +525,8 @@ nav{display:none}
 <div class="footer-col">
 <h4>Legal</h4>
 <ul>
-<li><a href="#">Privacy Policy</a></li>
-<li><a href="#">Terms of Service</a></li>
+<li><a href="/privacy">Privacy Policy</a></li>
+<li><a href="/terms">Terms of Service</a></li>
 </ul>
 </div>
 </div>
@@ -541,18 +541,31 @@ tab.classList.add('active');
 });
 });
 
+function goCreate(){
+  const token=localStorage.getItem("dreamutopia_token");
+  location.href=token?"/workspace":"/auth?mode=register";
+}
+
 // Generate按钮激活
 function updateGen(ta){
 const btn=document.getElementById('genBtn');
 if(ta.value.trim().length>0){
 btn.classList.add('ready');
 btn.disabled=false;
-btn.onclick=()=>{ location.href='/auth?mode=register'; };
+btn.onclick=goCreate;
 }else{
 btn.classList.remove('ready');
 btn.disabled=true;
 btn.onclick=null;
 }
+}
+
+const homeUpload=document.getElementById("homeUpload");
+if(homeUpload){
+  homeUpload.onclick=goCreate;
+  homeUpload.onkeydown=function(e){
+    if(e.key==="Enter"||e.key===" "){e.preventDefault();goCreate();}
+  };
 }
 
 // FAQ

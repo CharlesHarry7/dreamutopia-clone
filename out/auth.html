@@ -109,7 +109,7 @@ nav{display:none}
 </div>
 </main>
 
-<footer>© DreamUtopia AI · Auth powered by Cloudflare</footer>
+<footer>© DreamUtopia AI · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
 
 <script>
 const TOKEN_KEY = "dreamutopia_token";
@@ -168,7 +168,7 @@ function setMode(next) {
   submitBtn.textContent = isLogin ? "Log In" : "Sign Up Free";
   perk.style.display = isLogin ? "none" : "";
   if (selectedPack && !isLogin) {
-    perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> — " + selectedPack.price + " for " + selectedPack.credits + " credits. New accounts also get <b>10 free credits</b> instantly.";
+    perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> (" + selectedPack.price + " · " + selectedPack.credits + " credits). Paid checkout isn’t live yet — nothing will be charged. New accounts still get <b>10 free credits</b> instantly.";
   } else if (!isLogin) {
     perk.innerHTML = "New accounts get <b>10 free credits</b> instantly — no credit card required.";
   }

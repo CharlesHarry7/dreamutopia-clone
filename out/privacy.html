@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — DreamUtopia</title>
+<meta name="description" content="How DreamUtopia stores accounts, uploads, and generation jobs.">
+<link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0d12;--bg2:#16161e;--card:#1c1c26;--border:#2a2a38;--text:#fff;--text2:#a8a8b8;--text3:#6a6a7a;--primary:#a855f7;--accent:#ec4899}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+a{color:#c084fc;text-decoration:none}
+a:hover{text-decoration:underline}
+header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff}
+.logo img{width:28px;height:28px;border-radius:7px}
+nav{display:flex;gap:12px}
+nav a{color:var(--text2);font-size:14px;font-weight:500}
+main{max-width:720px;margin:48px auto 80px;padding:0 20px}
+h1{font-size:32px;font-weight:800;margin-bottom:8px}
+.lead{color:var(--text2);margin-bottom:28px}
+h2{font-size:18px;margin:28px 0 10px}
+p,li{color:var(--text2);font-size:15px}
+ul{padding-left:20px;margin:8px 0 16px}
+li{margin:6px 0}
+footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;color:var(--text3);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+<a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
+<nav>
+<a href="/">Home</a>
+<a href="/workspace">Workspace</a>
+<a href="/terms">Terms</a>
+</nav>
+</header>
+<main>
+<h1>Privacy Policy</h1>
+<p class="lead">Last updated 12 August 2026. This clone stores the minimum needed to run accounts and image-to-video jobs.</p>
+<h2>What we store</h2>
+<ul>
+<li>Email and a PBKDF2 password hash (not the password itself)</li>
+<li>Credit balance and generation history (prompt, model, status, result URL)</li>
+<li>Session tokens in Cloudflare KV</li>
+<li>Uploaded start images in Cloudflare R2, served at unguessable <code>/api/media</code> URLs so the inference provider can fetch them</li>
+</ul>
+<h2>Providers</h2>
+<p>Video generation is performed by <a href="https://kie.ai">KIE</a>. Your prompt and source image URL are sent to that API. Result videos are hosted by the provider unless we later copy them into R2.</p>
+<h2>Cookies and local data</h2>
+<p>The session token and cached credit count live in your browser’s <code>localStorage</code>. We do not use advertising cookies.</p>
+<h2>Contact</h2>
+<p>This is a personal clone project, not the original DreamUtopia product. For data deletion, sign out and email the operator who deployed this Pages project.</p>
+</main>
+<footer>© 2026 DreamUtopia AI clone · <a href="/terms">Terms</a></footer>
+</body>
+</html>
