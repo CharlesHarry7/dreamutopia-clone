@@ -123,6 +123,10 @@ function extractI18nKeys(src) {
   if (!checkout.includes("hasStripe")) fail.push("checkout.ts missing hasStripe gate");
   if (!checkout.includes("onRequestHead")) fail.push("checkout.ts missing HEAD (honest 503)");
   mustContain("functions/api/checkout.ts", 'method === "HEAD"', "checkout onRequest HEAD fallback (not SPA HTML)");
+  mustContain("functions/api/_middleware.ts", "/api/checkout", "middleware HEAD checkout not SPA");
+  mustContain("functions/api/_middleware.ts", "/api/auth/forgot", "middleware HEAD forgot not SPA");
+  mustContain("functions/api/_middleware.ts", "HEAD_AS_GET", "middleware rewrites HEAD probes to GET");
+  mustContain("functions/api/_middleware.ts", "headProbe503", "HTML HEAD on checkout/forgot becomes 503");
   mustContain("functions/api/stripe/checkout.ts", "onRequestHead", "stripe checkout alias HEAD");
   mustContain("functions/api/stripe/checkout.ts", "checkoutOnRequest", "stripe checkout alias onRequest HEAD fallback");
   if (/sk_live_|sk_test_[a-zA-Z0-9]{10,}/.test(checkout)) fail.push("checkout.ts looks like it embeds a Stripe secret");

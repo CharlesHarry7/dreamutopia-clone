@@ -88,6 +88,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 /**
  * Pages on some deploys does not invoke onRequestHead — HEAD then hits the SPA
  * (live: 200 text/html). onRequest is the fallback so HEAD/OPTIONS match GET/POST.
+ * functions/api/_middleware.ts also rewrites HEAD → GET for this path.
  */
 export const onRequest: PagesFunction<Env> = async (ctx) => {
   const method = ctx.request.method;
