@@ -114,8 +114,16 @@ nav{display:none}
 <script>
 const TOKEN_KEY = "dreamutopia_token";
 const CREDITS_KEY = "dreamutopia_credits";
+const PACKS = {
+  starter: { name: "Starter Pack", price: "$5", credits: 10 },
+  plus: { name: "Plus Pack", price: "$25", credits: 50 },
+  pro: { name: "Pro Pack", price: "$90", credits: 200 },
+  premium: { name: "Premium Pack", price: "$200", credits: 500 },
+};
 const params = new URLSearchParams(location.search);
 let mode = params.get("mode") === "login" ? "login" : "register";
+const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
+const selectedPack = packId ? PACKS[packId] : null;
 
 const title = document.getElementById("title");
 const lead = document.getElementById("lead");
@@ -130,31 +138,54 @@ const passwordInput = document.getElementById("password");
 const hdrLogin = document.getElementById("hdrLogin");
 const hdrSignup = document.getElementById("hdrSignup");
 
+function authUrl(nextMode) {
+  let url = "/auth?mode=" + nextMode;
+  if (packId) url += "&pack=" + encodeURIComponent(packId);
+  return url;
+}
+
+function workspaceUrl() {
+  return packId ? "/workspace?pack=" + encodeURIComponent(packId) : "/workspace";
+}
+
 function setMode(next) {
   mode = next === "login" ? "login" : "register";
   const isLogin = mode === "login";
   title.textContent = isLogin ? "Welcome back" : "Create your account";
-  lead.textContent = isLogin
-    ? "Log in to continue creating in your workspace."
-    : "Claim 10 free credits and unlock advanced AI models in the workspace.";
+  if (selectedPack) {
+    lead.textContent = isLogin
+      ? "Log in to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits)."
+      : "Create a free account to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits).";
+  } else {
+    lead.textContent = isLogin
+      ? "Log in to continue creating in your workspace."
+      : "Claim 10 free credits and unlock advanced AI models in the workspace.";
+  }
   tabRegister.classList.toggle("active", !isLogin);
   tabLogin.classList.toggle("active", isLogin);
   tabRegister.setAttribute("aria-selected", String(!isLogin));
   tabLogin.setAttribute("aria-selected", String(isLogin));
   submitBtn.textContent = isLogin ? "Log In" : "Sign Up Free";
   perk.style.display = isLogin ? "none" : "";
+  if (selectedPack && !isLogin) {
+    perk.innerHTML = "Selected: <b>" + selectedPack.name + "</b> — " + selectedPack.price + " for " + selectedPack.credits + " credits. New accounts also get <b>10 free credits</b> instantly.";
+  } else if (!isLogin) {
+    perk.innerHTML = "New accounts get <b>10 free credits</b> instantly — no credit card required.";
+  }
   switchLine.innerHTML = isLogin
-    ? 'New here? <a href="/auth?mode=register" id="switchLink">Sign up free</a>'
-    : 'Already have an account? <a href="/auth?mode=login" id="switchLink">Log in</a>';
+    ? 'New here? <a href="' + authUrl("register") + '" id="switchLink">Sign up free</a>'
+    : 'Already have an account? <a href="' + authUrl("login") + '" id="switchLink">Log in</a>';
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
     setMode(isLogin ? "register" : "login");
   };
   passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
   hdrLogin.classList.toggle("active", isLogin);
+  hdrLogin.href = authUrl("login");
+  hdrSignup.href = authUrl("register");
   formError.classList.remove("show");
   formError.textContent = "";
-  const nextUrl = "/auth?mode=" + mode;
+  const nextUrl = authUrl(mode);
   if (location.pathname + location.search !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
@@ -200,7 +231,7 @@ document.getElementById("authForm").onsubmit = async (e) => {
     if (data.credits !== undefined && data.credits !== null) {
       localStorage.setItem(CREDITS_KEY, String(data.credits));
     }
-    location.href = "/workspace";
+    location.href = workspaceUrl();
   } catch (err) {
     formError.textContent = err.message || "Something went wrong";
     formError.classList.add("show");
@@ -218,7 +249,7 @@ document.getElementById("authForm").onsubmit = async (e) => {
       headers: { authorization: "Bearer " + existing },
     });
     if (res.ok) {
-      location.replace("/workspace");
+      location.replace(workspaceUrl());
       return;
     }
     localStorage.removeItem(TOKEN_KEY);

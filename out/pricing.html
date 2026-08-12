@@ -173,7 +173,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="#" class="btn outline">Select</a>
+<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter">Select</a>
 </div>
 
 <div class="plan">
@@ -191,7 +191,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="#" class="btn outline">Select</a>
+<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus">Select</a>
 </div>
 
 <div class="plan popular">
@@ -210,7 +210,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="#" class="btn primary">Select</a>
+<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro">Select</a>
 </div>
 
 <div class="plan">
@@ -228,7 +228,7 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="#" class="btn outline">Select</a>
+<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium">Select</a>
 </div>
 
 </div>
@@ -371,5 +371,20 @@ nav{display:none}
 </div>
 </div>
 </footer>
+<script>
+(function () {
+  const TOKEN_KEY = "dreamutopia_token";
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return;
+  fetch("/api/auth/me", { headers: { authorization: "Bearer " + token } })
+    .then((res) => {
+      if (!res.ok) return;
+      document.querySelectorAll("a[data-pack]").forEach((a) => {
+        a.href = "/workspace?pack=" + encodeURIComponent(a.getAttribute("data-pack"));
+      });
+    })
+    .catch(function () {});
+})();
+</script>
 </body>
 </html>

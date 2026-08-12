@@ -63,6 +63,12 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .welcome-actions .btn-outline{border:1px solid var(--border2);padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;color:var(--text)}
 .welcome-actions .btn-outline:hover{border-color:var(--primary)}
 .welcome-actions .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600}
+.pack-banner{display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.35);border-radius:16px;padding:16px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.pack-banner.show{display:flex}
+.pack-banner h2{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--orange)}
+.pack-banner p{font-size:13px;color:var(--text2);max-width:620px;line-height:1.5}
+.pack-banner a{color:var(--primary2);font-weight:600}
+.pack-banner a:hover{text-decoration:underline}
 
 /* Primary tabs: Create / My Creations */
 .tabs-primary{display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.05);border-radius:10px;width:fit-content;margin-bottom:20px}
@@ -258,6 +264,14 @@ nav{display:none}
 </div>
 </section>
 
+<!-- Selected credit pack from /pricing -->
+<section class="pack-banner" id="packBanner" hidden>
+<div>
+<h2 id="packBannerTitle">Credit pack selected</h2>
+<p id="packBannerText"></p>
+</div>
+</section>
+
 <!-- Create / My Creations -->
 <div class="tabs-primary" role="tablist">
 <button type="button" class="active" id="tabCreate" onclick="switchPrimaryTab('create')">Create</button>
@@ -402,6 +416,17 @@ Image
 <script>
 const TOKEN_KEY = "dreamutopia_token";
 const CREDITS_KEY = "dreamutopia_credits";
+const PACKS = {
+  starter: { name: "Starter Pack", price: "$5", credits: 10 },
+  plus: { name: "Plus Pack", price: "$25", credits: 50 },
+  pro: { name: "Pro Pack", price: "$90", credits: 200 },
+  premium: { name: "Premium Pack", price: "$200", credits: 500 },
+};
+const packId = (() => {
+  const id = new URLSearchParams(location.search).get("pack");
+  return PACKS[id] ? id : "";
+})();
+const selectedPack = packId ? PACKS[packId] : null;
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let uploadedImage = null;
 let currentModel = "lite";
@@ -486,25 +511,50 @@ async function pollGeneration(generationId, statusText) {
   throw new Error("Timed out waiting for provider result — check History later");
 }
 
+function authHref(mode) {
+  let url = "/auth?mode=" + (mode === "login" ? "login" : "register");
+  if (packId) url += "&pack=" + encodeURIComponent(packId);
+  return url;
+}
+
 function goAuth(mode) {
-  location.href = "/auth?mode=" + (mode === "login" ? "login" : "register");
+  location.href = authHref(mode);
+}
+
+function showPackBanner() {
+  const banner = document.getElementById("packBanner");
+  if (!banner || !selectedPack) return;
+  banner.hidden = false;
+  banner.classList.add("show");
+  document.getElementById("packBannerTitle").textContent = selectedPack.name + " selected";
+  document.getElementById("packBannerText").innerHTML = token
+    ? selectedPack.price + " · " + selectedPack.credits + " credits reserved for your account. Paid checkout is not live yet — keep creating with your current credits, or <a href=\"/pricing\">review packs</a>."
+    : selectedPack.price + " · " + selectedPack.credits + " credits. <a href=\"" + authHref("register") + "\">Sign up</a> or <a href=\"" + authHref("login") + "\">log in</a> to continue with this pack.";
 }
 
 function bindAuthTriggers() {
   const loginBtn = document.getElementById("loginBtn");
   const signupBtn = document.getElementById("signupBtn");
   if (loginBtn) {
-    loginBtn.href = "/auth?mode=login";
+    loginBtn.href = authHref("login");
     loginBtn.textContent = "Log In";
     loginBtn.onclick = null;
   }
   if (signupBtn) {
-    signupBtn.href = "/auth?mode=register";
+    signupBtn.href = authHref("register");
     signupBtn.textContent = "Sign Up";
     signupBtn.onclick = null;
   }
   const foot = document.getElementById("genFootSignup");
-  if (foot) foot.href = "/auth?mode=register";
+  if (foot) foot.href = authHref("register");
+  const welcomeLogin = document.getElementById("welcomeLogin");
+  const welcomeSignup = document.getElementById("welcomeSignup");
+  if (welcomeLogin) welcomeLogin.href = authHref("login");
+  if (welcomeSignup) welcomeSignup.href = authHref("register");
+  const saveLogin = document.getElementById("saveLogin");
+  const saveSignup = document.getElementById("saveSignup");
+  if (saveLogin) saveLogin.href = authHref("login");
+  if (saveSignup) saveSignup.href = authHref("register");
 }
 
 function updateAuthUI(credits) {
@@ -555,7 +605,7 @@ function updateAuthUI(credits) {
     writeCachedCredits(null);
     welcome.classList.add("show");
     save.classList.add("show");
-    foot.innerHTML = 'Free trial. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for more.';
+    foot.innerHTML = 'Free trial. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for more.';
     btnLabel.textContent = "Generate Free Trial";
     bindAuthTriggers();
   }
@@ -661,7 +711,7 @@ async function generate() {
   try {
     if (!token) {
       // Guest path: send to auth — no fake demo alert
-      statusText.innerHTML = 'Sign in required — <a href="/auth?mode=register" style="color:var(--primary2)">create an account</a> to generate.';
+      statusText.innerHTML = 'Sign in required — <a href="' + authHref("register") + '" style="color:var(--primary2)">create an account</a> to generate.';
       toast("Sign up to generate with KIE");
       resetGenBtn();
       return;
@@ -780,14 +830,17 @@ function escapeHtml(s) {
   bindAuthTriggers();
   if (token) userCredits = readCachedCredits();
   updateAuthUI();
+  showPackBanner();
   if (token) {
     try {
       const me = await api("/auth/me");
       updateAuthUI(me.user.credits);
+      showPackBanner();
       loadHistory();
     } catch (e) {
       clearAuthLocal();
       updateAuthUI();
+      showPackBanner();
     }
   }
 })();
