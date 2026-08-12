@@ -63,6 +63,30 @@ export function preflight(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
+/** HEAD with the same status/headers as a GET, no body. */
+export function asHead(res: Response): Response {
+  return new Response(null, { status: res.status, headers: res.headers });
+}
+
+/** Last-resort JSON 500 — never let a Function throw become Cloudflare 1101 text/plain. */
+export function workerExceptionJson(message = "Request failed. Please try again."): Response {
+  return new Response(
+    JSON.stringify({
+      error: "worker_exception",
+      code: "worker_exception",
+      message,
+      mediaRequired: false,
+    }),
+    {
+      status: 500,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        ...CORS_HEADERS,
+      },
+    }
+  );
+}
+
 export function randomId(prefix = "gen"): string {
   const rand = crypto.getRandomValues(new Uint8Array(8));
   const hex = Array.from(rand, (b) => b.toString(16).padStart(2, "0")).join("");
