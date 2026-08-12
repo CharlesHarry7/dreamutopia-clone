@@ -42,6 +42,9 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .credits-pill{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2)}
 .credits-pill a{color:inherit;margin-left:6px;opacity:.85;font-weight:500}
 .credits-pill a:hover{opacity:1;text-decoration:underline}
+.credits-pill #creditsBadge{display:inline-block;min-width:1.25ch;text-align:center;vertical-align:baseline}
+.credits-pill #creditsBadge.loading{min-width:2ch;opacity:.45}
+.credits-pill #creditsBadge.loading::after{content:"···"}
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
 .lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
@@ -201,6 +204,27 @@ nav{display:none}
 </nav>
 <div class="header-right">
 <span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
+<script>
+/* Sync-hydrate credits badge before paint continues — avoid "— credits" flash when a session exists. */
+(function () {
+  try {
+    var token = localStorage.getItem("dreamutopia_token");
+    if (!token) return;
+    var badge = document.getElementById("creditsBadge");
+    var buy = document.getElementById("buyCreditsLink");
+    if (buy) buy.hidden = false;
+    var raw = localStorage.getItem("dreamutopia_credits");
+    var n = raw === null || raw === "" ? NaN : Number(raw);
+    if (Number.isFinite(n)) {
+      badge.textContent = String(n);
+      badge.classList.remove("loading");
+    } else {
+      badge.textContent = "";
+      badge.classList.add("loading");
+    }
+  } catch (e) {}
+})();
+</script>
 <a href="/auth?mode=login" class="btn-login" id="loginBtn">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="signupBtn">Sign Up</a>
 <select class="lang-select" aria-label="Language">
@@ -363,11 +387,34 @@ Image
 
 <script>
 const TOKEN_KEY = "dreamutopia_token";
+const CREDITS_KEY = "dreamutopia_credits";
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let uploadedImage = null;
 let currentModel = "lite";
 let currentMode = "video";
 let userCredits = null;
+
+function readCachedCredits() {
+  const raw = localStorage.getItem(CREDITS_KEY);
+  if (raw === null || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function writeCachedCredits(credits) {
+  if (credits === null || credits === undefined) {
+    localStorage.removeItem(CREDITS_KEY);
+    return;
+  }
+  localStorage.setItem(CREDITS_KEY, String(credits));
+}
+
+function clearAuthLocal() {
+  token = "";
+  userCredits = null;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(CREDITS_KEY);
+}
 
 function toast(msg, isError) {
   const el = document.getElementById("toast");
@@ -407,7 +454,12 @@ function bindAuthTriggers() {
 }
 
 function updateAuthUI(credits) {
-  if (credits !== undefined) userCredits = credits;
+  if (credits !== undefined) {
+    userCredits = credits;
+    if (token && userCredits !== null && userCredits !== undefined) {
+      writeCachedCredits(userCredits);
+    }
+  }
   const badge = document.getElementById("creditsBadge");
   const buy = document.getElementById("buyCreditsLink");
   const welcome = document.getElementById("welcomeBanner");
@@ -416,7 +468,14 @@ function updateAuthUI(credits) {
   const btnLabel = document.getElementById("genBtnLabel");
 
   if (token) {
-    badge.textContent = userCredits !== null && userCredits !== undefined ? userCredits : "—";
+    // Never show "—" while a session exists — use cache or a subtle loading state.
+    if (userCredits !== null && userCredits !== undefined) {
+      badge.textContent = userCredits;
+      badge.classList.remove("loading");
+    } else {
+      badge.textContent = "";
+      badge.classList.add("loading");
+    }
     buy.hidden = false;
     welcome.classList.remove("show");
     save.classList.remove("show");
@@ -428,7 +487,8 @@ function updateAuthUI(credits) {
     loginBtn.onclick = async (e) => {
       e.preventDefault();
       try { await api("/auth/logout", { method: "POST" }); } catch (err) {}
-      token = ""; localStorage.removeItem(TOKEN_KEY); userCredits = null; location.reload();
+      clearAuthLocal();
+      location.reload();
     };
     const signupBtn = document.getElementById("signupBtn");
     signupBtn.textContent = "Buy Credits";
@@ -436,7 +496,9 @@ function updateAuthUI(credits) {
     signupBtn.onclick = null;
   } else {
     badge.textContent = "—";
+    badge.classList.remove("loading");
     buy.hidden = true;
+    writeCachedCredits(null);
     welcome.classList.add("show");
     save.classList.add("show");
     foot.innerHTML = 'Free trial. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for more.';
@@ -634,6 +696,7 @@ function escapeHtml(s) {
 
 (async function init() {
   bindAuthTriggers();
+  if (token) userCredits = readCachedCredits();
   updateAuthUI();
   if (token) {
     try {
@@ -641,8 +704,7 @@ function escapeHtml(s) {
       updateAuthUI(me.user.credits);
       loadHistory();
     } catch (e) {
-      token = "";
-      localStorage.removeItem(TOKEN_KEY);
+      clearAuthLocal();
       updateAuthUI();
     }
   }
