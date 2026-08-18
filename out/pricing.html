@@ -13,6 +13,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -20,6 +22,9 @@
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
 a{text-decoration:none;color:inherit}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
 img{max-width:100%;display:block}
 header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.2px}
@@ -56,6 +61,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .cost-legend b{color:#fff;font-weight:600}
 .checkout-note{display:none;max-width:640px;margin:18px auto 0;padding:12px 16px;border-radius:12px;border:1px solid rgba(251,146,60,.4);background:rgba(251,146,60,.08);color:var(--text2);font-size:13.5px;line-height:1.5;text-align:center}
 .checkout-note.show{display:block}
+.checkout-note.live{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08)}
+.checkout-note.live b{color:var(--green)}
 .checkout-note b{color:var(--orange);font-weight:700}
 .checkout-note a{color:var(--primary2);font-weight:600}
 .checkout-note a:hover{text-decoration:underline}
@@ -101,7 +108,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .model-cost .n{font-size:18px;font-weight:800}
 .model-cost .u{font-size:11px;color:var(--text3);display:block}
 
-.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .feat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
 .feat .fi{font-size:26px;margin-bottom:12px}
 .feat h4{font-size:15px;font-weight:700;margin-bottom:6px}
@@ -131,18 +138,19 @@ footer{margin-top:20px;background:var(--bg2);border-top:1px solid var(--border);
 @media(max-width:700px){
 .plans,.how-grid,.feat-grid{grid-template-columns:1fr}
 .page-head h1{font-size:30px}
-nav{display:none}
 .footer-grid{grid-template-columns:1fr}
 }
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo" aria-label="DreamUtopia AI">
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
-<nav>
+<nav id="site-nav">
 <a href="/" data-i18n="nav.home">Home</a>
 <a href="/pricing" class="active" data-i18n="nav.pricing">Pricing</a>
 <a href="/#faq" data-i18n="nav.faq">FAQ</a>
@@ -159,15 +167,28 @@ nav{display:none}
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
-<select class="lang-select" aria-label="Language">
+<script>
+(function () {
+  try {
+    if (!localStorage.getItem("dreamutopia_token")) return;
+    var loginBtn = document.getElementById("hdrLogin");
+    var signupBtn = document.getElementById("hdrSignup");
+    if (loginBtn) { loginBtn.textContent = "Log Out"; loginBtn.href = "#"; }
+    if (signupBtn) { signupBtn.textContent = "Workspace"; signupBtn.href = "/workspace"; }
+  } catch (e) {}
+})();
+</script>
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
 <option value="es">Español</option>
 </select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
 </div>
 </header>
 
+<main id="main">
 <section class="page-head">
 <h1 data-i18n="price.h">Buy Credits</h1>
 <p data-i18n="price.p">Purchase credits and use them across all AI models — video and image generation. No subscriptions, no limits.</p>
@@ -175,7 +196,7 @@ nav{display:none}
 <span><b>Video:</b> Lite 3 · Med 5 · Pro 16</span>
 <span><b>Image:</b> Lite 1 · Pro 2</span>
 </div>
-<p class="checkout-note" id="checkoutNote" role="status" aria-live="polite"></p>
+<p class="checkout-note show" id="checkoutNote" role="status" aria-live="polite"><b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.</p>
 </section>
 
 <div class="container">
@@ -195,8 +216,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta>Select</a>
-<span class="btn-caption" data-pack-caption="starter"></span>
+<a href="/auth?mode=register&amp;pack=starter" class="btn outline" data-pack="starter" data-checkout-cta title="Paid checkout not configured — continues without charging">Continue free</a>
+<span class="btn-caption" data-pack-caption="starter">Free account · pack saved · no charge</span>
 </div>
 
 <div class="plan">
@@ -214,8 +235,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta>Select</a>
-<span class="btn-caption" data-pack-caption="plus"></span>
+<a href="/auth?mode=register&amp;pack=plus" class="btn outline" data-pack="plus" data-checkout-cta title="Paid checkout not configured — continues without charging">Continue free</a>
+<span class="btn-caption" data-pack-caption="plus">Free account · pack saved · no charge</span>
 </div>
 
 <div class="plan popular">
@@ -234,8 +255,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta>Select</a>
-<span class="btn-caption" data-pack-caption="pro"></span>
+<a href="/auth?mode=register&amp;pack=pro" class="btn primary" data-pack="pro" data-checkout-cta title="Paid checkout not configured — continues without charging">Continue free</a>
+<span class="btn-caption" data-pack-caption="pro">Free account · pack saved · no charge</span>
 </div>
 
 <div class="plan">
@@ -253,8 +274,8 @@ nav{display:none}
 <li>No ads</li>
 <li>No CAPTCHAs</li>
 </ul>
-<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta>Select</a>
-<span class="btn-caption" data-pack-caption="premium"></span>
+<a href="/auth?mode=register&amp;pack=premium" class="btn outline" data-pack="premium" data-checkout-cta title="Paid checkout not configured — continues without charging">Continue free</a>
+<span class="btn-caption" data-pack-caption="premium">Free account · pack saved · no charge</span>
 </div>
 
 </div>
@@ -327,6 +348,7 @@ nav{display:none}
 <div class="feat"><div class="fi">✨</div><h4>Up to 4K Images</h4><p>Generate high-resolution images</p></div>
 <div class="feat"><div class="fi">🚫</div><h4>Ad-free</h4><p>Any purchase removes ads from the site for good.</p></div>
 <div class="feat"><div class="fi">🤖</div><h4>No CAPTCHAs</h4><p>Generate without stopping to prove you're human.</p></div>
+<div class="feat"><div class="fi">📁</div><h4>Saved history</h4><p>Signed-in generations stay in your workspace so you can reuse them.</p></div>
 </div>
 <p class="footnote">* Standard Pack and above unlock premium features. Audio generation requires Pro video model + Premium.</p>
 </div>
@@ -343,7 +365,7 @@ nav{display:none}
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">What payment methods do you accept?</div>
-<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Select will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
+<div class="faq-a">Card payments go through Stripe Checkout when the operator has set <code>STRIPE_SECRET_KEY</code>. Until that secret exists, Continue free will not charge a card — it only remembers the pack. First paid purchase also adds 31 bonus credits (5 Lite + 1 Pro). Invites earn 10% of the friend’s pack.</div>
 </div>
 <div class="faq-item" onclick="this.classList.toggle('open')">
 <div class="faq-q">Do credits expire?</div>
@@ -357,6 +379,7 @@ nav{display:none}
 </div>
 </section>
 
+</main>
 <footer>
 <div class="footer-grid">
 <div class="footer-brand">
@@ -406,6 +429,7 @@ nav{display:none}
 </div>
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>
@@ -440,6 +464,7 @@ nav{display:none}
       loginBtn.textContent = (window.DU && DU.t("hdr.logout", "Log Out")) || "Log Out";
       loginBtn.href = "#";
       loginBtn.onclick = function (e) {
+        if (!localStorage.getItem(TOKEN_KEY)) return;
         e.preventDefault();
         fetch("/api/auth/logout", {
           method: "POST",
@@ -459,13 +484,16 @@ nav{display:none}
   function applyUnavailableCopy(signedIn) {
     if (note) {
       note.classList.add("show");
+      note.classList.remove("live");
       note.innerHTML = signedIn
         ? "<b>Stripe is not configured yet.</b> No payment will be charged. Continue opens your workspace and remembers the pack."
         : "<b>Stripe is not configured yet.</b> No payment will be charged. Continue free opens sign-up — new accounts still get 10 free credits.";
     }
     ctas.forEach(function (a) {
       const pack = a.getAttribute("data-pack");
-      a.textContent = signedIn ? "Continue" : "Continue free";
+      a.textContent = signedIn
+        ? "Continue"
+        : ((window.DU && DU.t("price.cta.free", "Continue free")) || "Continue free");
       a.setAttribute("title", "Paid checkout not configured — continues without charging");
       a.setAttribute(
         "aria-label",
@@ -490,10 +518,10 @@ nav{display:none}
 
   function applyLiveCopy(signedIn) {
     if (note) {
-      note.classList.add("show");
+      note.classList.add("show", "live");
       note.innerHTML = signedIn
-        ? "<b>Checkout is live.</b> Select opens Stripe. First purchase adds <b>31 bonus credits</b> (5 Lite + 1 Pro)."
-        : "<b>Checkout is live.</b> Sign in, then Select opens Stripe. First purchase adds <b>31 bonus credits</b>.";
+        ? "<b>Checkout is live.</b> Buy with Stripe opens a payment page. First purchase adds <b>31 bonus credits</b> (5 Lite + 1 Pro)."
+        : "<b>Checkout is live.</b> Sign in, then Buy with Stripe opens a payment page. First purchase adds <b>31 bonus credits</b>.";
     }
     ctas.forEach(function (a) {
       const pack = a.getAttribute("data-pack");
@@ -533,7 +561,7 @@ nav{display:none}
         } catch (err) {
           a.textContent = prev;
           if (note) {
-            note.innerHTML = "<b>Checkout failed.</b> " + (err.message || "Try again.");
+            note.textContent = "Checkout failed. " + ((err && err.message) || "Try again.");
           }
         }
       };
@@ -569,8 +597,10 @@ nav{display:none}
   }
 
   (async function init() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) hydrateHeader(true);
+    const tokenPresent = !!localStorage.getItem(TOKEN_KEY);
+    hydrateHeader(tokenPresent);
+    applyUnavailableCopy(tokenPresent);
+    wireFallbackHrefs(tokenPresent);
     const signedIn = await isSignedIn();
     if (!signedIn) hydrateHeader(false);
     else hydrateHeader(true);

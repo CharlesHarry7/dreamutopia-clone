@@ -1,5 +1,5 @@
 // Session management — KV stores session token → { userId, email }
-import { randomId } from "./utils";
+import { randomId, structuredError } from "./utils";
 
 const TTL = 60 * 60 * 24 * 30; // 30 days
 
@@ -25,6 +25,8 @@ export async function getSession(
   token: string | null
 ): Promise<Session | null> {
   if (!token) return null;
+  // Let KV throws propagate — swallowing them as null made callers send 401
+  // auth_required and the UI wiped a still-valid session.
   const raw = await env.SESSIONS.get(token);
   if (!raw) return null;
   try {
@@ -46,7 +48,18 @@ export function tokenFromRequest(req: Request): string | null {
   const auth = req.headers.get("authorization");
   if (!auth) return null;
   const m = auth.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : null;
+  const token = m ? m[1].trim() : "";
+  return token || null;
+}
+
+/** Present Bearer that KV does not recognize — never fall through to guest. */
+export function expiredSessionResponse(extra?: Record<string, unknown>): Response {
+  return structuredError(
+    "auth_required",
+    "Session expired. Please log in again.",
+    401,
+    extra
+  );
 }
 
 export async function getSessionUser(

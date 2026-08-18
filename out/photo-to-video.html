@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0d0d12">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -18,7 +19,9 @@ a:hover{text-decoration:underline}
 header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff}
 .logo img{width:28px;height:28px;border-radius:7px}
+.header-right{display:flex;align-items:center;gap:12px}
 nav a{color:var(--text2);font-size:14px;margin-left:12px;font-weight:500}
+.lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer}
 main{max-width:760px;margin:48px auto 80px;padding:0 20px}
 h1{font-size:36px;font-weight:800;letter-spacing:-.6px;line-height:1.2;margin-bottom:14px}
 .lead{font-size:17px;color:var(--text2);margin-bottom:22px}
@@ -31,17 +34,37 @@ li{margin:8px 0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:18px 0}
 footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;color:var(--text3);font-size:13px}
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
-<nav>
-<a href="/">Home</a>
-<a href="/workspace">Workspace</a>
-<a href="/pricing">Pricing</a>
+<nav id="site-nav">
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/pricing" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
+<details class="nav-drop">
+<summary data-i18n="nav.features">Features</summary>
+<div class="nav-menu">
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+</div>
+</details>
 </nav>
+<div class="header-right">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
+</div>
 </header>
-<main>
+<main id="main">
 <h1>Photo to video without a timeline editor</h1>
 <p class="lead">Phone snapshots, travel stills, and product shots can become short motion clips. This tool is a prompt-driven photo-to-video pipeline in the browser: the still is uploaded to object storage, then the model invents motion. It is not a color-grade filter and not a Ken Burns pan over a slideshow.</p>
 <a class="cta" href="/workspace">Upload a photo</a>
@@ -58,7 +81,10 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <p>Two Lite photo-to-video jobs are free per device. A free account adds 10 credits. Paid packs (Starter $5 / 10 credits through Premium $200 / 500) go through Stripe when the operator has set the secret. First purchase unlocks 5 extra Lite videos + 1 Pro (31 credits).</p>
 <p><a href="/image-to-video">Image to video AI</a> · <a href="/pricing">Pricing</a> · <a href="/workspace">Workspace</a></p>
 </main>
-<footer>© 2026 DreamUtopia AI · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
+<footer>© 2026 DreamUtopia AI · <a href="/privacy" data-i18n="foot.privacy">Privacy</a> · <a href="/terms" data-i18n="foot.terms">Terms</a></footer>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
+<script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 </body>
 </html>

@@ -21,9 +21,11 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 |---|---|
 | dreamutopia.net | 原站（抄的对象，不是我们的） |
 | dreamutopia-clone | GitHub 仓库 + Cloudflare Pages 项目 |
-| https://dreamutopia-clone.pages.dev | **生产**（`main`，合 PR 前仍是旧版） |
-| https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev | **PR #12 预览**（最新功能） |
-| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | 游客试用 / 文生视频 / 首尾帧，待合并 |
+| https://dreamutopia-clone.pages.dev | **生产**（`main`，PR #12 已合并） |
+| https://cursor-overnight-prod-polish.dreamutopia-clone.pages.dev | **PR #13 预览**（空 KIE 钱包诚实 503、产品打磨） |
+| [PR #13](https://github.com/CharlesHarry7/dreamutopia-clone/pull/13) | **打开中，勿合并** — Pages 生产路径打磨；checkout 仍诚实 503 |
+| [PR #14](https://github.com/CharlesHarry7/dreamutopia-clone/pull/14) | **另开分支实验** — Next.js + Tailwind + shadcn + OpenNext Workers。**不要**并进 PR #13 / 不要改本分支 `wrangler.toml` 为 `main = ".open-next/worker.js"` |
+| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | **已合并** — 游客试用 / Stripe 接线 / KIE 回调 |
 | dreamutopia-db | D1 数据库 |
 | dreamutopia-media | R2 媒体桶 |
 | SESSIONS | KV（登录 + 游客次数） |
@@ -55,10 +57,13 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   image-to-video.html / photo-to-video.html / free-ai-video.html
   privacy.html     # Privacy
   terms.html       # Terms
+  404.html         # Cloudflare Pages custom 404
   assets/js/du.js  # Shared fetch / upload / poll / download
   assets/js/i18n.js # EN / 中文 / 日本語 / Español
+  assets/js/nav.js  # Mobile header drawer
   assets/js/pwa.js  # Service worker + install banner
   assets/js/seo.js  # Canonical + Open Graph
+  assets/css/chrome.css  # Body wash + hamburger (Pages; not Next)
   manifest.webmanifest
   sw.js
 /functions          # Pages Functions
@@ -72,12 +77,14 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
   media.ts         # GET/HEAD /api/media?key= (public image bytes)
   generate.ts      # POST/GET /api/generate (KIE)
   gallery.ts       # GET public gallery + POST opt-in publish
+  gallery/like.ts  # POST like (IP-deduped)
   checkout.ts      # GET catalog + POST Stripe session
   stripe/          # template aliases → checkout + stripe webhook
   webhooks/stripe.ts
   webhooks/kie.ts  # KIE callBackUrl (re-verify + idempotent refund)
   upload-ticket.ts # Legacy probe
 /libs              # Shared backend logic
+/scripts           # node scripts/check.mjs — i18n parity, packs, checkout honesty
 /schema.sql        # D1 database schema
 /migrations        # D1 ALTER scripts for existing DBs
 /wrangler.toml     # Cloudflare configuration
@@ -85,19 +92,22 @@ GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `tale
 
 ## Generate path
 
-1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1.
+1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1. Start image: click, drop, or paste; Ctrl/⌘+Enter generates.
 2. **Account:** sign up (10 credits). Video: text-to-video, image-to-video, or first+last frame (Medium/Pro). Image: T2I / I2I / blend, 1K–4K.
 3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
 4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
-5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist.
-6. Language selector switches EN / 中文 / 日本語 / Español. PWA: add to home screen (`manifest.webmanifest` + `sw.js`).
+5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist; public items can be liked (once per IP).
+6. Language selector switches EN / 中文 / 日本語 / Español (including keyword landings). PWA: add to home screen (`manifest.webmanifest` + `sw.js` + `/offline`). Generate polling shows elapsed time, retries blips, and can stop waiting without killing the job. Phone-width headers use a hamburger drawer (`chrome.css` + `nav.js`) instead of hiding nav.
 7. Paid packs: without Stripe secrets, `GET/POST /api/checkout` is **503** (`configured: false`) — no fake charge. With secrets, signed-in POST redirects to Stripe. First purchase +31 credits; invites earn 10% of the pack. Password reset needs Resend. `/robots.txt` and `/sitemap.xml` are Functions.
+
+`node scripts/check.mjs` (also GitHub Action `check`) asserts i18n key parity, pack ids vs pricing, checkout honesty, and that the service worker never caches `/api`.
 
 ## Backend setup
 
 See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, optional Stripe + Resend + KIE webhook HMAC), and D1 migrations `001`–`004`.
 
-**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
+**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials) **and a funded KIE wallet**. Signed-in generate also needs `DB`.  
+If the key is set but KIE’s own balance is empty, generate returns `provider_credits_insufficient` (503) — that is not the user’s credit pack.  
 **Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.
 
 ## Deploy
@@ -107,6 +117,8 @@ See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, o
 3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
 
 `out/_routes.json` sends `/api/*` to Pages Functions so unknown API paths return Function responses instead of the homepage.
+
+**Do not merge PR #14 into this Pages product** without Daniel. PR #14 rewrites `wrangler.toml` to OpenNext Workers (`main = ".open-next/worker.js"`) and would break the live Pages git deploy (`pages_build_output_dir = "out"`). Useful UI ideas (mobile nav, body wash) are ported here in `out/assets/css/chrome.css` without taking that deploy path.
 
 ## Cost
 

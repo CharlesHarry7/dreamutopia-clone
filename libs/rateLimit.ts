@@ -11,7 +11,12 @@ export async function takeRateLimit(
   windowSec: number
 ): Promise<RateLimitResult> {
   const now = Math.floor(Date.now() / 1000);
-  const raw = await kv.get(`rl:${key}`);
+  let raw: string | null = null;
+  try {
+    raw = await kv.get(`rl:${key}`);
+  } catch {
+    return { ok: true, remaining: limit, resetSec: now + windowSec };
+  }
   let n = 0;
   let reset = now + windowSec;
   if (raw) {
@@ -29,10 +34,15 @@ export async function takeRateLimit(
     }
   }
   n += 1;
-  const ttl = Math.max(1, reset - now);
-  await kv.put(`rl:${key}`, JSON.stringify({ n, reset }), { expirationTtl: ttl });
+  // Cloudflare KV rejects expirationTtl < 60 — that throw becomes Worker 1101.
+  const ttl = Math.max(60, reset - now);
+  try {
+    await kv.put(`rl:${key}`, JSON.stringify({ n, reset }), { expirationTtl: ttl });
+  } catch {
+    /* fail open: never crash generate/checkout on KV TTL */
+  }
   if (n > limit) {
-    return { ok: false, remaining: 0, resetSec: reset, retryAfter: ttl };
+    return { ok: false, remaining: 0, resetSec: reset, retryAfter: Math.max(1, reset - now) };
   }
   return { ok: true, remaining: Math.max(0, limit - n), resetSec: reset };
 }

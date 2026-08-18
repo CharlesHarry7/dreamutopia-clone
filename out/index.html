@@ -13,6 +13,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -26,7 +28,14 @@
 html{scroll-behavior:smooth}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
-button{font-family:inherit;cursor:pointer;border:none;outline:none;background:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
+@media (prefers-reduced-motion: reduce){
+html{scroll-behavior:auto}
+*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
 img{max-width:100%;display:block}
 
 /* Promo bar */
@@ -103,6 +112,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-btn.ready{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;cursor:pointer}
 .gen-btn.ready:hover{opacity:.9}
 .gen-foot{margin-top:14px;font-size:13px;color:var(--text2);text-align:center}
+.home-ready{display:none;margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.32);font-size:13px;color:var(--text2);line-height:1.45;text-align:left}
+.home-ready.show{display:block}
 .gen-foot a{color:var(--primary2);font-weight:500}
 .gen-foot a:hover{text-decoration:underline}
 .gen-status{margin-top:16px;display:none;text-align:center;padding:16px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08)}
@@ -110,6 +121,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .gen-status .cap{font-size:13px;color:var(--text2)}
+.gen-status[aria-busy="false"] .spinner{display:none}
+.gen-cancel{margin-top:10px;font-size:12.5px;color:var(--primary2);text-decoration:underline;background:none}
+.gen-status-link{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--primary2);font-weight:600}
+.gen-status-link[hidden]{display:none !important}
 .gen-result{margin-top:14px;display:none;text-align:center}
 .gen-result.show{display:block}
 .gen-result video{width:100%;max-width:480px;border-radius:12px;background:#000;margin:0 auto}
@@ -132,6 +147,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .lightbox video,.lightbox img{max-width:100%;max-height:78vh;border-radius:12px}
 .lightbox .cap{margin-top:10px;font-size:13px;color:var(--text2)}
 .lightbox .x{position:absolute;top:16px;right:20px;font-size:28px;color:#fff}
+.lightbox .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:28px;line-height:1}
+.lightbox .lb-nav.prev{left:16px}
+.lightbox .lb-nav.next{right:16px}
+.lightbox .lb-nav:hover{background:rgba(255,255,255,.22)}
 .upload-area.has-img{border-style:solid;border-color:rgba(34,197,94,.45);padding:12px}
 .upload-area.has-img img{max-height:200px;width:auto;margin:0 auto;border-radius:10px;display:block}
 .upload-area .remove-btn{display:none;margin:8px auto 0;color:#fff;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 10px;font-size:12px}
@@ -139,7 +158,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 
 /* Features 3-cards */
 .features-3{max-width:1100px;margin:80px auto 0;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .3s}
+.feat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:transform .3s;color:inherit;text-decoration:none;display:block}
 .feat-card:hover{transform:translateY(-4px)}
 .feat-card .feat-img{width:100%;aspect-ratio:16/10;position:relative;overflow:hidden;background:var(--bg2)}
 .feat-card .feat-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
@@ -176,12 +195,20 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gallery-head{text-align:center;margin-bottom:36px}
 .gallery-head h2{font-size:30px;font-weight:800;margin-bottom:10px}
 .gallery-head p{font-size:14.5px;color:var(--text2)}
+.gallery-note{margin-top:10px;font-size:12.5px;color:var(--text3);font-weight:600;letter-spacing:.02em}
 .gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .gallery-item{aspect-ratio:3/4;background:var(--bg2);border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:transform .3s}
 .gallery-item:hover{transform:scale(1.03)}
+.gallery-item:focus-visible{outline:2px solid var(--primary2);outline-offset:2px;transform:none}
 .gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover}
 .gallery-item .play{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:2}
 .gallery-item .play.hidden{display:none}
+.gallery-item .gallery-badge{position:absolute;top:8px;left:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.gallery-item.broken{cursor:default}
+.gallery-item.broken::after{content:'Unavailable';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,13,18,.72);color:var(--text3);font-size:12px;font-weight:600}
+.gallery-like{position:absolute;bottom:8px;right:8px;z-index:3;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;font-family:inherit}
+.gallery-like:hover{background:rgba(0,0,0,.75)}
+.gallery-like.liked{color:#fb7185}
 
 /* Why section */
 .why{max-width:1100px;margin:100px auto 0;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
@@ -224,12 +251,11 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 /* FAQ */
 .faq{max-width:760px;margin:100px auto 0;padding:0 20px}
 .faq h3{font-size:26px;font-weight:800;margin-bottom:24px;text-align:center}
-.faq-item{border-bottom:1px solid var(--border);padding:18px 0;cursor:pointer}
-.faq-q{font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:16px}
-.faq-q::after{content:'+';font-size:20px;color:var(--text3);transition:transform .3s}
+.faq-item{border-bottom:1px solid var(--border);padding:18px 0}
+.faq-q{font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;text-align:left;color:inherit;background:none;cursor:pointer;font-family:inherit}
+.faq-q::after{content:'+';font-size:20px;color:var(--text3)}
 .faq-item.open .faq-q::after{content:'−'}
-.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease;color:var(--text2);font-size:14px;line-height:1.65}
-.faq-item.open .faq-a{max-height:360px;margin-top:12px}
+.faq-a{margin-top:12px;color:var(--text2);font-size:14px;line-height:1.65}
 
 /* Footer */
 footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);padding:56px 20px 28px}
@@ -253,19 +279,19 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 @media(max-width:600px){
 .hero h1{font-size:30px}
 .gallery-grid{grid-template-columns:repeat(2,1fr)}
-nav{display:none}
 .footer-grid{grid-template-columns:1fr}
 }
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
-
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <!-- Promo Bar -->
 <div class="promo">
 <span class="promo-icon">🎁</span>
 <span class="promo-text" data-i18n="promo.text">Your first purchase unlocks 5 free Lite videos + 1 free Pro video — plus earn 10% credits every time a friend you invite buys.</span>
 <a href="/pricing" class="promo-btn" data-i18n="promo.cta">Get started</a>
-<button class="promo-close" onclick="this.parentElement.style.display='none'">✕</button>
+<button class="promo-close" onclick="this.parentElement.style.display='none'" aria-label="Dismiss" data-i18n-aria="a11y.dismiss">✕</button>
 </div>
 
 <!-- Header -->
@@ -274,7 +300,7 @@ nav{display:none}
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
-<nav>
+<nav id="site-nav">
 <a href="/" class="active" data-i18n="nav.home">Home</a>
 <a href="/pricing" data-i18n="nav.pricing">Pricing</a>
 <a href="/#faq" data-i18n="nav.faq">FAQ</a>
@@ -291,15 +317,28 @@ nav{display:none}
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
-<select class="lang-select" aria-label="Language">
+<script>
+(function () {
+  try {
+    if (!localStorage.getItem("dreamutopia_token")) return;
+    var loginBtn = document.getElementById("hdrLogin");
+    var signupBtn = document.getElementById("hdrSignup");
+    if (loginBtn) { loginBtn.textContent = "Log Out"; loginBtn.href = "#"; }
+    if (signupBtn) { signupBtn.textContent = "Workspace"; signupBtn.href = "/workspace"; }
+  } catch (e) {}
+})();
+</script>
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
 <option value="es">Español</option>
 </select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
 </div>
 </header>
 
+<main id="main">
 <!-- Hero -->
 <section class="hero">
 <div class="hero-meta">
@@ -317,39 +356,44 @@ nav{display:none}
 </div>
 
 <!-- Tabs + Generator -->
-<div class="gen-tabs">
-<button class="gen-tab active" data-kind="video" data-i18n="tab.video">🎬 Video</button>
-<button class="gen-tab" data-kind="image" data-i18n="tab.image">🖼 Image</button>
+<div class="gen-tabs" role="tablist" aria-label="Generator type" data-i18n-aria="a11y.genType">
+<button type="button" class="gen-tab active" role="tab" id="homeTabVideo" data-kind="video" aria-selected="true" aria-controls="homeGenCard" tabindex="0" data-i18n="tab.video">🎬 Video</button>
+<button type="button" class="gen-tab" role="tab" id="homeTabImage" data-kind="image" aria-selected="false" aria-controls="homeGenCard" tabindex="-1" data-i18n="tab.image">🖼 Image</button>
 </div>
 
-<div class="gen-card">
+<div class="gen-card" id="homeGenCard" role="tabpanel" aria-labelledby="homeTabVideo">
 <h2 data-i18n="gen.videoTitle">AI Video Generator</h2>
 
-<div class="upload-area" id="homeUpload" role="button" tabindex="0">
+<div class="upload-area" id="homeUpload" role="button" tabindex="0" aria-labelledby="homeUploadLabel" aria-describedby="homeUploadHint">
 <input type="file" id="homeFile" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none">
 <div class="icon" id="homeUploadIcon">🖼</div>
 <div class="p1" id="homeUploadLabel" data-i18n="gen.upload">Upload Start Image</div>
-<div class="p2" id="homeUploadHint" data-i18n="gen.browse">Click to browse · JPG, PNG, WebP, GIF, or TIFF</div>
-<button type="button" class="remove-btn" id="homeRemove" hidden>Remove</button>
+<div class="p2" id="homeUploadHint" data-i18n="gen.browse">Click, drop, or paste · JPG, PNG, WebP, GIF, or TIFF</div>
+<button type="button" class="remove-btn" id="homeRemove" hidden data-i18n="gen.remove">Remove</button>
 </div>
 
 <div class="label-row">
-<label data-i18n="gen.prompt">Describe Your Video</label>
+<label for="homePrompt" data-i18n="gen.prompt">Describe Your Video</label>
 <span><span class="req" data-i18n="gen.required">Required</span> &nbsp; <span class="counter" id="homeCounter">0/8000</span></span>
 </div>
-<textarea class="prompt-input" id="homePrompt" maxlength="8000" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
+<textarea class="prompt-input" id="homePrompt" maxlength="8000" required aria-required="true" aria-describedby="homeCounter" data-i18n-placeholder="gen.placeholder" placeholder="A futuristic city with flying cars..." oninput="updateGen(this)"></textarea>
 
-<button class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
+<button type="button" class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
 <p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
-<div class="gen-status" id="homeStatus">
-<div class="spinner"></div>
+<p class="home-ready" id="homeGenerateReady" hidden role="status" data-ready-msg data-i18n="err.kie_api_key_missing">Generation isn’t available on this preview yet. Try again later.</p>
+<div class="gen-status" id="homeStatus" role="status" aria-live="polite">
+<div class="spinner" aria-hidden="true"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
+<button type="button" class="gen-cancel" id="homeCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
+<a id="homeStatusWorkspace" class="gen-status-link" href="/workspace?tab=history" hidden data-i18n="gen.workspace">View in Workspace</a>
+<a id="homeStatusAction" class="gen-status-link" href="/auth?mode=register" hidden>Sign up for 10 credits</a>
 </div>
-<div class="gen-result" id="homeResult">
-<video id="homeVideo" controls playsinline></video>
+<div class="gen-result" id="homeResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
+<video id="homeVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
 <div class="result-actions">
 <a id="homeResultLink" href="#" target="_blank" rel="noopener" data-i18n="gen.open">Open result</a>
+<a id="homeWorkspaceLink" href="/workspace?tab=history" hidden data-i18n="gen.workspace">View in Workspace</a>
 <button type="button" id="homeDownload" data-i18n="gen.download">Download</button>
 </div>
 </div>
@@ -358,27 +402,27 @@ nav{display:none}
 
 <!-- 3 Feature Cards -->
 <section class="features-3" id="features">
-<div class="feat-card">
+<a class="feat-card" href="/workspace">
 <div class="feat-img"><img src="/assets/images/feature-ai-models.webp" alt="Multiple Premium AI Models" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat1.h">Multiple Premium AI Models</h3>
 <p data-i18n="feat1.p">Choose from Lite, Medium, and Pro tiers — each optimized for different styles, quality levels, and motion types.</p>
 </div>
-</div>
-<div class="feat-card">
+</a>
+<a class="feat-card" href="/workspace">
 <div class="feat-img"><img src="/assets/images/feature-image-to-video.webp" alt="Ready in Seconds" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat2.h">Ready in Seconds</h3>
 <p data-i18n="feat2.p">Upload an image, describe the motion you want, and get your AI video in seconds. Zero technical skills needed.</p>
 </div>
-</div>
-<div class="feat-card new">
+</a>
+<a class="feat-card new" href="/pricing">
 <div class="feat-img"><img src="/assets/images/feature-cinematic.webp" alt="Pro Model with Sound" width="728" height="408" loading="lazy"></div>
 <div class="feat-body">
 <h3 data-i18n="feat3.h">Pro Model with Sound</h3>
 <p data-i18n="feat3.p">Generate AI videos with synchronized audio. The Pro model brings your creations to life with full sound output.</p>
 </div>
-</div>
+</a>
 </section>
 
 <!-- Compare -->
@@ -422,22 +466,23 @@ nav{display:none}
 <!-- Gallery -->
 <section class="gallery" id="gallery">
 <div class="gallery-head">
-<h2 data-i18n="gallery.h">Crafted with DreamUtopia</h2>
-<p data-i18n="gallery.p">A gallery of stunning visuals our creators have made</p>
+<h2 data-i18n="gallery.h">Sample looks</h2>
+<p data-i18n="gallery.p">Placeholders to show the style — not community posts. Shared creations appear here when people publish.</p>
+<p class="gallery-note" id="galleryNote" data-i18n="gallery.note">Sample placeholders — not community posts.</p>
 </div>
 <div class="gallery-grid" id="galleryGrid">
-<div class="gallery-item"><img src="/assets/images/g1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g3.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g4.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g5.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g6.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g7.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g8.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g9.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/g10.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/b1.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
-<div class="gallery-item"><img src="/assets/images/b2.webp" alt="DreamUtopia creation" width="464" height="616" loading="lazy"><div class="play">▶</div></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g1.webp"><img src="/assets/images/g1.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g2.webp"><img src="/assets/images/g2.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g3.webp"><img src="/assets/images/g3.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g4.webp"><img src="/assets/images/g4.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g5.webp"><img src="/assets/images/g5.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g6.webp"><img src="/assets/images/g6.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g7.webp"><img src="/assets/images/g7.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g8.webp"><img src="/assets/images/g8.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g9.webp"><img src="/assets/images/g9.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/g10.webp"><img src="/assets/images/g10.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/b1.webp"><img src="/assets/images/b1.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
+<div class="gallery-item sample" tabindex="0" data-kind="image" data-url="/assets/images/b2.webp"><img src="/assets/images/b2.webp" alt="DreamUtopia sample" width="464" height="616" loading="lazy"><div class="play hidden">▶</div><span class="gallery-badge" data-i18n="gallery.sample">Sample</span></div>
 </div>
 </section>
 
@@ -507,40 +552,41 @@ nav{display:none}
 <!-- FAQ -->
 <section class="faq" id="faq">
 <h3 data-i18n="faq.h">Frequently Asked Questions</h3>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q1">Is DreamUtopia really free to use?</div>
-<div class="faq-a" data-i18n="faq.a1">Yes! Every device gets 2 free Lite video generations with no signup. Create an account for 10 credits (Lite 3 · Medium 5 · Pro 16 · Image Lite 1 · Pro 2). Extra packs are sold on Pricing via Stripe when configured.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q1">Is DreamUtopia really free to use?</button>
+<div class="faq-a" hidden data-i18n="faq.a1">Yes! Every device gets 2 free Lite video generations with no signup. Create an account for 10 credits (Lite 3 · Medium 5 · Pro 16 · Image Lite 1 · Pro 2). Extra packs are sold on Pricing via Stripe when configured.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q2">What AI models are available?</div>
-<div class="faq-a" data-i18n="faq.a2">We offer three premium AI models — Lite, Medium, and Pro — each tuned for different motion styles, quality levels, and generation speeds.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q2">What AI models are available?</button>
+<div class="faq-a" hidden data-i18n="faq.a2">We offer three premium AI models — Lite, Medium, and Pro — each tuned for different motion styles, quality levels, and generation speeds.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q3">How long does video generation take?</div>
-<div class="faq-a" data-i18n="faq.a3">Most videos are generated in 30–90 seconds depending on the model and complexity. You can watch live progress as your video renders.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q3">How long does video generation take?</button>
+<div class="faq-a" hidden data-i18n="faq.a3">Most videos are generated in 30–90 seconds depending on the model and complexity. You can watch live progress as your video renders.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q4">What image formats can I upload?</div>
-<div class="faq-a" data-i18n="faq.a4">We accept JPG, PNG, WebP, GIF, and TIFF files up to 20 MB. For best results, use a clear, high-resolution image. You can also paste a public https image URL.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q4">What image formats can I upload?</button>
+<div class="faq-a" hidden data-i18n="faq.a4">We accept JPG, PNG, WebP, GIF, and TIFF files up to 20 MB. For best results, use a clear, high-resolution image. You can also paste a public https image URL.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q5">Do I own the videos I create?</div>
-<div class="faq-a" data-i18n="faq.a5">Absolutely. You retain full ownership and copyright of every video you generate on DreamUtopia — use them however you like.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q5">Do I own the videos I create?</button>
+<div class="faq-a" hidden data-i18n="faq.a5">Absolutely. You retain full ownership and copyright of every video you generate on DreamUtopia — use them however you like.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q6">Is my content private and secure?</div>
-<div class="faq-a" data-i18n="faq.a6">Yes. We use encrypted transfers and do not retain your content after processing. Your uploads and generated videos remain private and under your control unless you opt in to the public gallery.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q6">Is my content private and secure?</button>
+<div class="faq-a" hidden data-i18n="faq.a6">Yes. We use encrypted transfers and do not retain your content after processing. Your uploads and generated videos remain private and under your control unless you opt in to the public gallery.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q7">Can I use DreamUtopia on mobile?</div>
-<div class="faq-a" data-i18n="faq.a7">Yes. DreamUtopia works in the browser on desktop, tablet, or phone. Add it to your home screen as an app (PWA). There is no separate App Store or Google Play listing.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q7">Can I use DreamUtopia on mobile?</button>
+<div class="faq-a" hidden data-i18n="faq.a7">Yes. DreamUtopia works in the browser on desktop, tablet, or phone. Add it to your home screen as an app (PWA). There is no separate App Store or Google Play listing.</div>
 </div>
-<div class="faq-item" onclick="this.classList.toggle('open')">
-<div class="faq-q" data-i18n="faq.q8">What happens after my 2 free tries?</div>
-<div class="faq-a" data-i18n="faq.a8">After 2 free Lite videos, create a free account for 10 credits. Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). First purchase adds 31 bonus credits. Credits never expire.</div>
+<div class="faq-item">
+<button type="button" class="faq-q" data-i18n="faq.q8">What happens after my 2 free tries?</button>
+<div class="faq-a" hidden data-i18n="faq.a8">After 2 free Lite videos, create a free account for 10 credits. Credit packs are listed on Pricing (Starter $5 / 10 credits through Premium $200 / 500). First purchase adds 31 bonus credits. Credits never expire.</div>
 </div>
 </section>
 
+</main>
 <!-- Footer -->
 <footer>
 <div class="footer-grid">
@@ -591,8 +637,10 @@ nav{display:none}
 <button type="button" class="x" id="pwaDismiss" aria-label="Dismiss">✕</button>
 </div>
 
-<div class="lightbox" id="lightbox" hidden>
-<button type="button" class="x" id="lightboxClose" aria-label="Close">✕</button>
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="lightboxCap" tabindex="-1">
+<button type="button" class="x" id="lightboxClose" aria-label="Close" data-i18n-aria="a11y.close">✕</button>
+<button type="button" class="lb-nav prev" id="lightboxPrev" aria-label="Previous" data-i18n-aria="a11y.prev">‹</button>
+<button type="button" class="lb-nav next" id="lightboxNext" aria-label="Next" data-i18n-aria="a11y.next">›</button>
 <div class="box">
 <video id="lightboxVideo" controls playsinline hidden></video>
 <img id="lightboxImage" alt="" hidden>
@@ -602,16 +650,27 @@ nav{display:none}
 
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>
 let homeFile = null;
 let homeImageUrl = "";
 let homeBusy = false;
+let homePollAbort = null;
+if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return homeBusy; });
 
 function isImageTab() {
   const tab = document.querySelector(".gen-tab.active");
   return !!(tab && tab.getAttribute("data-kind") === "image");
+}
+
+function syncGenBtnLabel() {
+  const btn = document.getElementById("genBtn");
+  if (!btn || homeBusy) return;
+  btn.textContent = isImageTab()
+    ? DU.t("gen.btn.workspace", "Continue in Workspace")
+    : DU.t("gen.btn", "Generate Free Trial");
 }
 
 function syncHomeTab() {
@@ -621,7 +680,24 @@ function syncHomeTab() {
   const label = document.getElementById("homeUploadLabel");
   if (label) label.textContent = image ? DU.t("gen.uploadImage", "Reference image (optional)") : DU.t("gen.upload", "Upload Start Image");
   const promptLabel = document.querySelector(".gen-card .label-row label");
-  if (promptLabel) promptLabel.textContent = image ? "Describe Your Image" : DU.t("gen.prompt", "Describe Your Video");
+  if (promptLabel) promptLabel.textContent = image ? DU.t("gen.prompt.image", "Describe Your Image") : DU.t("gen.prompt", "Describe Your Video");
+  const homePrompt = document.getElementById("homePrompt");
+  if (homePrompt) {
+    homePrompt.setAttribute(
+      "placeholder",
+      image
+        ? DU.t("gen.placeholder.image", "A cinematic portrait with soft lighting...")
+        : DU.t("gen.placeholder", "A futuristic city with flying cars...")
+    );
+  }
+  const panel = document.getElementById("homeGenCard");
+  document.querySelectorAll(".gen-tab").forEach(function (t) {
+    const on = t.classList.contains("active");
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    if (on && panel) panel.setAttribute("aria-labelledby", t.id);
+  });
+  syncGenBtnLabel();
 }
 
 function goWorkspace(extra) {
@@ -636,6 +712,7 @@ document.querySelectorAll(".gen-tab").forEach((tab) => {
     syncHomeTab();
   });
 });
+if (DU.bindTablist) DU.bindTablist(document.querySelector(".gen-tabs"));
 document.addEventListener("du:i18n", syncHomeTab);
 
 function updateGen(ta) {
@@ -677,6 +754,35 @@ function setHomePreview(file) {
 
 const homeUpload = document.getElementById("homeUpload");
 const homeFileInput = document.getElementById("homeFile");
+
+function takeHomeFile(file) {
+  const status = document.getElementById("homeStatus");
+  const text = document.getElementById("homeStatusText");
+  if (!file) return;
+  if (!DU.isAllowedImageFile(file)) {
+    const msg = DU.t("err.unsupported_type", "Upload JPG, PNG, WebP, GIF, or TIFF.");
+    if (DU.setLiveStatus) DU.setLiveStatus(status, text, { error: true, text: msg });
+    else if (status && text) {
+      status.classList.add("show");
+      text.textContent = msg;
+    }
+    return;
+  }
+  if (file.size > DU.MAX_UPLOAD_BYTES) {
+    const msg = DU.t("err.file_too_large", "Image must be 20 MB or smaller.");
+    if (DU.setLiveStatus) DU.setLiveStatus(status, text, { error: true, text: msg });
+    else if (status && text) {
+      status.classList.add("show");
+      text.textContent = msg;
+    }
+    return;
+  }
+  homeFile = file;
+  homeImageUrl = "";
+  setHomePreview(file);
+  if (homeUpload) homeUpload.removeAttribute("aria-invalid");
+}
+
 if (homeUpload && homeFileInput) {
   homeUpload.addEventListener("click", (e) => {
     if (e.target && e.target.id === "homeRemove") return;
@@ -690,26 +796,7 @@ if (homeUpload && homeFileInput) {
   });
   homeFileInput.addEventListener("change", () => {
     const file = homeFileInput.files && homeFileInput.files[0];
-    if (!file) return;
-    const status = document.getElementById("homeStatus");
-    const text = document.getElementById("homeStatusText");
-    if (!DU.isAllowedImageFile(file)) {
-      if (status && text) {
-        status.classList.add("show");
-        text.textContent = DU.t("faq.a4", "Use a JPG, PNG, WebP, GIF, or TIFF image.");
-      }
-      return;
-    }
-    if (file.size > DU.MAX_UPLOAD_BYTES) {
-      if (status && text) {
-        status.classList.add("show");
-        text.textContent = "Image must be 20 MB or smaller.";
-      }
-      return;
-    }
-    homeFile = file;
-    homeImageUrl = "";
-    setHomePreview(file);
+    takeHomeFile(file);
   });
   document.getElementById("homeRemove").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -718,6 +805,35 @@ if (homeUpload && homeFileInput) {
     homeFileInput.value = "";
     setHomePreview(null);
   });
+  if (DU.bindImageDrop) {
+    DU.bindImageDrop(homeUpload, function (files) {
+      takeHomeFile(files && files[0]);
+    });
+  }
+  if (DU.bindImagePaste) {
+    DU.bindImagePaste(function (file) { takeHomeFile(file); });
+  }
+}
+if (DU.bindModEnter) {
+  DU.bindModEnter(document.getElementById("homePrompt"), homeGenerate);
+}
+
+function setGuestFoot(n) {
+  const foot = document.getElementById("homeFoot");
+  if (!foot) return;
+  if (n !== undefined && n !== null) window.__duGuestLeft = n;
+  if (DU.isGenerateReady && !DU.isGenerateReady()) {
+    foot.textContent = DU.t("guest.left.unready", "Generation isn’t available yet. Free Lite tries will work when it is.");
+    return;
+  }
+  if (n === undefined || n === null) return;
+  const key = n <= 0 ? "guest.left.none" : n === 1 ? "guest.left.one" : "guest.left.many";
+  const fallback = n <= 0
+    ? 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.'
+    : n === 1
+      ? '1 free Lite video left. <a href="/auth?mode=register">Sign up</a> for 10 credits.'
+      : '{n} free Lite videos left. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
+  foot.innerHTML = DU.t(key, fallback).replace(/\{n\}/g, String(n));
 }
 
 async function homeGenerate() {
@@ -732,58 +848,152 @@ async function homeGenerate() {
   if (!homeFile && !homeImageUrl && !token) {
     const status = document.getElementById("homeStatus");
     const text = document.getElementById("homeStatusText");
-    status.classList.add("show");
-    text.textContent = DU.t("need.image", "Upload a start image for the free Lite trial.");
+    const upload = document.getElementById("homeUpload");
+    if (upload) upload.setAttribute("aria-invalid", "true");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, text, { error: true, text: DU.t("need.image", "Upload a start image for the free Lite trial.") });
+    } else {
+      status.classList.add("show");
+      text.textContent = DU.t("need.image", "Upload a start image for the free Lite trial.");
+    }
+    if (DU.focusEl && upload) DU.focusEl(upload);
     return;
   }
   homeBusy = true;
+  if (homePollAbort) homePollAbort.abort();
+  homePollAbort = new AbortController();
   const btn = document.getElementById("genBtn");
   const status = document.getElementById("homeStatus");
   const text = document.getElementById("homeStatusText");
   const result = document.getElementById("homeResult");
   const video = document.getElementById("homeVideo");
+  const cancel = document.getElementById("homeCancel");
+  const card = document.getElementById("homeGenCard");
   btn.disabled = true;
-  status.classList.add("show");
+  if (card) card.setAttribute("aria-busy", "true");
   result.classList.remove("show");
-  text.textContent = "Starting…";
+  const wsLink = document.getElementById("homeWorkspaceLink");
+  if (wsLink) wsLink.hidden = true;
+  const statusWs = document.getElementById("homeStatusWorkspace");
+  if (statusWs) statusWs.hidden = true;
+  const statusAct = document.getElementById("homeStatusAction");
+  if (statusAct) statusAct.hidden = true;
+  if (cancel) cancel.hidden = false;
+  if (DU.setLiveStatus) {
+    DU.setLiveStatus(status, text, { busy: true, text: DU.t("progress.starting", "Starting…") });
+  } else {
+    status.classList.add("show");
+    text.textContent = DU.t("progress.starting", "Starting…");
+  }
   try {
     let imageUrl = homeImageUrl;
-    if (homeFile && !imageUrl) {
-      text.textContent = "Uploading image…";
+    const generateReady = !(DU.isGenerateReady && !DU.isGenerateReady());
+    if (homeFile && !imageUrl && generateReady) {
+      text.textContent = DU.t("progress.uploading", "Uploading image…");
       const up = await DU.uploadImage(homeFile);
       imageUrl = up.imageUrl || "";
       homeImageUrl = imageUrl;
+      if (up.guestRemaining !== undefined) setGuestFoot(up.guestRemaining);
     }
-    text.textContent = "Starting KIE job…";
+    if (!generateReady && !imageUrl) {
+      const err = new Error(DU.t("err.kie_api_key_missing", "Generation isn’t available on this preview yet. Try again later."));
+      err.code = "kie_api_key_missing";
+      throw err;
+    }
+    text.textContent = DU.t("progress.starting", "Starting…");
     const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5, idempotencyKey: DU.newIdempotencyKey() };
     if (imageUrl) payload.imageUrl = imageUrl;
     const data = await DU.api("/generate", { method: "POST", body: JSON.stringify(payload) });
-    if (data.guestRemaining !== undefined) {
-      const foot = document.getElementById("homeFoot");
-      const n = data.guestRemaining;
-      foot.innerHTML = n > 0
-        ? n + " free Lite video" + (n === 1 ? "" : "s") + " left. <a href=\"/auth?mode=register\">Sign up</a> for 10 credits."
-        : 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.';
-    }
-    text.textContent = "Queued · waiting for provider…";
-    const done = await DU.pollGeneration(data.generationId, (st, payload) => {
-      text.textContent = DU.progressLabel(st, payload && payload.providerState);
-    });
+    if (data.guestRemaining !== undefined) setGuestFoot(data.guestRemaining);
+    text.textContent = DU.t("progress.queued", "Queued · waiting for provider…");
+    const done = await DU.pollGeneration(data.generationId, function (st, payload) {
+      text.textContent = DU.formatProgress ? DU.formatProgress(st, payload) : DU.progressLabel(st, payload && payload.providerState);
+    }, { signal: homePollAbort.signal });
     video.src = done.resultUrl;
     document.getElementById("homeResultLink").href = done.resultUrl;
     document.getElementById("homeDownload").onclick = function () {
       DU.downloadResult(done.resultUrl, "dreamutopia-" + (data.generationId || "video"));
     };
+    const doneWs = document.getElementById("homeWorkspaceLink");
+    if (doneWs) doneWs.hidden = false;
+    const doneStatusWs = document.getElementById("homeStatusWorkspace");
+    if (doneStatusWs) doneStatusWs.hidden = true;
     result.classList.add("show");
-    text.innerHTML = '<span style="color:#22c55e">Done</span>';
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, text, {
+        busy: false,
+        html: true,
+        text: '<span style="color:#22c55e">' + DU.t("progress.done", "Done") + "</span>",
+      });
+    } else {
+      text.innerHTML = '<span style="color:#22c55e">' + DU.t("progress.done", "Done") + "</span>";
+    }
+    if (DU.focusEl) DU.focusEl(result);
   } catch (e) {
-    text.textContent = e.message || "Generation failed";
+    const code = e && e.code ? String(e.code) : "";
+    const msg = DU.errorMessage(e, e.message || "Generation failed");
+    if (DU.setLiveStatus) DU.setLiveStatus(status, text, { error: true, text: msg });
+    else text.textContent = msg;
+    if (DU.focusEl) DU.focusEl(text);
+    if (e && e.payload && e.payload.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("homeGenerateReady"));
+    }
+    if (code === "guest_limit") setGuestFoot(0);
+    else if (code !== "kie_api_key_missing" && e && e.payload && e.payload.guestRemaining !== undefined) {
+      setGuestFoot(e.payload.guestRemaining);
+    }
+    if (code === "auth_required" || (e && e.status === 401)) {
+      try {
+        localStorage.removeItem("dreamutopia_token");
+        localStorage.removeItem("dreamutopia_credits");
+      } catch (x) {}
+      const loginBtn = document.getElementById("hdrLogin");
+      const signupBtn = document.getElementById("hdrSignup");
+      if (loginBtn) {
+        loginBtn.textContent = DU.t("hdr.login", "Log In");
+        loginBtn.href = "/auth?mode=login";
+      }
+      if (signupBtn) {
+        signupBtn.textContent = DU.t("hdr.signup", "Sign Up");
+        signupBtn.href = "/auth?mode=register";
+      }
+    }
+    const errWs = document.getElementById("homeStatusWorkspace");
+    if (errWs) errWs.hidden = false;
+    if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("homeStatusAction"), code);
+    if (code === "insufficient_credits" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("err.insufficient_credits", "Not enough credits for this generation."),
+        body: DU.t("err.insufficient_credits.p", "This generation costs more credits than you have."),
+        href: "/pricing",
+        action: DU.t("err.action.pricing", "View credit packs"),
+      });
+    } else if (code === "guest_lite_only" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("err.guest_lite_only", "Free trial is Lite image-to-video only. Sign up for 10 credits and every model."),
+        href: "/auth?mode=register",
+      });
+    }
   }
+  if (card) card.setAttribute("aria-busy", "false");
+  if (cancel) cancel.hidden = true;
   homeBusy = false;
   updateGen(document.getElementById("homePrompt"));
+  syncGenBtnLabel();
 }
 
 document.getElementById("genBtn").addEventListener("click", homeGenerate);
+if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("homeGenerateReady"));
+document.addEventListener("du:generate-ready", function () {
+  setGuestFoot(window.__duGuestLeft);
+});
+const homeCancelBtn = document.getElementById("homeCancel");
+if (homeCancelBtn) {
+  homeCancelBtn.addEventListener("click", function () {
+    if (homePollAbort) homePollAbort.abort();
+  });
+}
 
 (function () {
   const TOKEN_KEY = "dreamutopia_token";
@@ -793,6 +1003,17 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   const loginBtn = document.getElementById("hdrLogin");
   const signupBtn = document.getElementById("hdrSignup");
   function applyLoggedInChrome() {
+    if (!localStorage.getItem(TOKEN_KEY)) {
+      if (loginBtn) {
+        loginBtn.textContent = DU.t("hdr.login", "Log In");
+        loginBtn.href = "/auth?mode=login";
+      }
+      if (signupBtn) {
+        signupBtn.textContent = DU.t("hdr.signup", "Sign Up");
+        signupBtn.href = "/auth?mode=register";
+      }
+      return;
+    }
     if (loginBtn) loginBtn.textContent = DU.t("hdr.logout", "Log Out");
     if (signupBtn) {
       signupBtn.textContent = DU.t("nav.workspace", "Workspace");
@@ -802,6 +1023,7 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   if (loginBtn) {
     loginBtn.href = "#";
     loginBtn.addEventListener("click", function (e) {
+      if (!localStorage.getItem(TOKEN_KEY)) return;
       e.preventDefault();
       fetch("/api/auth/logout", {
         method: "POST",
@@ -814,30 +1036,98 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   }
   applyLoggedInChrome();
   document.addEventListener("du:i18n", applyLoggedInChrome);
+  document.addEventListener("du:i18n", function () {
+    const ready = document.getElementById("homeGenerateReady");
+    if (ready && ready.getAttribute("data-generate-ready") === "false" && DU.applyGenerateReadyNote) {
+      DU.applyGenerateReadyNote(ready);
+    }
+  });
 })();
 
 (function loadLiveGallery() {
   const grid = document.getElementById("galleryGrid");
   if (!grid) return;
+  function likeBtn(item) {
+    const id = item.id;
+    if (!id) return "";
+    const likes = Number(item.likes) || 0;
+    const label = (DU.escapeHtml || String)(DU.t("gallery.like", "Like"));
+    return '<button type="button" class="gallery-like" data-like-id="' + id + '" aria-label="' + label + '">♥ <span>' + likes + "</span></button>";
+  }
+  function bindBrokenMedia(root) {
+    if (!root) return;
+    root.querySelectorAll("img,video").forEach(function (el) {
+      el.addEventListener("error", function () {
+        const item = el.closest(".gallery-item");
+        if (item) item.classList.add("broken");
+      });
+    });
+  }
+  bindBrokenMedia(grid);
   fetch("/api/gallery")
     .then(function (r) { return r.json(); })
     .then(function (data) {
       const items = (data && data.items) || [];
-      if (!items.length) return;
+      const note = document.getElementById("galleryNote");
+      const headH = document.querySelector(".gallery-head h2");
+      const headP = document.querySelector(".gallery-head p");
+      if (!items.length) {
+        if (note) note.hidden = false;
+        return;
+      }
+      const esc = DU.escapeHtml || function (s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+      };
       const live = items.slice(0, 12).map(function (item) {
-        const url = item.url || "";
-        const kind = item.kind || "image";
-        const prompt = (item.prompt || "").replace(/</g, "&lt;");
+        const url = esc(item.url || "");
+        const kind = item.kind === "video" ? "video" : "image";
+        const prompt = esc(item.prompt || "");
+        const like = likeBtn(item);
         if (kind === "video") {
-          return '<div class="gallery-item" data-kind="video" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><video src="' + url.replace(/"/g, "&quot;") + '" muted playsinline preload="metadata"></video><div class="play">▶</div></div>';
+          return '<div class="gallery-item" tabindex="0" data-id="' + esc(item.id || "") + '" data-kind="video" data-url="' + url + '" data-prompt="' + prompt + '"><video src="' + url + '" muted playsinline preload="metadata"></video><div class="play">▶</div>' + like + "</div>";
         }
-        return '<div class="gallery-item" data-kind="image" data-url="' + url.replace(/"/g, "&quot;") + '" data-prompt="' + prompt.replace(/"/g, "&quot;") + '"><img src="' + url.replace(/"/g, "&quot;") + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div></div>';
+        return '<div class="gallery-item" tabindex="0" data-id="' + esc(item.id || "") + '" data-kind="image" data-url="' + url + '" data-prompt="' + prompt + '"><img src="' + url + '" alt="DreamUtopia creation" loading="lazy"><div class="play hidden">▶</div>' + like + "</div>";
       }).join("");
-      if (items.length >= 6) grid.innerHTML = live;
-      else grid.insertAdjacentHTML("afterbegin", live);
+      if (items.length >= 6) {
+        grid.innerHTML = live;
+        if (headH) headH.textContent = DU.t("gallery.live.h", "From the community");
+        if (headP) headP.textContent = DU.t("gallery.live.p", "Creations people chose to share.");
+        if (note) note.hidden = true;
+      } else {
+        grid.insertAdjacentHTML("afterbegin", live);
+        if (note) note.hidden = false;
+      }
+      bindBrokenMedia(grid);
+      markGalleryItems();
     })
     .catch(function () {});
+  grid.addEventListener("click", function (e) {
+    const btn = e.target.closest(".gallery-like");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = Number(btn.getAttribute("data-like-id"));
+    if (!id) return;
+    DU.likeGallery(id)
+      .then(function (res) {
+        const span = btn.querySelector("span");
+        if (span && res && res.likes !== undefined) span.textContent = String(res.likes);
+        btn.classList.add("liked");
+        btn.setAttribute("aria-label", DU.t("gallery.liked", "Liked"));
+      })
+      .catch(function () {});
+  });
 })();
+
+function markGalleryItems() {
+  const grid = document.getElementById("galleryGrid");
+  if (!grid) return;
+  grid.querySelectorAll(".gallery-item").forEach(function (item) {
+    item.tabIndex = 0;
+    const prompt = item.getAttribute("data-prompt") || "";
+    item.setAttribute("aria-label", prompt || DU.t("a11y.openGallery", "Open gallery item"));
+  });
+}
 
 (function lightbox() {
   const box = document.getElementById("lightbox");
@@ -845,41 +1135,135 @@ document.getElementById("genBtn").addEventListener("click", homeGenerate);
   const image = document.getElementById("lightboxImage");
   const cap = document.getElementById("lightboxCap");
   const close = document.getElementById("lightboxClose");
+  const prevBtn = document.getElementById("lightboxPrev");
+  const nextBtn = document.getElementById("lightboxNext");
   const grid = document.getElementById("galleryGrid");
   if (!box || !grid) return;
+  let lastFocus = null;
+  let untrap = null;
+  let index = 0;
+  function itemList() {
+    return Array.prototype.slice.call(grid.querySelectorAll(".gallery-item"));
+  }
   function hide() {
+    if (box.hidden) return;
     box.classList.remove("show");
     box.hidden = true;
+    document.documentElement.classList.remove("lightbox-lock");
     video.pause();
     video.removeAttribute("src");
     video.load();
     image.removeAttribute("src");
+    if (untrap) {
+      untrap();
+      untrap = null;
+    }
+    if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
+    lastFocus = null;
   }
   function show(item) {
+    const items = itemList();
+    index = items.indexOf(item);
+    if (index < 0) index = 0;
     const media = item.querySelector("img,video");
     const url = item.getAttribute("data-url") || (media && media.src) || "";
     if (!url) return;
+    if (box.hidden) lastFocus = document.activeElement;
     const kind = item.getAttribute("data-kind") || (item.querySelector("video") ? "video" : "image");
-    cap.textContent = item.getAttribute("data-prompt") || "";
+    const prompt = item.getAttribute("data-prompt") || "";
+    cap.textContent = prompt;
+    image.alt = prompt || DU.t("a11y.openGallery", "Open gallery item");
     if (kind === "video") {
       image.hidden = true;
       video.hidden = false;
       video.src = url;
     } else {
       video.hidden = true;
+      video.pause();
       image.hidden = false;
       image.src = url;
     }
     box.hidden = false;
     box.classList.add("show");
+    document.documentElement.classList.add("lightbox-lock");
+    if (untrap) untrap();
+    untrap = DU.trapFocus ? DU.trapFocus(box) : null;
+    if (close) close.focus();
   }
+  function showAt(delta) {
+    const items = itemList();
+    if (!items.length) return;
+    const next = (index + delta + items.length) % items.length;
+    show(items[next]);
+  }
+  markGalleryItems();
   grid.addEventListener("click", function (e) {
+    if (e.target.closest(".gallery-like")) return;
     const item = e.target.closest(".gallery-item");
     if (item) show(item);
   });
+  grid.addEventListener("keydown", function (e) {
+    if (e.target.closest(".gallery-like")) return;
+    const item = e.target.closest(".gallery-item");
+    if (!item) return;
+    if (e.key === "Enter" || e.key === " ") {
+      if (e.target.closest("button")) return;
+      e.preventDefault();
+      show(item);
+    }
+  });
   if (close) close.addEventListener("click", hide);
+  if (prevBtn) prevBtn.addEventListener("click", function () { showAt(-1); });
+  if (nextBtn) nextBtn.addEventListener("click", function () { showAt(1); });
   box.addEventListener("click", function (e) { if (e.target === box) hide(); });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") hide(); });
+  document.addEventListener("keydown", function (e) {
+    if (box.hidden) return;
+    if (e.key === "Escape") hide();
+    else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      showAt(1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      showAt(-1);
+    }
+  });
+})();
+
+(function faqA11y() {
+  document.querySelectorAll(".faq-item").forEach(function (item, i) {
+    const btn = item.querySelector(".faq-q");
+    const panel = item.querySelector(".faq-a");
+    if (!btn || !panel) return;
+    const qid = "faq-q-" + (i + 1);
+    const pid = "faq-a-" + (i + 1);
+    btn.id = qid;
+    panel.id = pid;
+    btn.setAttribute("aria-controls", pid);
+    panel.setAttribute("role", "region");
+    panel.setAttribute("aria-labelledby", qid);
+    function sync() {
+      const open = item.classList.contains("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      panel.hidden = !open;
+    }
+    sync();
+    btn.addEventListener("click", function () {
+      item.classList.toggle("open");
+      sync();
+    });
+  });
+})();
+
+(function hydrateGuestFoot() {
+  document.addEventListener("du:i18n", function () {
+    if (window.__duGuestLeft !== undefined && window.__duGuestLeft !== null) setGuestFoot(window.__duGuestLeft);
+  });
+  if (DU.getToken()) return;
+  DU.api("/credits")
+    .then(function (data) {
+      if (data && data.guestRemaining !== undefined) setGuestFoot(data.guestRemaining);
+    })
+    .catch(function () {});
 })();
 </script>
 </body>

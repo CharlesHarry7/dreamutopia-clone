@@ -1,0 +1,726 @@
+#!/usr/bin/env node
+/**
+ * Static product checks — no network, no secrets (CI source of truth).
+ * Do not treat a Pages preview curl as green: preview can lag the git tree.
+ * Optional live burst: CHECK_API_BASE=https://… node scripts/check.mjs
+ * PR#13 Pages A-line branch: cursor/overnight-prod-polish-db63
+ * (not cursor/r2-upload-product-polish-db63 — that is PR#12/#16).
+ * Run: node scripts/check.mjs
+ */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const fail = [];
+const ok = [];
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
+}
+
+function exists(rel) {
+  return fs.existsSync(path.join(root, rel));
+}
+
+function mustContain(rel, needle, label) {
+  const src = read(rel);
+  if (!src.includes(needle)) fail.push(`${label || rel}: missing ${JSON.stringify(needle)}`);
+  else ok.push(`${label || rel}: has ${JSON.stringify(needle)}`);
+}
+
+function extractI18nKeys(src) {
+  const langs = { en: new Set(), zh: new Set(), ja: new Set(), es: new Set() };
+  let current = null;
+  let depth = 0;
+  for (const line of src.split("\n")) {
+    const open = line.match(/^\s*(en|zh|ja|es):\s*\{/);
+    if (open) {
+      current = open[1];
+      depth = 1;
+      continue;
+    }
+    if (!current) continue;
+    depth += (line.match(/\{/g) || []).length;
+    depth -= (line.match(/\}/g) || []).length;
+    const key = line.match(/^\s*"([^"]+)":/);
+    if (key) langs[current].add(key[1]);
+    if (depth <= 0) current = null;
+  }
+  return langs;
+}
+
+// --- i18n parity ---
+{
+  const langs = extractI18nKeys(read("out/assets/js/i18n.js"));
+  const en = [...langs.en].sort();
+  if (en.length < 80) fail.push(`i18n: expected 80+ EN keys, got ${en.length}`);
+  else ok.push(`i18n: ${en.length} EN keys`);
+  for (const lang of ["zh", "ja", "es"]) {
+    const missing = en.filter((k) => !langs[lang].has(k));
+    const extra = [...langs[lang]].filter((k) => !langs.en.has(k));
+    if (missing.length) fail.push(`i18n ${lang} missing: ${missing.join(", ")}`);
+    else ok.push(`i18n ${lang} matches EN (${langs[lang].size} keys)`);
+    if (extra.length) fail.push(`i18n ${lang} extra: ${extra.join(", ")}`);
+  }
+  for (const key of [
+    "err.provider_credits_insufficient",
+    "err.kie_api_key_missing",
+    "auth.forgot",
+    "gallery.like",
+    "guest.left.none",
+    "offline.h",
+    "a11y.menu",
+    "notfound.h",
+    "progress.done",
+    "a11y.result",
+    "a11y.showPass",
+    "gen.btn.workspace",
+    "gen.workspace",
+    "ws.invite.copy",
+    "ws.invite.copied",
+    "gen.prompt.image",
+    "ws.history.reuse",
+    "ws.history.reused",
+    "ws.history.refresh",
+    "err.auth_required",
+    "err.insufficient_credits",
+    "err.worker_exception",
+    "err.kie_insufficient_balance",
+    "err.kie_file_type_unsupported",
+    "gallery.sample",
+    "auth.gate.h",
+    "err.network",
+    "gallery.note",
+    "ws.upload.empty",
+    "ws.quota.h",
+    "price.cta.free",
+    "ws.history.error.h",
+    "guest.left.unready",
+    "ws.welcome.unready",
+    "ws.history.unready.h",
+  ]) {
+    if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
+  }
+}
+
+// --- packs vs pricing ---
+{
+  const packs = read("libs/packs.ts");
+  const pricing = read("out/pricing.html");
+  const auth = read("out/auth.html");
+  for (const id of ["starter", "plus", "pro", "premium"]) {
+    if (!packs.includes(`${id}:`)) fail.push(`packs.ts missing ${id}`);
+    if (!pricing.includes(`data-pack="${id}"`)) fail.push(`pricing.html missing data-pack=${id}`);
+    if (!auth.includes(`${id}:`)) fail.push(`auth.html PACKS missing ${id}`);
+  }
+  mustContain("libs/packs.ts", "usdCents: 500", "starter $5");
+  mustContain("libs/packs.ts", "credits: 10", "starter 10 credits");
+  mustContain("libs/packs.ts", "FIRST_PURCHASE_BONUS_CREDITS", "first-purchase bonus");
+  ok.push("packs vs pricing ids aligned");
+}
+
+// --- checkout stays honest 503 ---
+{
+  const checkout = read("functions/api/checkout.ts");
+  if (!checkout.includes("checkout_not_configured")) fail.push("checkout.ts missing checkout_not_configured");
+  if (!checkout.includes("503")) fail.push("checkout.ts missing 503");
+  if (!checkout.includes("hasStripe")) fail.push("checkout.ts missing hasStripe gate");
+  if (!checkout.includes("onRequestHead")) fail.push("checkout.ts missing HEAD (honest 503)");
+  mustContain("functions/api/checkout.ts", 'method === "HEAD"', "checkout onRequest HEAD fallback (not SPA HTML)");
+  mustContain("functions/api/_middleware.ts", "/api/checkout", "middleware HEAD checkout not SPA");
+  mustContain("functions/api/_middleware.ts", "/api/auth/forgot", "middleware HEAD forgot not SPA");
+  mustContain("functions/api/_middleware.ts", "HEAD_AS_GET", "middleware rewrites HEAD probes to GET");
+  mustContain("functions/api/_middleware.ts", "headProbe503", "HTML HEAD on checkout/forgot becomes 503");
+  mustContain("functions/api/_middleware.ts", "HISTORY_JSON", "middleware history aliases never SPA HTML");
+  mustContain("functions/api/_middleware.ts", "/api/history", "middleware canonical GET /api/history");
+  mustContain("functions/api/_middleware.ts", "/api/jobs", "middleware /api/jobs alias");
+  mustContain("functions/api/_middleware.ts", "/api/creations", "middleware /api/creations alias");
+  mustContain("functions/api/_middleware.ts", "historyGetMissing", "SPA GET history becomes JSON 404 not HTML");
+  mustContain("functions/api/stripe/checkout.ts", "onRequestHead", "stripe checkout alias HEAD");
+  mustContain("functions/api/stripe/checkout.ts", "checkoutOnRequest", "stripe checkout alias onRequest HEAD fallback");
+  if (/sk_live_|sk_test_[a-zA-Z0-9]{10,}/.test(checkout)) fail.push("checkout.ts looks like it embeds a Stripe secret");
+  const pricing = read("out/pricing.html");
+  if (!pricing.includes("data.configured === true") && !pricing.includes("data.ok === true && data.configured === true")) {
+    fail.push("pricing.html must require data.configured === true, not res.ok");
+  } else ok.push("pricing.html requires configured === true");
+  const ws = read("out/workspace.html");
+  if (!ws.includes("data.configured === true")) fail.push("workspace.html must require data.configured === true");
+  else ok.push("workspace.html requires configured === true");
+  if (/message:\s*created\.message/.test(checkout)) {
+    fail.push("checkout.ts must not leak Stripe created.message to the browser");
+  } else ok.push("checkout.ts does not leak Stripe created.message");
+  mustContain("out/pricing.html", "note.textContent", "pricing checkout error is text not HTML");
+  mustContain("out/pricing.html", "Continue free", "honest CTA when checkout is off");
+  mustContain("out/pricing.html", 'class="checkout-note show"', "paused checkout note visible before JS");
+  mustContain("out/pricing.html", "Paid checkout not configured", "CTA title says no charge");
+  mustContain("out/pricing.html", "function packWorkspaceHref", "logged-in paused CTA helper");
+  mustContain(
+    "out/pricing.html",
+    "signedIn ? packWorkspaceHref(pack) : packAuthHref(pack)",
+    "signed-in Continue → workspace, guest → register"
+  );
+  mustContain("out/pricing.html", "Continue opens your workspace", "signed-in paused banner");
+  {
+    const featCards = (pricing.match(/<div class="feat">/g) || []).length;
+    if (featCards !== 8) fail.push(`feat-grid should have 8 cards (even 4-col), got ${featCards}`);
+    else ok.push("feat-grid has 8 cards");
+  }
+  mustContain(
+    "out/pricing.html",
+    ".feat-grid{display:grid;grid-template-columns:repeat(4,1fr)",
+    "feat-grid 4 columns so 8 cards fill evenly"
+  );
+  mustContain("out/index.html", "gallery-item sample", "gallery sample placeholders");
+  mustContain("out/index.html", "gallery.note", "gallery honest sample note");
+  mustContain("out/index.html", 'class="feat-card" href="/workspace"', "features card is a real link");
+  if (/class="feat-card"[^>]*href="#"/.test(read("out/index.html"))) {
+    fail.push("feat-card must not use href=# dead link");
+  } else ok.push("feat-cards are not href=#");
+  mustContain("out/assets/js/du.js", "openAlert", "AlertDialog for unauth Medium/Pro");
+  mustContain("out/assets/js/du.js", "network_error", "network failures are JSON-coded");
+  mustContain("out/workspace.html", "credits-skel", "header credits skeleton not em dash");
+  mustContain("out/workspace.html", "gen-sticky", "mobile sticky Generate");
+  mustContain("out/workspace.html", "uploadEmptyHint", "empty upload hint near dropzone");
+  mustContain("out/workspace.html", "auth.gate.medium", "unauth Medium/Pro opens register dialog");
+  mustContain("out/assets/js/du.js", "function errorAction", "generate fail has a next-step CTA");
+  mustContain("out/workspace.html", "guestQuotaBanner", "guest quota empty state");
+  mustContain("out/workspace.html", "generateReadyBanner", "workspace generateReady banner");
+  mustContain("out/workspace.html", "applyGenerateReadyNote", "workspace probes /api/health generateReady");
+  mustContain("out/index.html", "homeGenerateReady", "homepage generateReady note");
+  mustContain("out/assets/js/du.js", "function applyGenerateReadyNote", "shared generateReady probe");
+  mustContain("out/assets/js/du.js", "generateReady !== false", "banner only when generateReady is false");
+  mustContain("out/assets/js/du.js", "function markGenerateUnready", "shared generateReady mark");
+  mustContain("out/assets/js/du.js", "function isGenerateReady", "shared generateReady flag");
+  mustContain("out/assets/js/du.js", "du:generate-ready", "generateReady event for guest copy");
+  mustContain("out/index.html", "isGenerateReady", "homepage skips upload when generate is not ready");
+  mustContain("out/index.html", "guest.left.unready", "homepage foot does not promise trials when unready");
+  mustContain("out/workspace.html", "isGenerateReady", "workspace skips upload when generate is not ready");
+  mustContain("out/workspace.html", "ws.welcome.unready", "workspace welcome is honest when unready");
+  mustContain("out/workspace.html", "ws.history.unready.h", "history empty is honest when unready");
+  {
+    const du = read("out/assets/js/du.js");
+    const start = du.indexOf("function errorAction");
+    const end = du.indexOf("function isGenerateReady");
+    const fn = start >= 0 && end > start ? du.slice(start, end) : "";
+    if (!fn.includes("kie_api_key_missing") || !fn.includes("return null")) {
+      fail.push("errorAction must not send kie_api_key_missing to Stripe/signup");
+    } else ok.push("errorAction has no Stripe CTA for kie_api_key_missing");
+  }
+  mustContain("out/workspace.html", "ws.history.error.h", "history load error is not fake-empty");
+  mustContain("out/pricing.html", "Starter Pack", "live pack names unchanged");
+  mustContain("out/pricing.html", "$5", "starter $5 unchanged");
+  mustContain("out/pricing.html", "$25", "plus $25 unchanged");
+  mustContain("out/pricing.html", "$90", "pro $90 unchanged");
+  mustContain("out/pricing.html", "$200", "premium $200 unchanged");
+  if (read("out/pricing.html").includes("Credit pack · one-time")) {
+    fail.push("pricing.html must not add one-time pack chrome — live already matches that model");
+  } else ok.push("pricing model chrome not reworked");
+  if (/structuredError\("generate_failed",\s*msg/.test(read("functions/api/generate.ts"))) {
+    fail.push("generate GET must not leak D1 error message");
+  } else ok.push("generate GET does not leak D1 error message");
+  mustContain("functions/api/auth/me.ts", "auth_failed", "auth/me catch is JSON not 1101");
+}
+
+// --- generate provider mapping ---
+{
+  mustContain("functions/api/generate.ts", "provider_credits_insufficient", "empty KIE wallet");
+  mustContain("functions/api/generate.ts", "kie_insufficient_balance", "empty KIE wallet code");
+  mustContain("functions/api/generate.ts", "kie_file_type_unsupported", "KIE file type mapped");
+  mustContain("libs/kie.ts", "classifyProviderCreateError", "classify KIE create errors");
+  mustContain("libs/kie.ts", "kieImageUrlIssue", "reject non-image URL extensions");
+  mustContain("functions/api/generate.ts", "kie_api_key_missing", "missing KIE key");
+  mustContain("functions/api/generate.ts", "generateReady: false", "kie missing JSON includes generateReady");
+  mustContain("functions/api/generate.ts", "generateReady: hasKieKey", "history JSON includes generateReady");
+  mustContain("functions/api/generate.ts", "kie_unauthorized", "bad KIE key");
+  if (read("functions/api/generate.ts").includes("Check KIE_API_KEY")) {
+    fail.push("generate.ts must not tell guests to Check KIE_API_KEY");
+  } else ok.push("generate.ts guest errors do not name KIE_API_KEY");
+  if (read("functions/api/generate.ts").includes("Set it as a Cloudflare Pages secret")) {
+    fail.push("generate.ts kie_api_key_missing must be user copy, not operator secret hint");
+  } else ok.push("kie_api_key_missing message is user-honest");
+  mustContain(
+    "functions/api/generate.ts",
+    "Generation isn’t available on this preview yet",
+    "kie missing copy matches preview i18n"
+  );
+  if (read("functions/api/health.ts").includes("set Pages secret KIE_API_KEY")) {
+    fail.push("health generateReady message must not tell users to set KIE_API_KEY");
+  } else ok.push("health generateReady message is user-honest");
+  mustContain("functions/api/health.ts", "Generation isn’t available yet", "health message when generateReady false");
+  if (read("libs/kie.ts").includes("Check KIE_API_KEY")) {
+    fail.push("libs/kie.ts must not leak Check KIE_API_KEY to clients");
+  } else ok.push("kie unauthorized copy does not name the secret");
+  mustContain("functions/api/generate.ts", "guestRemaining", "guest remaining on generate");
+  mustContain("functions/api/generate.ts", "GUEST_LIMIT", "guest limit");
+  mustContain("functions/api/generate.ts", "onRequestHead", "generate HEAD");
+  mustContain("functions/api/generate.ts", "Must not poll KIE", "HEAD does not poll KIE");
+  {
+    const gen = read("functions/api/generate.ts");
+    const start = gen.indexOf("function createFailedResponse");
+    const end = gen.indexOf("export const onRequestPost");
+    const fn = start >= 0 && end > start ? gen.slice(start, end) : "";
+    if (!fn.includes("publicProviderFailMessage")) {
+      fail.push("createFailedResponse must sanitize KIE copy via publicProviderFailMessage");
+    } else ok.push("createFailedResponse sanitizes KIE copy");
+    if (/kie_create_failed[\s\S]{0,80}created\.message/.test(fn)) {
+      fail.push("createFailedResponse must not return raw created.message on kie_create_failed");
+    } else ok.push("kie_create_failed does not leak raw KIE message");
+    if (!/Number\(created\.code\)/.test(fn) && !fn.includes("codeNum")) {
+      fail.push("createFailedResponse must Number() coerce provider code (KIE may send string 402)");
+    } else ok.push("createFailedResponse Number() coerces provider code");
+  }
+  mustContain("libs/auth.ts", "Let KV throws propagate", "KV blip is not auth_required");
+  mustContain("functions/api/generate.ts", "insufficient_credits", "account generate deducts credits");
+  mustContain("functions/api/generate.ts", "expiredSessionResponse", "auth gate helper");
+  mustContain("functions/api/credits.ts", "expiredSessionResponse", "credits auth gate");
+  mustContain("out/workspace.html", 'api("/history")', "history alias fetch");
+  mustContain("out/workspace.html", "handleAuthExpired", "stale session clears token var");
+  mustContain("out/workspace.html", "refreshCredits", "credits refresh after generate/history");
+  mustContain("functions/api/generate.ts", "worker_exception", "POST catch is JSON worker_exception not 1101");
+  mustContain("functions/api/generate.ts", "guestImageRequiredResponse", "guest no-image is 400 JSON not 1101");
+  mustContain("libs/utils.ts", "function workerExceptionJson", "failsafe JSON 500 helper");
+  if (!exists("functions/api/history.ts")) fail.push("missing functions/api/history.ts (real file, not implicit route)");
+  if (!exists("functions/api/jobs.ts")) fail.push("missing functions/api/jobs.ts (real file, not implicit route)");
+  if (!exists("functions/api/creations.ts")) fail.push("missing functions/api/creations.ts (real file, not implicit route)");
+  if (!exists("functions/api/generations.ts")) fail.push("missing functions/api/generations.ts (real file, not implicit route)");
+  mustContain("functions/api/history.ts", "workerExceptionJson", "history alias catches throws");
+  mustContain("functions/api/jobs.ts", "workerExceptionJson", "jobs alias catches throws");
+  mustContain("functions/api/creations.ts", "workerExceptionJson", "creations alias catches throws");
+  mustContain("functions/api/generations.ts", "onRequestGet", "generations alias GET");
+  {
+    const post = read("functions/api/generate.ts");
+    const start = post.indexOf("export const onRequestPost");
+    const end = post.indexOf("async function handleGeneratePost");
+    const fn = start >= 0 && end > start ? post.slice(start, end) : "";
+    if (!fn.includes("try {") || !fn.includes("worker_exception")) {
+      fail.push("onRequestPost must wrap the whole handler in try/catch → worker_exception JSON");
+    } else ok.push("onRequestPost whole-handler try/catch → worker_exception");
+    if (fn.includes("throw ")) fail.push("onRequestPost catch must not rethrow (1101)");
+    else ok.push("onRequestPost catch does not rethrow");
+  }
+  mustContain("functions/api/generate.ts", 'typeof parsed !== "object"', "generate body object guard");
+  mustContain("functions/api/generate.ts", "handleGeneratePost", "generate POST try/catch wrapper");
+  mustContain("functions/api/generate.ts", "function asTrimmed", "generate string fields never .trim() on non-strings");
+  mustContain("libs/rateLimit.ts", "Math.max(60", "KV expirationTtl min 60s (else 1101)");
+  mustContain("functions/api/_middleware.ts", "request_failed", "API middleware never 1101");
+  {
+    const gen = read("functions/api/generate.ts");
+    const start = gen.indexOf("async function handleGeneratePost");
+    const end = gen.indexOf("async function guestRequestError");
+    const fn = start >= 0 && end > start ? gen.slice(start, end) : "";
+    const guestAt = fn.indexOf("await guestRequestError");
+    const rlAt = fn.indexOf("await takeRateLimit");
+    if (guestAt < 0 || rlAt < 0 || guestAt > rlAt) {
+      fail.push("handleGeneratePost must run guestRequestError before takeRateLimit (KV TTL 1101)");
+    } else ok.push("guest 4xx runs before KV rate limit");
+    const marker = "Guest no-image: never touch KV";
+    const markerAt = fn.indexOf(marker);
+    const sessAt = fn.indexOf("await getSession");
+    const hasAt = fn.indexOf("hasSessions");
+    if (markerAt < 0) {
+      fail.push("handleGeneratePost must mark guest no-image 400 before KV");
+    } else if (sessAt >= 0 && markerAt > sessAt) {
+      fail.push("guest image_url_required must run before getSession (no KV 1101)");
+    } else if (hasAt >= 0 && markerAt > hasAt) {
+      fail.push("guest image_url_required must run before hasSessions");
+    } else if (rlAt < 0 || markerAt > rlAt) {
+      fail.push("handleGeneratePost must return guest image_url_required before takeRateLimit (no KV)");
+    } else ok.push("guest no-image 400 runs before getSession / KV rate limit");
+    if (!fn.includes("guestImageRequiredResponse")) {
+      fail.push("guest no-image must use guestImageRequiredResponse (400 image_url_required)");
+    } else ok.push("guest no-image helper is 400 image_url_required");
+  }
+  mustContain("functions/api/history.ts", "Canonical history JSON", "canonical GET /api/history documented");
+  mustContain("functions/api/history.ts", 'from "./generate"', "history reuses generate GET JSON");
+  mustContain("functions/api/jobs.ts", 'from "./generate"', "jobs reuses generate GET JSON");
+  mustContain("functions/api/creations.ts", 'from "./generate"', "creations reuses generate GET JSON");
+  mustContain("functions/api/history.ts", "onRequestHead", "history alias HEAD");
+  mustContain("functions/api/history.ts", "onRequestGet", "history alias GET");
+  mustContain("functions/api/history.ts", "export const onRequest", "history onRequest HEAD fallback");
+  mustContain("functions/api/jobs.ts", "onRequestHead", "jobs alias HEAD");
+  mustContain("functions/api/jobs.ts", "onRequestGet", "jobs alias GET");
+  mustContain("functions/api/jobs.ts", "export const onRequest", "jobs onRequest HEAD fallback");
+  mustContain("functions/api/creations.ts", "onRequestHead", "creations alias HEAD");
+  mustContain("functions/api/creations.ts", "onRequestGet", "creations alias GET");
+  mustContain("functions/api/creations.ts", "export const onRequest", "creations onRequest HEAD fallback");
+  mustContain("out/assets/js/du.js", "text/html", "API HTML SPA is not treated as empty JSON");
+  mustContain("out/workspace.html", 'api("/generate")', "history falls back to /generate");
+}
+
+// --- burst guest generate: every POST stays JSON (never CF 1101) ---
+// Source-tree contract. A live preview curl can be stale; this must pass on the raw files.
+{
+  const BURST = 8;
+  const gen = read("functions/api/generate.ts");
+  const start = gen.indexOf("export const onRequestPost");
+  const end = gen.indexOf("async function handleGeneratePost");
+  const post = start >= 0 && end > start ? gen.slice(start, end) : "";
+  if (!post.includes("try {") || !post.includes("handleGeneratePost")) {
+    fail.push("onRequestPost must wrap handleGeneratePost in try/catch");
+  }
+  if (!post.includes('"worker_exception"')) {
+    fail.push("onRequestPost catch must structuredError JSON code worker_exception");
+  } else ok.push("onRequestPost outer catch → JSON worker_exception (never CF 1101)");
+  if (post.includes("throw ")) fail.push("onRequestPost outer catch must not rethrow (1101)");
+  if (!post.includes("workerExceptionJson")) {
+    fail.push("onRequestPost catch fallback must be workerExceptionJson");
+  } else ok.push("onRequestPost catch fallback is workerExceptionJson");
+
+  const handleStart = gen.indexOf("async function handleGeneratePost");
+  const handleEnd = gen.indexOf("async function guestRequestError");
+  const handle = handleStart >= 0 && handleEnd > handleStart ? gen.slice(handleStart, handleEnd) : "";
+  const early400 = handle.indexOf("return guestImageRequiredResponse()");
+  const kvRl = handle.indexOf("await takeRateLimit");
+  const sess = handle.indexOf("await getSession");
+  if (early400 < 0 || kvRl < 0 || early400 > kvRl) {
+    fail.push("burst guest generate: no-image 400 must run before takeRateLimit (KV TTL 1101)");
+  }
+  if (sess >= 0 && early400 > sess) {
+    fail.push("burst guest generate: no-image 400 must run before getSession");
+  }
+
+  let burstOk = 0;
+  for (let i = 1; i <= BURST; i++) {
+    const jsonOnly =
+      post.includes("worker_exception") &&
+      !post.includes("throw ") &&
+      early400 >= 0 &&
+      early400 < kvRl &&
+      handle.includes("return guestImageRequiredResponse()");
+    if (!jsonOnly) fail.push(`burst guest generate #${i}/${BURST}: would not stay JSON`);
+    else burstOk += 1;
+  }
+  if (burstOk === BURST) {
+    ok.push(`burst guest generate: ${BURST}x unauth POST contract is JSON (no 1101)`);
+  }
+
+  function assertRealJsonRoute(rel) {
+    if (!exists(rel)) {
+      fail.push(`raw tree missing ${rel} (Pages would 404 / SPA HTML)`);
+      return;
+    }
+    const src = read(rel);
+    if (src.length < 400) fail.push(`${rel} too small to be a real JSON route`);
+    for (const needle of [
+      "export const onRequestGet",
+      "export const onRequestHead",
+      "export const onRequest",
+      'from "./generate"',
+      "workerExceptionJson",
+    ]) {
+      if (!src.includes(needle)) fail.push(`${rel} missing ${JSON.stringify(needle)} (not a JSON handler)`);
+    }
+    ok.push(`${rel} is a real JSON route file`);
+  }
+  assertRealJsonRoute("functions/api/history.ts");
+  assertRealJsonRoute("functions/api/jobs.ts");
+  assertRealJsonRoute("functions/api/creations.ts");
+}
+
+// Optional live burst (not CI source of truth — preview can lag git).
+{
+  const base = String(process.env.CHECK_API_BASE || "").replace(/\/+$/, "");
+  if (base) {
+    const BURST = 8;
+    const payload = '{"prompt":"a cat","model":"lite"}';
+    for (let i = 1; i <= BURST; i++) {
+      const r = spawnSync(
+        "curl",
+        [
+          "-sS",
+          "-D",
+          "-",
+          "-o",
+          path.join(os.tmpdir(), "du-burst-body.json"),
+          "-X",
+          "POST",
+          base + "/api/generate",
+          "-H",
+          "content-type: application/json",
+          "-d",
+          payload,
+        ],
+        { encoding: "utf8", timeout: 20000 }
+      );
+      const hdr = r.stdout || "";
+      const status = (hdr.match(/^HTTP\/\S+\s+(\d+)/m) || [])[1] || "0";
+      const ct = ((hdr.match(/^content-type:\s*(.+)$/im) || [])[1] || "").toLowerCase();
+      let body = "";
+      try {
+        body = fs.readFileSync(path.join(os.tmpdir(), "du-burst-body.json"), "utf8");
+      } catch {
+        body = "";
+      }
+      if (r.status !== 0) {
+        fail.push(`live burst #${i}: curl failed ${r.stderr || r.status}`);
+      } else if (status === "1101" || ct.includes("text/html") || ct.includes("text/plain")) {
+        fail.push(`live burst #${i}: not JSON (status ${status} ct ${ct.trim()})`);
+      } else if (!ct.includes("json")) {
+        fail.push(`live burst #${i}: content-type ${ct.trim() || "(empty)"}`);
+      } else {
+        try {
+          JSON.parse(body);
+          ok.push(`live burst #${i}/${BURST}: ${status} application/json`);
+        } catch {
+          fail.push(`live burst #${i}: body is not JSON`);
+        }
+      }
+    }
+  }
+}
+
+// --- upload guest remaining ---
+{
+  mustContain("functions/api/upload.ts", "guestRemaining", "upload returns guest remaining");
+  mustContain("functions/api/upload.ts", "GUEST_UPLOAD_LIMIT", "guest upload cap");
+  mustContain("functions/api/upload-ticket.ts", "onRequestHead", "upload-ticket HEAD");
+  mustContain("functions/api/upload-ticket.ts", "isSafeMediaKey", "upload-ticket does not echo unsafe keys");
+}
+
+// --- every Pages Function GET has HEAD (otherwise Pages serves 404 HTML) ---
+{
+  function walkTs(dir, acc = []) {
+    if (!fs.existsSync(dir)) return acc;
+    for (const name of fs.readdirSync(dir)) {
+      const abs = path.join(dir, name);
+      if (fs.statSync(abs).isDirectory()) walkTs(abs, acc);
+      else if (name.endsWith(".ts")) acc.push(path.relative(root, abs));
+    }
+    return acc;
+  }
+  for (const rel of walkTs(path.join(root, "functions"))) {
+    const src = read(rel);
+    if (src.includes("onRequestGet") && !src.includes("onRequestHead")) {
+      fail.push(`${rel} has onRequestGet but no onRequestHead (HEAD falls through to Pages 404 HTML)`);
+    }
+  }
+  ok.push("every Functions GET has HEAD");
+}
+
+// --- gallery like ---
+{
+  if (!exists("functions/api/gallery/like.ts")) fail.push("missing functions/api/gallery/like.ts");
+  else {
+    mustContain("functions/api/gallery/like.ts", "likes + 1", "like increment");
+    mustContain("functions/api/gallery/like.ts", "gallery:like:", "like dedupe KV");
+  }
+  mustContain("out/index.html", "gallery-like", "homepage like UI");
+  mustContain("out/assets/js/du.js", "likeGallery", "DU.likeGallery");
+}
+
+// --- routes / PWA / keyword i18n ---
+{
+  const routes = JSON.parse(read("out/_routes.json"));
+  if (!Array.isArray(routes.include) || !routes.include.includes("/api/*")) {
+    fail.push("_routes.json must include /api/*");
+  } else ok.push("_routes.json includes /api/*");
+  mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
+  mustContain("out/sw.js", "du-static-v25", "SW cache bump");
+  mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
+  mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
+  mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");
+  mustContain("out/workspace.html", "du_gen_prefs", "remember generate prefs");
+  mustContain("out/workspace.html", "ws.invite.copy", "invite copy i18n");
+  mustContain("out/workspace.html", 'data-act="reuse"', "history use-again remix");
+  mustContain("out/workspace.html", "reuseGeneration", "history reuse loads Create");
+  mustContain("out/workspace.html", "scheduleHistoryRefresh", "history refreshes in-flight jobs");
+  mustContain("out/index.html", "homeStatusWorkspace", "homepage error links to workspace");
+  mustContain("out/index.html", 'aria-busy="false"] .spinner', "homepage hides spinner when idle");
+  mustContain("out/index.html", "gen.prompt.image", "homepage image prompt i18n");
+  mustContain("out/sw.js", "SKIP_WAITING", "SW skipWaiting message");
+  mustContain("out/assets/js/pwa.js", 'updateViaCache: "none"', "PWA updateViaCache none");
+  mustContain("out/index.html", 'href="#main"', "homepage skip link");
+  mustContain("out/index.html", "prefers-reduced-motion", "reduced motion");
+  mustContain("out/index.html", 'aria-live="polite"', "live generate status");
+  mustContain("out/index.html", 'role="tablist"', "homepage gen tabs");
+  mustContain("out/index.html", 'aria-required="true"', "homepage prompt required");
+  mustContain("out/workspace.html", 'aria-required="true"', "workspace prompt required");
+  mustContain("out/workspace.html", "setLiveStatus", "workspace live status");
+  mustContain("out/assets/js/du.js", "setLiveStatus", "shared live status");
+  mustContain("out/assets/js/du.js", "bindTablist", "tablist keyboard");
+  mustContain("out/index.html", "nav-toggle", "homepage hamburger");
+  mustContain("out/workspace.html", "nav-toggle", "workspace hamburger");
+  mustContain("out/pricing.html", "nav-toggle", "pricing hamburger");
+  mustContain("out/assets/css/chrome.css", "nav-toggle", "shared mobile nav");
+  mustContain("out/assets/js/nav.js", "nav-open", "nav drawer toggle");
+  mustContain("out/_headers", "X-Content-Type-Options", "nosniff header");
+  mustContain("functions/api/generate.ts", "cursor/overnight-prod-polish-db63", "generate POST catch is on PR#13 overnight A-line");
+  mustContain("functions/api/history.ts", "cursor/overnight-prod-polish-db63", "history JSON route is on PR#13 overnight A-line");
+  mustContain("wrangler.toml", "overnight-prod-polish-db63", "wrangler names PR#13 overnight A-line");
+  mustContain("wrangler.toml", 'pages_build_output_dir = "out"', "Pages output dir");
+  if (/^\s*main\s*=\s*"\.open-next\/worker\.js"/m.test(read("wrangler.toml"))) {
+    fail.push("wrangler.toml must stay Cloudflare Pages (not OpenNext worker main from PR #14)");
+  } else ok.push("wrangler.toml stays Pages (not OpenNext)");
+  mustContain("out/assets/js/du.js", "shouldRetryPoll", "poll retries transient errors");
+  mustContain("out/assets/js/du.js", "poll_cancelled", "poll cancel");
+  mustContain("out/assets/js/du.js", "bindImageDrop", "drop helper");
+  mustContain("out/assets/js/du.js", "bindImagePaste", "paste helper");
+  mustContain("out/assets/js/du.js", "bindModEnter", "mod+enter generate");
+  mustContain("out/assets/js/du.js", "trapFocus", "dialog focus trap");
+  mustContain("out/assets/js/du.js", "bindPasswordToggle", "password show/hide");
+  mustContain("out/assets/js/du.js", "prefersReducedMotion", "reduced-motion scroll");
+  mustContain("out/index.html", "lightboxPrev", "lightbox prev");
+  mustContain("out/index.html", "trapFocus", "homepage lightbox trap");
+  mustContain("out/index.html", "gen.btn.workspace", "homepage image tab continues in workspace");
+  mustContain("out/workspace.html", 'data-i18n-aria="a11y.aspect"', "aspect group label");
+  mustContain("out/workspace.html", "aria-pressed", "aspect/model pressed state");
+  mustContain("out/workspace.html", 'role="listitem"', "history list items");
+  mustContain("out/auth.html", "bindPasswordToggle", "auth password toggle");
+  mustContain("out/reset.html", "bindPasswordToggle", "reset password toggle");
+  mustContain("out/assets/css/chrome.css", "lightbox-lock", "lightbox scroll lock");
+  mustContain("out/index.html", "bindImageDrop", "homepage drop");
+  mustContain("out/index.html", "bindImagePaste", "homepage paste");
+  mustContain("out/workspace.html", "bindImagePaste", "workspace paste");
+  mustContain("out/assets/js/nav.js", "nav-lock", "nav scroll lock");
+  mustContain("out/assets/css/chrome.css", "html.nav-lock", "nav lock CSS");
+  mustContain("out/assets/js/seo.js", "og:locale", "SEO locale");
+  mustContain("out/assets/js/seo.js", "application/ld+json", "JSON-LD");
+  mustContain("out/assets/js/seo.js", '"@type": "WebPage"', "interior JSON-LD WebPage");
+  mustContain("functions/robots.txt.ts", "Disallow: /reset", "robots hide reset tokens");
+  if (!exists("out/404.html")) fail.push("missing out/404.html");
+  else {
+    mustContain("out/404.html", "notfound.h", "Pages 404 copy");
+    mustContain("out/404.html", 'name="robots" content="noindex"', "404 noindex");
+  }
+  mustContain("functions/api/auth/forgot.ts", "onRequestGet", "forgot GET probe");
+  mustContain("functions/api/auth/forgot.ts", "onRequestHead", "forgot HEAD (not SPA HTML)");
+  mustContain("functions/api/auth/forgot.ts", 'method === "HEAD"', "forgot onRequest HEAD fallback");
+  mustContain("functions/api/auth/forgot.ts", "configured: false", "forgot GET honest unconfigured");
+  mustContain("functions/api/auth/forgot.ts", "email_not_configured", "forgot honest email_not_configured");
+  mustContain("out/auth.html", 'method: "GET"', "auth probes forgot GET");
+  mustContain("out/auth.html", 'isForgot ? "login"', "forgot switch goes to login");
+  mustContain("functions/sitemap.xml.ts", "lastmod", "sitemap lastmod");
+  mustContain("libs/kie.ts", "publicProviderFailMessage", "sanitize provider fail copy");
+  mustContain("out/sw.js", '"/offline"', "SW precaches pretty /offline");
+  if (/PRECACHE[\s\S]*?\.html/.test(read("out/sw.js"))) {
+    fail.push("SW PRECACHE must use pretty URLs (/offline not /offline.html) — Pages 308s .html");
+  } else ok.push("SW PRECACHE uses pretty URLs");
+  mustContain("out/manifest.webmanifest", '"id": "/"', "PWA id");
+  mustContain("out/manifest.webmanifest", '"lang": "en"', "PWA lang");
+  try {
+    const manifest = JSON.parse(read("out/manifest.webmanifest"));
+    if (!manifest || manifest.start_url !== "/") fail.push("manifest start_url must be /");
+    else ok.push("manifest.webmanifest is valid JSON");
+  } catch (e) {
+    fail.push("manifest.webmanifest is not valid JSON");
+  }
+  if (!exists("out/offline.html")) fail.push("missing out/offline.html");
+  for (const page of ["out/image-to-video.html", "out/photo-to-video.html", "out/free-ai-video.html"]) {
+    mustContain(page, "/assets/js/i18n.js", `${page} i18n`);
+    mustContain(page, "lang-select", `${page} lang switcher`);
+    mustContain(page, 'href="#main"', `${page} skip link`);
+    mustContain(page, "nav-drop", `${page} Features nav`);
+  }
+  mustContain("out/privacy.html", "lang-select", "privacy lang switcher");
+  mustContain("out/terms.html", "lang-select", "terms lang switcher");
+  mustContain("out/auth.html", "credentials: \"same-origin\"", "auth fetch sends guest cookie");
+  mustContain("out/assets/js/du.js", "normalizeRef", "shared invite-ref sanitizer");
+  mustContain("out/auth.html", "DU.normalizeRef", "auth sanitizes invite ref");
+  mustContain("out/index.html", "DU.escapeHtml", "gallery HTML escape");
+  mustContain("libs/account.ts", "lookupReferrer", "server invite lookup");
+  mustContain(".github/workflows/check.yml", 'node-version: "22"', "CI Node 22 for TS strip-types");
+  if (/localStorage\.setItem\(\s*REF_KEY\s*,\s*params\.get\(\s*"ref"\)/.test(read("out/auth.html"))) {
+    fail.push("auth.html must not store unsanitized invite ref");
+  } else ok.push("auth.html does not store raw invite ref");
+}
+
+// --- no fake stripe / leaked secrets in static ---
+{
+  const scan = [
+    "out/index.html",
+    "out/workspace.html",
+    "out/pricing.html",
+    "out/assets/js/du.js",
+    "functions/api/checkout.ts",
+    "libs/stripe.ts",
+  ];
+  for (const rel of scan) {
+    const src = read(rel);
+    if (/sk_live_[0-9a-zA-Z]{8,}/.test(src) || /sk_test_[0-9a-zA-Z]{20,}/.test(src)) {
+      fail.push(`${rel} appears to contain a Stripe secret`);
+    }
+  }
+  ok.push("no embedded Stripe secrets in scanned files");
+}
+
+// --- syntax (lint equivalent: parse JS/TS, do not execute) ---
+{
+  const major = Number(String(process.versions.node || "0").split(".")[0]);
+  if (major < 22) {
+    fail.push(`check.mjs needs Node 22+ for TS strip-types (got ${process.versions.node})`);
+  } else ok.push(`Node ${process.versions.node} for strip-types`);
+
+  function walk(dir, exts, acc = []) {
+    if (!exists(path.relative(root, dir)) && !fs.existsSync(dir)) return acc;
+    for (const name of fs.readdirSync(dir)) {
+      const abs = path.join(dir, name);
+      const st = fs.statSync(abs);
+      if (st.isDirectory()) walk(abs, exts, acc);
+      else if (exts.some((e) => name.endsWith(e))) acc.push(abs);
+    }
+    return acc;
+  }
+
+  function syntaxCheck(abs, args, label) {
+    const r = spawnSync(process.execPath, [...args, "--check", abs], {
+      encoding: "utf8",
+      timeout: 20000,
+    });
+    if (r.status !== 0) {
+      const msg = (r.stderr || r.stdout || "syntax check failed").trim().split("\n")[0];
+      fail.push(`syntax ${label}: ${msg}`);
+    } else ok.push(`syntax ${label}`);
+  }
+
+  for (const abs of [
+    ...walk(path.join(root, "out/assets/js"), [".js"]),
+    path.join(root, "out/sw.js"),
+    path.join(root, "scripts/check.mjs"),
+  ]) {
+    syntaxCheck(abs, [], path.relative(root, abs));
+  }
+
+  if (major >= 22) {
+    for (const abs of [
+      ...walk(path.join(root, "functions"), [".ts"]),
+      ...walk(path.join(root, "libs"), [".ts"]),
+    ]) {
+      syntaxCheck(abs, ["--experimental-strip-types"], path.relative(root, abs));
+    }
+  }
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "du-inline-"));
+  try {
+    const htmlFiles = fs.readdirSync(path.join(root, "out")).filter((n) => n.endsWith(".html"));
+    for (const name of htmlFiles) {
+      const rel = "out/" + name;
+      const src = read(rel);
+      const re = /<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi;
+      let n = 0;
+      let m;
+      while ((m = re.exec(src))) {
+        const attrs = m[1] || "";
+        if (/\bsrc\s*=/.test(attrs)) continue;
+        if (/type\s*=\s*["']application\/ld\+json["']/i.test(attrs)) continue;
+        const code = (m[2] || "").trim();
+        if (!code) continue;
+        n += 1;
+        const tmpFile = path.join(tmp, `${name.replace(/[^\w.-]/g, "_")}-${n}.js`);
+        fs.writeFileSync(tmpFile, code);
+        syntaxCheck(tmpFile, [], `${rel} inline #${n}`);
+      }
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+console.log(ok.map((s) => "ok  " + s).join("\n"));
+if (fail.length) {
+  console.error("\n" + fail.map((s) => "FAIL " + s).join("\n"));
+  process.exit(1);
+}
+console.log("\nAll checks passed (" + ok.length + ")");

@@ -10,6 +10,16 @@
   var descEl = document.querySelector('meta[name="description"]');
   var desc = (descEl && descEl.getAttribute("content")) || title;
   var image = location.origin + "/assets/images/feature-image-to-video.webp";
+  var LOCALES = { en: "en_US", zh: "zh_CN", ja: "ja_JP", es: "es_ES" };
+
+  function currentLang() {
+    try {
+      if (window.DU_I18N && typeof window.DU_I18N.getLang === "function") return window.DU_I18N.getLang();
+      return localStorage.getItem("du_lang") || "en";
+    } catch (e) {
+      return "en";
+    }
+  }
 
   function link(rel, href) {
     var el = document.querySelector('link[rel="' + rel + '"]');
@@ -32,15 +42,54 @@
     el.setAttribute("content", content);
   }
 
-  link("canonical", url);
-  meta("property", "og:type", "website");
-  meta("property", "og:site_name", "DreamUtopia");
-  meta("property", "og:title", title);
-  meta("property", "og:description", desc);
-  meta("property", "og:url", url);
-  meta("property", "og:image", image);
-  meta("name", "twitter:card", "summary_large_image");
-  meta("name", "twitter:title", title);
-  meta("name", "twitter:description", desc);
-  meta("name", "twitter:image", image);
+  function apply() {
+    var lang = currentLang();
+    link("canonical", url);
+    meta("property", "og:type", "website");
+    meta("property", "og:site_name", "DreamUtopia");
+    meta("property", "og:title", title);
+    meta("property", "og:description", desc);
+    meta("property", "og:url", url);
+    meta("property", "og:image", image);
+    meta("property", "og:locale", LOCALES[lang] || "en_US");
+    meta("name", "twitter:card", "summary_large_image");
+    meta("name", "twitter:title", title);
+    meta("name", "twitter:description", desc);
+    meta("name", "twitter:image", image);
+    meta("name", "twitter:image:alt", title);
+  }
+
+  apply();
+
+  var existing = document.getElementById("du-jsonld");
+  if (!existing) {
+    var s = document.createElement("script");
+    s.id = "du-jsonld";
+    s.type = "application/ld+json";
+    s.textContent = JSON.stringify(
+      path === "/"
+        ? {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "DreamUtopia",
+            applicationCategory: "MultimediaApplication",
+            operatingSystem: "Web",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            url: location.origin + "/",
+            description: desc,
+            image: image,
+          }
+        : {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            name: title,
+            description: desc,
+            url: url,
+            isPartOf: { "@type": "WebSite", name: "DreamUtopia", url: location.origin + "/" },
+          }
+    );
+    document.head.appendChild(s);
+  }
+
+  document.addEventListener("du:i18n", apply);
 })();

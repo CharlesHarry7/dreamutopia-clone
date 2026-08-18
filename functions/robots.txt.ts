@@ -1,4 +1,5 @@
 import type { Env } from "../libs/utils";
+import { asHead } from "../libs/utils";
 
 export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
   const origin = new URL(request.url).origin;
@@ -6,6 +7,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
     "User-agent: *",
     "Allow: /",
     "Disallow: /api/",
+    "Disallow: /reset",
+    "Disallow: /offline",
     `Sitemap: ${origin}/sitemap.xml`,
     "",
   ].join("\n");
@@ -16,3 +19,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
     },
   });
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));

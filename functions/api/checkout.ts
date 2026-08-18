@@ -1,4 +1,4 @@
-import { json, preflight, hasDb, hasSessions, type Env } from "../../libs/utils";
+import { json, preflight, asHead, hasDb, hasSessions, type Env } from "../../libs/utils";
 import { getSessionUser } from "../../libs/auth";
 import { getStripeCustomerId } from "../../libs/account";
 import {
@@ -35,6 +35,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   // Honest 503 until Stripe is configured — never look like a live charge endpoint.
   return json(catalog(configured), configured ? 200 : 503);
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!hasStripe(env) || !env.STRIPE_SECRET_KEY) {
@@ -81,10 +83,28 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
   if (!created.ok) {
     return json(
-      { error: "stripe_session_failed", message: created.message },
+      {
+        error: "stripe_session_failed",
+        code: "stripe_session_failed",
+        message: "Checkout could not start. No charge was made.",
+      },
       created.status >= 400 && created.status < 600 ? created.status : 502
     );
   }
 
   return json({ ok: true, url: created.url, id: created.id });
+};
+
+/**
+ * Pages on some deploys does not invoke onRequestHead — HEAD then hits the SPA
+ * (live: 200 text/html). onRequest is the fallback so HEAD/OPTIONS match GET/POST.
+ * functions/api/_middleware.ts also rewrites HEAD → GET for this path.
+ */
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const method = ctx.request.method;
+  if (method === "HEAD") return asHead(await onRequestGet(ctx));
+  if (method === "OPTIONS") return onRequestOptions();
+  if (method === "GET") return onRequestGet(ctx);
+  if (method === "POST") return onRequestPost(ctx);
+  return json({ error: "method_not_allowed", code: "method_not_allowed" }, 405);
 };

@@ -13,6 +13,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -20,6 +22,12 @@
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;display:flex;flex-direction:column}
 a{text-decoration:none;color:inherit}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
+@media (prefers-reduced-motion: reduce){
+*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
 img{max-width:100%;display:block}
 
 /* Promo */
@@ -44,13 +52,12 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .nav-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:220px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.45);z-index:60}
 .nav-menu a{display:block;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--text2)}
 .nav-menu a:hover{background:rgba(168,85,247,.12);color:var(--text)}
-.header-right{display:flex;gap:10px;align-items:center}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .credits-pill{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;color:var(--primary2)}
 .credits-pill a{color:inherit;margin-left:6px;opacity:.85;font-weight:500}
 .credits-pill a:hover{opacity:1;text-decoration:underline}
 .credits-pill #creditsBadge{display:inline-block;min-width:1.25ch;text-align:center;vertical-align:baseline}
-.credits-pill #creditsBadge.loading{min-width:2ch;opacity:.45}
-.credits-pill #creditsBadge.loading::after{content:"···"}
+.credits-pill #creditsBadge.loading{min-width:2.4em}
 .btn-login{font-size:14px;color:var(--text2);padding:6px 14px}
 .btn-signup{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600}
 .lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a8b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
@@ -69,6 +76,14 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .welcome-actions .btn-outline{border:1px solid var(--border2);padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;color:var(--text)}
 .welcome-actions .btn-outline:hover{border-color:var(--primary)}
 .welcome-actions .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600}
+.quota-banner{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:16px;padding:18px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.quota-banner.show{display:flex}
+.quota-banner h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.quota-banner p{font-size:13.5px;color:var(--text2);max-width:560px}
+.quota-banner .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;flex-shrink:0}
+.ready-banner{display:none;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.32);border-radius:16px;padding:16px 18px;margin-bottom:22px}
+.ready-banner.show{display:block}
+.ready-banner p{font-size:13.5px;color:var(--text2);line-height:1.5}
 .pack-banner{display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.35);border-radius:16px;padding:16px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .pack-banner.show{display:flex}
 .pack-banner h2{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--orange)}
@@ -112,6 +127,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .upload-area.has-img .remove-btn{display:flex;align-items:center;justify-content:center}
 .upload-area.drag{border-color:rgba(168,85,247,.7);background:rgba(168,85,247,.08)}
 .upload-grid{display:grid;grid-template-columns:1fr;gap:12px;max-width:420px;margin:0 auto 10px}
+.upload-empty-hint{max-width:420px;margin:0 auto 12px;font-size:12.5px;color:rgba(255,255,255,.55);text-align:center;line-height:1.45}
+.upload-empty-hint[hidden]{display:none !important}
 .upload-grid.two{grid-template-columns:1fr 1fr;max-width:820px}
 .upload-grid .upload-area{max-width:none;margin:0;min-height:180px}
 .opt-row{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;justify-content:center}
@@ -170,6 +187,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .model-opt .c{font-size:11px;color:var(--text3);margin-top:3px}
 .model-opt .t{font-size:10px;color:var(--primary2);font-weight:600;margin-top:3px}
 
+.gen-sticky{width:100%}
 .gen-btn{width:100%;padding:15px;border-radius:12px;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(107,114,128,.4);color:rgba(255,255,255,.45);cursor:not-allowed;transition:opacity .2s,background .2s}
 .gen-btn.ready{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;cursor:pointer;box-shadow:0 10px 28px rgba(168,85,247,.25)}
 .gen-btn.ready:hover{opacity:.92}
@@ -181,6 +199,10 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-status .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .gen-status .cap{font-size:13px;color:var(--text2)}
+.gen-status[aria-busy="false"] .spinner{display:none}
+.gen-cancel{margin-top:10px;font-size:12.5px;color:var(--primary2);text-decoration:underline}
+.gen-status-link{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--primary2);font-weight:600}
+.gen-status-link[hidden]{display:none !important}
 
 /* Save CTA */
 .save-card{display:none;max-width:820px;margin:0 auto 8px;background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(236,72,153,.07));border:1px solid rgba(168,85,247,.25);border-radius:16px;padding:28px 24px;text-align:center}
@@ -192,13 +214,16 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .save-actions .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600}
 
 /* History panel */
-.history-panel{display:none;max-width:820px;margin:0 auto}
-.history-panel.show{display:block}
+.history-panel{max-width:820px;margin:0 auto}
+.history-panel[hidden]{display:none !important}
 .history-empty{text-align:center;padding:56px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:18px}
 .history-empty h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .history-empty p{font-size:14px;color:var(--text2);margin-bottom:18px}
 .history-empty .btn-primary{display:inline-block;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:10px 20px;border-radius:9px;font-size:14px;font-weight:600}
 .history-list{display:grid;gap:12px}
+.history-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}
+.history-toolbar[hidden]{display:none !important}
+.history-toolbar button{border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--primary2)}
 .history-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px}
 .history-item .h-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;align-items:center}
 .history-item .h-meta{font-size:13px;font-weight:600}
@@ -207,6 +232,7 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .history-item .h-status.processing,.history-item .h-status.pending{background:rgba(168,85,247,.15);color:var(--primary2)}
 .history-item .h-status.failed{background:rgba(239,68,68,.15);color:#ef4444}
 .history-item .h-prompt{font-size:13px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item .h-error{font-size:12px;color:var(--red);margin-top:6px;line-height:1.45}
 
 .toast{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:13px;z-index:100;display:none;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .toast.show{display:block;animation:fadeIn .3s}
@@ -226,18 +252,30 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 
 @media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:30px}.model-row{grid-template-columns:1fr}}
 @media(max-width:600px){
-nav{display:none}
 .footer-grid{grid-template-columns:1fr}
 .tabs-primary{width:100%}
 .tabs-primary button{flex:1}
 .gen-card{padding:18px 16px}
 .welcome{padding:18px}
 .upload-grid.two{grid-template-columns:1fr}
+.header-right{flex-wrap:wrap}
+.model-row{grid-template-columns:1fr 1fr}
+.gen-sticky{
+  position:sticky;
+  bottom:0;
+  z-index:40;
+  width:100%;
+  margin:0 -16px;
+  padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(to top, rgba(28,28,38,.97) 62%, rgba(28,28,38,.55) 88%, transparent);
+}
+.gen-sticky .gen-btn{width:100%}
 }
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
-
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <!-- Promo Bar -->
 <div class="promo" id="promoBar">
 <span class="promo-icon">🎉</span>
@@ -252,7 +290,7 @@ nav{display:none}
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
-<nav>
+<nav id="site-nav">
 <a href="/" data-i18n="nav.home">Home</a>
 <a href="/pricing" data-i18n="nav.pricing">Pricing</a>
 <a href="/#faq" data-i18n="nav.faq">FAQ</a>
@@ -267,7 +305,7 @@ nav{display:none}
 </details>
 </nav>
 <div class="header-right">
-<span class="credits-pill" id="creditsPill">⚡ <span id="creditsBadge">—</span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
+<span class="credits-pill" id="creditsPill" hidden>⚡ <span id="creditsBadge" class="loading"><span class="credits-skel" aria-hidden="true"></span></span> credits <a href="/pricing" id="buyCreditsLink" hidden>+ Buy Credits</a></span>
 <a href="/auth?mode=login" class="btn-login" id="loginBtn" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="signupBtn" data-i18n="hdr.signup">Sign Up</a>
 <script>
@@ -276,6 +314,8 @@ nav{display:none}
   try {
     var token = localStorage.getItem("dreamutopia_token");
     if (!token) return;
+    var pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = false;
     var badge = document.getElementById("creditsBadge");
     var buy = document.getElementById("buyCreditsLink");
     if (buy) buy.hidden = false;
@@ -285,8 +325,8 @@ nav{display:none}
       badge.textContent = String(n);
       badge.classList.remove("loading");
     } else {
-      badge.textContent = "";
       badge.classList.add("loading");
+      badge.innerHTML = '<span class="credits-skel" aria-hidden="true"></span>';
     }
     var loginBtn = document.getElementById("loginBtn");
     var signupBtn = document.getElementById("signupBtn");
@@ -301,16 +341,17 @@ nav{display:none}
   } catch (e) {}
 })();
 </script>
-<select class="lang-select" aria-label="Language">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
 <option value="es">Español</option>
 </select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
 </div>
 </header>
 
-<main class="ws-main">
+<main id="main" class="ws-main">
 
 <!-- Guest welcome -->
 <section class="welcome" id="welcomeBanner">
@@ -322,6 +363,18 @@ nav{display:none}
 <a href="/auth?mode=login" class="btn-outline" id="welcomeLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-primary" id="welcomeSignup" data-i18n="hdr.signup">Sign Up Free</a>
 </div>
+</section>
+
+<section class="ready-banner" id="generateReadyBanner" hidden role="status">
+<p data-ready-msg data-i18n="err.kie_api_key_missing">Generation isn’t available on this preview yet. Try again later.</p>
+</section>
+
+<section class="quota-banner" id="guestQuotaBanner" hidden>
+<div>
+<h2 data-i18n="ws.quota.h">Free tries used on this device</h2>
+<p data-i18n="ws.quota.p">Sign up for 10 credits and every model. Guest jobs stay in this browser until you register.</p>
+</div>
+<a href="/auth?mode=register" class="btn-primary" id="quotaSignup" data-i18n="hdr.signup">Sign Up Free</a>
 </section>
 
 <!-- Selected credit pack from /pricing -->
@@ -338,42 +391,42 @@ nav{display:none}
 <p>Share your link. When they buy a credit pack, you receive 10% of that pack’s credits.</p>
 <div class="invite-row">
 <input id="inviteUrl" readonly aria-label="Invite URL">
-<button type="button" id="inviteCopy">Copy link</button>
+<button type="button" id="inviteCopy" data-i18n="ws.invite.copy">Copy link</button>
 </div>
 </section>
 
 <!-- Create / My Creations -->
-<div class="tabs-primary" role="tablist">
-<button type="button" class="active" id="tabCreate" onclick="switchPrimaryTab('create')" data-i18n="ws.tab.create">Create</button>
-<button type="button" id="tabHistory" onclick="switchPrimaryTab('history')" data-i18n="ws.tab.history">My Creations</button>
+<div class="tabs-primary" role="tablist" aria-label="Workspace" data-i18n-aria="a11y.workspace">
+<button type="button" class="active" role="tab" id="tabCreate" aria-selected="true" aria-controls="createView" tabindex="0" onclick="switchPrimaryTab('create')" data-i18n="ws.tab.create">Create</button>
+<button type="button" role="tab" id="tabHistory" aria-selected="false" aria-controls="historyView" tabindex="-1" onclick="switchPrimaryTab('history')" data-i18n="ws.tab.history">My Creations</button>
 </div>
 
 <!-- CREATE VIEW -->
-<section id="createView">
-<div class="mode-switch" role="tablist" aria-label="Generation mode">
-<button type="button" class="active" id="modeVideo" onclick="switchMode('video')">
+<section id="createView" role="tabpanel" aria-labelledby="tabCreate">
+<div class="mode-switch" role="tablist" aria-label="Generation mode" data-i18n-aria="a11y.mode">
+<button type="button" class="active" role="tab" id="modeVideo" aria-selected="true" aria-controls="wsGenCard" tabindex="0" onclick="switchMode('video')">
 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
 Video
 </button>
-<button type="button" id="modeImage" onclick="switchMode('image')">
+<button type="button" role="tab" id="modeImage" aria-selected="false" aria-controls="wsGenCard" tabindex="-1" onclick="switchMode('image')">
 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 Image
 </button>
 </div>
 
 <div class="gen-wrap">
-<div class="gen-card">
+<div class="gen-card" id="wsGenCard">
 <h2 id="genTitle">AI Video Generator</h2>
 
 <div class="upload-grid" id="uploadGrid">
-<div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+<div class="upload-area" id="uploadArea" role="button" tabindex="0" aria-labelledby="uploadLabel" aria-describedby="uploadHint" onclick="document.getElementById('fileInput').click()">
 <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none" onchange="handleFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1" id="uploadLabel">Upload Start Image</div>
-<div class="p2" id="uploadHint" data-i18n="ws.upload.hint">JPG, PNG, WebP, GIF, or TIFF · up to 20 MB</div>
+<div class="p2" id="uploadHint" data-i18n="ws.upload.hint">Drop, paste, or browse · JPG, PNG, WebP, GIF, or TIFF · up to 20 MB</div>
 <button type="button" class="remove-btn" id="removeImgBtn" onclick="event.stopPropagation(); clearUpload()" aria-label="Remove image">✕</button>
 </div>
-<div class="upload-area last-slot" id="lastUploadArea" onclick="document.getElementById('lastFileInput').click()">
+<div class="upload-area last-slot" id="lastUploadArea" role="button" tabindex="0" aria-label="Upload last frame" onclick="document.getElementById('lastFileInput').click()">
 <input type="file" id="lastFileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" style="display:none" onchange="handleLastFile(this)">
 <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 <div class="p1">Upload Last Frame</div>
@@ -381,9 +434,10 @@ Image
 <button type="button" class="remove-btn" onclick="event.stopPropagation(); clearLastUpload()" aria-label="Remove last frame">✕</button>
 </div>
 </div>
+<p class="upload-empty-hint" id="uploadEmptyHint" data-i18n="ws.upload.empty">No image yet — drop a file on the box, or paste a public https URL below.</p>
 <p class="url-hint" id="urlHint">Start image optional — skip it for text-to-video. Or paste a public https URL.</p>
-<input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/start-frame.png" autocomplete="off">
-<input class="url-input last-slot" type="url" id="lastImageUrlInput" placeholder="https://example.com/last-frame.png" autocomplete="off" style="margin-top:-8px">
+<input class="url-input" type="url" id="imageUrlInput" placeholder="https://example.com/start-frame.png" autocomplete="off" data-i18n-aria="a11y.startUrl" aria-label="Start image URL">
+<input class="url-input last-slot" type="url" id="lastImageUrlInput" placeholder="https://example.com/last-frame.png" autocomplete="off" style="margin-top:-8px" data-i18n-aria="a11y.lastUrl" aria-label="Last frame URL">
 <div class="blend-row" id="blendRow">
 <button type="button" class="opt-chip" id="addBlendBtn" onclick="document.getElementById('blendInput').click()">+ Add blend images</button>
 <input type="file" id="blendInput" accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.tif,.tiff" multiple style="display:none" onchange="handleBlendFiles(this)">
@@ -394,59 +448,63 @@ Image
 <div class="label-row">
 <label id="promptLabel" for="promptInput">Describe Your Video</label>
 </div>
-<textarea class="prompt-input" id="promptInput" maxlength="8000" placeholder="A futuristic city with flying cars..." oninput="onPromptInput()"></textarea>
+<textarea class="prompt-input" id="promptInput" maxlength="8000" required aria-required="true" aria-describedby="charCount" placeholder="A futuristic city with flying cars..." oninput="onPromptInput()"></textarea>
 <div class="char-row">
 <span>Required</span>
 <span><span id="charCount">0</span>/8000</span>
 </div>
 
-<div class="model-row" id="videoModels">
-<button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
+<div class="model-row" id="videoModels" role="group" aria-label="Model" data-i18n-aria="a11y.models">
+<button type="button" class="model-opt active" data-model="lite" aria-pressed="true" onclick="pickModel('lite')">
 <div class="n">Lite</div>
 <div class="c">3 credits</div>
 </button>
-<button type="button" class="model-opt" data-model="medium" onclick="pickModel('medium')">
+<button type="button" class="model-opt" data-model="medium" aria-pressed="false" onclick="pickModel('medium')">
 <div class="n">Medium</div>
 <div class="c">5 credits</div>
 </button>
-<button type="button" class="model-opt" data-model="pro" onclick="pickModel('pro')">
+<button type="button" class="model-opt" data-model="pro" aria-pressed="false" onclick="pickModel('pro')">
 <div class="n">Pro</div>
 <div class="c">16 credits</div>
 <div class="t">with Sound</div>
 </button>
 </div>
-<div class="model-row" id="imageModels" style="display:none">
-<button type="button" class="model-opt active" data-model="lite" onclick="pickModel('lite')">
+<div class="model-row" id="imageModels" style="display:none" role="group" aria-label="Model" data-i18n-aria="a11y.models">
+<button type="button" class="model-opt active" data-model="lite" aria-pressed="true" onclick="pickModel('lite')">
 <div class="n">Lite</div>
 <div class="c">1 credit · 1K</div>
 </button>
-<button type="button" class="model-opt" data-model="pro" onclick="pickModel('pro')">
+<button type="button" class="model-opt" data-model="pro" aria-pressed="false" onclick="pickModel('pro')">
 <div class="n">Pro</div>
 <div class="c">2 credits · 2K / 4K</div>
 </button>
 </div>
-<div class="opt-row" id="durationRow">
-<button type="button" class="opt-chip active" data-dur="5" onclick="pickDuration(5)">5s</button>
-<button type="button" class="opt-chip" data-dur="10" onclick="pickDuration(10)">10s</button>
+<div class="opt-row" id="durationRow" role="group" aria-label="Duration" data-i18n-aria="a11y.duration">
+<button type="button" class="opt-chip active" data-dur="5" aria-pressed="true" onclick="pickDuration(5)">5s</button>
+<button type="button" class="opt-chip" data-dur="10" aria-pressed="false" onclick="pickDuration(10)">10s</button>
 </div>
-<div class="opt-row" id="aspectRow" style="display:none">
-<button type="button" class="opt-chip active" data-ar="16:9" onclick="pickAspect('16:9')">16:9</button>
-<button type="button" class="opt-chip" data-ar="9:16" onclick="pickAspect('9:16')">9:16</button>
-<button type="button" class="opt-chip" data-ar="1:1" onclick="pickAspect('1:1')">1:1</button>
+<div class="opt-row" id="aspectRow" style="display:none" role="group" aria-label="Aspect ratio" data-i18n-aria="a11y.aspect">
+<button type="button" class="opt-chip active" data-ar="16:9" aria-pressed="true" onclick="pickAspect('16:9')">16:9</button>
+<button type="button" class="opt-chip" data-ar="9:16" aria-pressed="false" onclick="pickAspect('9:16')">9:16</button>
+<button type="button" class="opt-chip" data-ar="1:1" aria-pressed="false" onclick="pickAspect('1:1')">1:1</button>
 </div>
 
-<button class="gen-btn" id="genBtn" disabled onclick="generate()">
+<div class="gen-sticky">
+<button type="button" class="gen-btn" id="genBtn" disabled onclick="generate()">
 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 <span id="genBtnLabel">Generate Free Trial</span>
 </button>
+</div>
 <p class="gen-foot" id="genFoot">2 free Lite videos. <a href="/auth?mode=register" id="genFootSignup">Sign up</a> for 10 credits.</p>
 
-<div class="gen-status" id="genStatus">
-<div class="spinner" id="genSpinner"></div>
+<div class="gen-status" id="genStatus" role="status" aria-live="polite">
+<div class="spinner" id="genSpinner" aria-hidden="true"></div>
 <div class="cap" id="genStatusText">Generating…</div>
+<button type="button" class="gen-cancel" id="genCancel" hidden data-i18n="progress.cancel" data-i18n-aria="a11y.cancelHint" aria-label="Stops waiting in this tab. The job may still finish.">Stop waiting</button>
+<a id="genStatusAction" class="gen-status-link" href="/auth?mode=register" hidden>Sign up for 10 credits</a>
 </div>
-<div class="gen-result" id="genResult">
-<video id="genResultVideo" controls playsinline></video>
+<div class="gen-result" id="genResult" role="region" tabindex="-1" data-i18n-aria="a11y.result" aria-label="Generation result">
+<video id="genResultVideo" controls playsinline data-i18n-aria="a11y.result" aria-label="Generation result"></video>
 <img id="genResultImage" class="preview-out" alt="Generated image" hidden>
 <div class="result-actions">
 <a id="genResultLink" href="#" target="_blank" rel="noopener" data-i18n="ws.result.open">Open result URL</a>
@@ -469,18 +527,21 @@ Image
 </section>
 
 <!-- HISTORY VIEW -->
-<section class="history-panel" id="historyView">
+<section class="history-panel" id="historyView" role="tabpanel" aria-labelledby="tabHistory" tabindex="-1" hidden>
 <div class="history-empty" id="historyEmpty">
 <h3 id="historyEmptyTitle" data-i18n="ws.history.signin.h">Sign in to view your history</h3>
 <p id="historyEmptyDesc" data-i18n="ws.history.signin.p">Your creations will appear here after you log in.</p>
-<button class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
+<button type="button" class="btn-primary" id="historyEmptyCta" onclick="switchPrimaryTab('create')" data-i18n="ws.history.start">Start Creating</button>
 </div>
-<div class="history-list" id="historyList" hidden></div>
+<div class="history-toolbar" id="historyToolbar" hidden>
+<button type="button" id="historyRefresh" data-i18n="ws.history.refresh">Refresh</button>
+</div>
+<div class="history-list" id="historyList" hidden role="list" data-i18n-aria="a11y.history" aria-label="Your creations"></div>
 </section>
 
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <footer>
 <div class="footer-grid">
@@ -533,6 +594,7 @@ Image
 
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>
@@ -565,6 +627,49 @@ let userCredits = null;
 let guestRemaining = 2;
 let lastGenerationId = null;
 let lastResultUrl = "";
+let genPollAbort = null;
+let genBusy = false;
+let historyById = Object.create(null);
+let historyRefreshTimer = null;
+let historyRefreshLeft = 0;
+if (DU.bindBusyLeave) DU.bindBusyLeave(function () { return genBusy; });
+
+const GEN_PREFS_KEY = "du_gen_prefs";
+
+function saveGenPrefs() {
+  try {
+    localStorage.setItem(GEN_PREFS_KEY, JSON.stringify({
+      mode: currentMode,
+      model: currentModel,
+      duration: durationSec,
+      aspect: aspectRatio,
+    }));
+  } catch (e) {}
+}
+
+function loadGenPrefs() {
+  try {
+    const raw = localStorage.getItem(GEN_PREFS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || typeof p !== "object") return null;
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyGenPrefs(prefs) {
+  if (!prefs) return;
+  const model = prefs.model;
+  if (currentMode === "image") {
+    if (model === "lite" || model === "pro") pickModel(model);
+  } else if (model === "lite" || model === "medium" || model === "pro") {
+    pickModel(model);
+  }
+  if (prefs.duration === 10 || prefs.duration === 5) pickDuration(Number(prefs.duration));
+  if (prefs.aspect === "9:16" || prefs.aspect === "1:1" || prefs.aspect === "16:9") pickAspect(prefs.aspect);
+}
 
 function readCachedCredits() {
   const raw = localStorage.getItem(CREDITS_KEY);
@@ -581,6 +686,20 @@ function writeCachedCredits(credits) {
   localStorage.setItem(CREDITS_KEY, String(credits));
 }
 
+function setCreditsBadge(value) {
+  const badge = document.getElementById("creditsBadge");
+  if (!badge) return;
+  if (value === null || value === undefined || value === "") {
+    badge.classList.add("loading");
+    badge.innerHTML = '<span class="credits-skel" aria-hidden="true"></span>';
+    badge.setAttribute("aria-busy", "true");
+    return;
+  }
+  badge.classList.remove("loading");
+  badge.removeAttribute("aria-busy");
+  badge.textContent = String(value);
+}
+
 function clearAuthLocal() {
   token = "";
   userCredits = null;
@@ -592,6 +711,8 @@ function toast(msg, isError) {
   const el = document.getElementById("toast");
   el.textContent = msg;
   el.className = "toast show" + (isError ? " error" : "");
+  el.setAttribute("role", isError ? "alert" : "status");
+  el.setAttribute("aria-live", isError ? "assertive" : "polite");
   setTimeout(() => el.classList.remove("show"), 3500);
 }
 
@@ -601,7 +722,25 @@ async function api(path, options = {}) {
 
 function isUnauthorizedError(err) {
   // Real auth rejection only. Network/timeout/5xx errors have no 401 status.
-  return !!(err && err.status === 401);
+  return !!(err && (err.status === 401 || err.code === "auth_required"));
+}
+
+function handleAuthExpired() {
+  token = "";
+  userCredits = null;
+  clearAuthLocal();
+  updateAuthUI();
+  showPackBanner();
+}
+
+async function refreshCredits() {
+  if (!token) return;
+  try {
+    const cred = await api("/credits");
+    if (cred && cred.guest === false && cred.credits !== undefined) updateAuthUI(cred.credits);
+  } catch (e) {
+    if (isUnauthorizedError(e)) handleAuthExpired();
+  }
 }
 
 async function fetchAuthMe(retriesLeft) {
@@ -672,10 +811,12 @@ function showResult(url, kind, generationId) {
   box.classList.add("show");
 }
 
-async function pollGeneration(generationId, statusText) {
-  return DU.pollGeneration(generationId, (status, data) => {
-    statusText.textContent = DU.progressLabel(status, data && data.providerState);
-  });
+async function pollGeneration(generationId, statusText, signal) {
+  return DU.pollGeneration(generationId, function (status, data) {
+    statusText.textContent = DU.formatProgress
+      ? DU.formatProgress(status, data)
+      : DU.progressLabel(status, data && data.providerState);
+  }, { signal: signal });
 }
 
 function authHref(mode) {
@@ -695,29 +836,51 @@ function showPackBanner() {
   banner.hidden = false;
   banner.classList.add("show");
   document.getElementById("packBannerTitle").textContent = selectedPack.name + " selected";
+  const base = selectedPack.price + " · " + selectedPack.credits + " credits. First purchase also adds <b>31 bonus credits</b> (5 Lite + 1 Pro).";
   document.getElementById("packBannerText").innerHTML = token
-    ? selectedPack.price + " · " + selectedPack.credits + " credits. First purchase also adds <b>31 bonus credits</b> (5 Lite + 1 Pro). If Stripe is configured, use Buy with Stripe — otherwise keep creating with your current credits."
+    ? base + " Checking checkout…"
     : selectedPack.price + " · " + selectedPack.credits + " credits. <a href=\"" + authHref("register") + "\">Sign up</a> or <a href=\"" + authHref("login") + "\">log in</a> to continue with this pack.";
   if (buyBtn) {
-    buyBtn.hidden = !token;
-    buyBtn.onclick = async function () {
-      if (!token) return goAuth("login");
-      buyBtn.disabled = true;
-      buyBtn.textContent = "Redirecting…";
-      try {
-        const data = await api("/checkout", { method: "POST", body: JSON.stringify({ packId: packId }) });
-        if (data.url) {
-          location.href = data.url;
-          return;
-        }
-        throw new Error(data.message || data.error || "checkout failed");
-      } catch (e) {
-        buyBtn.disabled = false;
-        buyBtn.textContent = "Buy with Stripe";
-        toast(e.message || "Checkout is not configured yet", true);
-      }
-    };
+    buyBtn.hidden = true;
+    buyBtn.onclick = null;
   }
+  fetch("/api/checkout")
+    .then(function (res) { return res.json().catch(function () { return {}; }); })
+    .then(function (data) {
+      const live = !!(data && data.ok === true && data.configured === true);
+      const text = document.getElementById("packBannerText");
+      if (text && token) {
+        text.innerHTML = live
+          ? base + " Buy with Stripe to pay."
+          : base + " Stripe is not configured yet — no charge. Keep creating with your current credits.";
+      }
+      if (!buyBtn) return;
+      buyBtn.hidden = !token || !live;
+      if (!token || !live) return;
+      buyBtn.onclick = async function () {
+        if (!token) return goAuth("login");
+        buyBtn.disabled = true;
+        buyBtn.textContent = "Redirecting…";
+        try {
+          const paid = await api("/checkout", { method: "POST", body: JSON.stringify({ packId: packId }) });
+          if (paid.url) {
+            location.href = paid.url;
+            return;
+          }
+          throw new Error(paid.message || paid.error || "checkout failed");
+        } catch (e) {
+          buyBtn.disabled = false;
+          buyBtn.textContent = "Buy with Stripe";
+          toast(e.message || "Checkout is not configured yet", true);
+        }
+      };
+    })
+    .catch(function () {
+      const text = document.getElementById("packBannerText");
+      if (text && token) {
+        text.innerHTML = base + " Stripe is not configured yet — no charge. Keep creating with your current credits.";
+      }
+    });
 }
 
 function showInviteCard(user) {
@@ -738,8 +901,10 @@ function showInviteCard(user) {
     copy.onclick = async function () {
       try {
         await navigator.clipboard.writeText(url);
-        copy.textContent = "Copied";
-        setTimeout(function () { copy.textContent = "Copy link"; }, 1500);
+        copy.textContent = DU.t("ws.invite.copied", "Copied");
+        setTimeout(function () {
+          copy.textContent = DU.t("ws.invite.copy", "Copy link");
+        }, 1500);
       } catch (e) {
         input.select();
         toast("Copy the invite link from the field");
@@ -771,6 +936,8 @@ function bindAuthTriggers() {
   const saveSignup = document.getElementById("saveSignup");
   if (saveLogin) saveLogin.href = authHref("login");
   if (saveSignup) saveSignup.href = authHref("register");
+  const quotaSignup = document.getElementById("quotaSignup");
+  if (quotaSignup) quotaSignup.href = authHref("register");
 }
 
 function updateAuthUI(credits) {
@@ -780,7 +947,6 @@ function updateAuthUI(credits) {
       writeCachedCredits(userCredits);
     }
   }
-  const badge = document.getElementById("creditsBadge");
   const buy = document.getElementById("buyCreditsLink");
   const welcome = document.getElementById("welcomeBanner");
   const save = document.getElementById("saveCard");
@@ -788,18 +954,22 @@ function updateAuthUI(credits) {
   const btnLabel = document.getElementById("genBtnLabel");
 
   if (token) {
-    // Never show "—" while a session exists — use cache or a subtle loading state.
+    const pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = false;
     if (userCredits !== null && userCredits !== undefined) {
-      badge.textContent = userCredits;
-      badge.classList.remove("loading");
+      setCreditsBadge(userCredits);
     } else {
-      badge.textContent = "";
-      badge.classList.add("loading");
+      setCreditsBadge(null);
     }
     buy.hidden = false;
     welcome.classList.remove("show");
     save.classList.remove("show");
-    foot.innerHTML = 'Credits never expire. <a href="/pricing">Buy more credits</a>';
+    const quotaHide = document.getElementById("guestQuotaBanner");
+    if (quotaHide) {
+      quotaHide.hidden = true;
+      quotaHide.classList.remove("show");
+    }
+    foot.innerHTML = 'Credits never expire. <a href="/pricing">View credit packs</a>';
     btnLabel.textContent = DU.t("ws.gen.go", "Generate");
     const loginBtn = document.getElementById("loginBtn");
     loginBtn.textContent = DU.t("hdr.logout", "Log Out");
@@ -815,16 +985,36 @@ function updateAuthUI(credits) {
     signupBtn.href = "/pricing";
     signupBtn.onclick = null;
   } else {
-    badge.textContent = "—";
-    badge.classList.remove("loading");
+    const pill = document.getElementById("creditsPill");
+    if (pill) pill.hidden = true;
+    setCreditsBadge(null);
     buy.hidden = true;
     writeCachedCredits(null);
-    welcome.classList.add("show");
+    const usedUp = guestRemaining !== null && guestRemaining <= 0;
+    const quota = document.getElementById("guestQuotaBanner");
+    if (quota) {
+      quota.hidden = !usedUp;
+      quota.classList.toggle("show", usedUp);
+    }
+    welcome.classList.toggle("show", !usedUp);
     save.classList.add("show");
-    const left = guestRemaining == null ? 2 : guestRemaining;
-    foot.innerHTML = left > 0
-      ? left + ' free Lite video' + (left === 1 ? '' : 's') + ' left. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.'
-      : 'Free tries used. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.';
+    const welcomeP = welcome.querySelector("p");
+    if (DU.isGenerateReady && !DU.isGenerateReady()) {
+      if (welcomeP) {
+        welcomeP.setAttribute("data-i18n", "ws.welcome.unready");
+        welcomeP.textContent = DU.t("ws.welcome.unready", "Generation isn’t available yet. Free Lite tries on this device will work when it is.");
+      }
+      foot.textContent = DU.t("guest.left.unready", "Generation isn’t available yet. Free Lite tries will work when it is.");
+    } else {
+      if (welcomeP) {
+        welcomeP.setAttribute("data-i18n", "ws.welcome.p");
+        welcomeP.textContent = DU.t("ws.welcome.p", "2 free Lite videos on this device — no account. Sign up for 10 credits and every model.");
+      }
+      const left = guestRemaining == null ? 2 : guestRemaining;
+      foot.innerHTML = left > 0
+        ? left + ' free Lite video' + (left === 1 ? '' : 's') + ' left. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.'
+        : 'Free tries used. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.';
+    }
     btnLabel.textContent = DU.t("ws.gen.trial", "Generate Free Trial");
     bindAuthTriggers();
   }
@@ -835,11 +1025,24 @@ function updateAuthUI(credits) {
 
 function switchPrimaryTab(tab) {
   const create = tab === "create";
-  document.getElementById("tabCreate").classList.toggle("active", create);
-  document.getElementById("tabHistory").classList.toggle("active", !create);
-  document.getElementById("createView").style.display = create ? "" : "none";
-  document.getElementById("historyView").classList.toggle("show", !create);
-  if (!create) loadHistory();
+  const tabCreate = document.getElementById("tabCreate");
+  const tabHistory = document.getElementById("tabHistory");
+  const createView = document.getElementById("createView");
+  const historyView = document.getElementById("historyView");
+  tabCreate.classList.toggle("active", create);
+  tabHistory.classList.toggle("active", !create);
+  tabCreate.setAttribute("aria-selected", create ? "true" : "false");
+  tabHistory.setAttribute("aria-selected", create ? "false" : "true");
+  tabCreate.tabIndex = create ? 0 : -1;
+  tabHistory.tabIndex = create ? -1 : 0;
+  createView.hidden = !create;
+  historyView.hidden = create;
+  if (!create) {
+    historyRefreshLeft = 0;
+    loadHistory();
+  } else {
+    stopHistoryRefresh();
+  }
 }
 
 function syncVideoOptions() {
@@ -858,16 +1061,31 @@ function syncVideoOptions() {
   if (resRow) resRow.classList.toggle("show", currentMode === "image" && currentModel === "pro");
 }
 
+function syncModeLabels() {
+  const video = currentMode === "video";
+  const title = document.getElementById("genTitle");
+  if (title) title.textContent = video ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
+  const uploadLabel = document.getElementById("uploadLabel");
+  if (uploadLabel) uploadLabel.textContent = video ? DU.t("gen.upload", "Upload Start Image") : DU.t("gen.uploadImage", "Reference image (optional)");
+  const promptLabel = document.getElementById("promptLabel");
+  if (promptLabel) promptLabel.textContent = video ? DU.t("gen.prompt", "Describe Your Video") : DU.t("gen.prompt.image", "Describe Your Image");
+  const promptInput = document.getElementById("promptInput");
+  if (promptInput) {
+    promptInput.placeholder = video
+      ? DU.t("gen.placeholder", "A futuristic city with flying cars...")
+      : DU.t("gen.placeholder.image", "A cinematic portrait with soft lighting...");
+  }
+}
+
 function switchMode(mode) {
   currentMode = mode === "image" ? "image" : "video";
   document.getElementById("modeVideo").classList.toggle("active", currentMode === "video");
   document.getElementById("modeImage").classList.toggle("active", currentMode === "image");
-  document.getElementById("genTitle").textContent = currentMode === "video" ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
-  document.getElementById("uploadLabel").textContent = currentMode === "video" ? "Upload Start Image" : "Reference image (optional)";
-  document.getElementById("promptLabel").textContent = currentMode === "video" ? "Describe Your Video" : "Describe Your Image";
-  document.getElementById("promptInput").placeholder = currentMode === "video"
-    ? "A futuristic city with flying cars..."
-    : "A cinematic portrait with soft lighting...";
+  document.getElementById("modeVideo").setAttribute("aria-selected", currentMode === "video" ? "true" : "false");
+  document.getElementById("modeImage").setAttribute("aria-selected", currentMode === "image" ? "true" : "false");
+  document.getElementById("modeVideo").tabIndex = currentMode === "video" ? 0 : -1;
+  document.getElementById("modeImage").tabIndex = currentMode === "image" ? 0 : -1;
+  syncModeLabels();
   document.getElementById("videoModels").style.display = currentMode === "video" ? "grid" : "none";
   document.getElementById("imageModels").style.display = currentMode === "image" ? "grid" : "none";
   const hint = document.getElementById("urlHint");
@@ -892,30 +1110,52 @@ function switchMode(mode) {
     note.textContent = "";
   }
   syncVideoOptions();
+  saveGenPrefs();
 }
 
-function pickModel(v) {
+async function pickModel(v) {
+  if (!token && (v === "medium" || v === "pro")) {
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: currentMode === "image"
+          ? DU.t("auth.gate.image", "Image generation needs a free account (10 credits).")
+          : DU.t("auth.gate.medium", "Medium and Pro need a free account. You get 10 credits — no card required."),
+        href: authHref("register"),
+      });
+    }
+    return;
+  }
   currentModel = v;
   const row = document.getElementById(currentMode === "image" ? "imageModels" : "videoModels");
   if (!row) return;
   row.querySelectorAll(".model-opt").forEach((el) => {
-    el.classList.toggle("active", el.dataset.model === v);
+    const on = el.dataset.model === v;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
   syncVideoOptions();
+  saveGenPrefs();
 }
 
 function pickDuration(n) {
   durationSec = n === 10 ? 10 : 5;
   document.querySelectorAll("#durationRow .opt-chip").forEach((el) => {
-    el.classList.toggle("active", Number(el.dataset.dur) === durationSec);
+    const on = Number(el.dataset.dur) === durationSec;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  saveGenPrefs();
 }
 
 function pickAspect(v) {
   aspectRatio = v === "9:16" || v === "1:1" ? v : "16:9";
   document.querySelectorAll("#aspectRow .opt-chip").forEach((el) => {
-    el.classList.toggle("active", el.dataset.ar === aspectRatio);
+    const on = el.dataset.ar === aspectRatio;
+    el.classList.toggle("active", on);
+    el.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  saveGenPrefs();
 }
 
 function onPromptInput() {
@@ -967,10 +1207,18 @@ function acceptImageFile(file) {
     return null;
   }
   if (file.size > DU.MAX_UPLOAD_BYTES) {
-    toast("Image must be 20 MB or smaller.", true);
+    toast(DU.t("err.file_too_large", "Image must be 20 MB or smaller."), true);
     return null;
   }
   return file;
+}
+
+function syncUploadEmptyHint() {
+  const hint = document.getElementById("uploadEmptyHint");
+  if (!hint) return;
+  const urlEl = document.getElementById("imageUrlInput");
+  const has = !!(uploadedImage || (urlEl && urlEl.value.trim()));
+  hint.hidden = has;
 }
 
 function handleFile(input) {
@@ -979,8 +1227,11 @@ function handleFile(input) {
   uploadedImage = file;
   uploadedImageUrl = "";
   uploadedMediaKey = "";
+  const startArea = document.getElementById("uploadArea");
+  if (startArea) startArea.removeAttribute("aria-invalid");
   previewOnArea(document.getElementById("uploadArea"), file);
   syncVideoOptions();
+  syncUploadEmptyHint();
 }
 
 function clearUpload() {
@@ -990,6 +1241,7 @@ function clearUpload() {
   resetArea(document.getElementById("uploadArea"));
   document.getElementById("fileInput").value = "";
   syncVideoOptions();
+  syncUploadEmptyHint();
 }
 
 function handleLastFile(input) {
@@ -1029,70 +1281,138 @@ function renderBlendThumbs() {
     img.className = "blend-thumb";
     img.alt = "blend " + (i + 1);
     img.src = URL.createObjectURL(file);
-    img.title = "Click to remove";
+    img.tabIndex = 0;
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-label", DU.t("gen.remove", "Remove") + " " + (i + 1));
+    img.title = DU.t("gen.remove", "Remove");
     img.onclick = () => {
       blendFiles.splice(i, 1);
       renderBlendThumbs();
     };
+    if (DU.bindActivate) DU.bindActivate(img, img.onclick);
     row.insertBefore(img, document.getElementById("addBlendBtn"));
   });
 }
 
 function bindUploadDrop() {
-  function bind(area, handler) {
-    if (!area) return;
-    area.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      area.classList.add("drag");
+  if (DU.bindImageDrop) {
+    DU.bindImageDrop(document.getElementById("uploadArea"), function (files) {
+      handleFile({ files: files });
     });
-    area.addEventListener("dragleave", () => area.classList.remove("drag"));
-    area.addEventListener("drop", (e) => {
-      e.preventDefault();
-      area.classList.remove("drag");
-      handler({ files: e.dataTransfer && e.dataTransfer.files });
+    DU.bindImageDrop(document.getElementById("lastUploadArea"), function (files) {
+      handleLastFile({ files: files });
     });
   }
-  bind(document.getElementById("uploadArea"), handleFile);
-  bind(document.getElementById("lastUploadArea"), handleLastFile);
+  if (DU.bindImagePaste) {
+    DU.bindImagePaste(function (file) {
+      const last = document.getElementById("lastUploadArea");
+      if (last && document.activeElement && last.contains(document.activeElement)) {
+        handleLastFile({ files: [file] });
+      } else {
+        handleFile({ files: [file] });
+      }
+    });
+  }
+  if (DU.bindModEnter) {
+    DU.bindModEnter(document.getElementById("promptInput"), generate);
+  }
+  if (DU.bindActivate) {
+    DU.bindActivate(document.getElementById("uploadArea"), function () {
+      document.getElementById("fileInput").click();
+    });
+    DU.bindActivate(document.getElementById("lastUploadArea"), function () {
+      document.getElementById("lastFileInput").click();
+    });
+  }
+  if (DU.bindTablist) {
+    DU.bindTablist(document.querySelector(".tabs-primary"));
+    DU.bindTablist(document.querySelector(".mode-switch"));
+  }
 }
 
 async function uploadImageFile(file) {
-  return DU.uploadImage(file);
+  const up = await DU.uploadImage(file);
+  if (!token && up && up.guestRemaining !== undefined) {
+    guestRemaining = up.guestRemaining;
+    updateAuthUI();
+  }
+  return up;
 }
 
 async function generate() {
+  if (genBusy) return;
   const prompt = document.getElementById("promptInput").value.trim();
-  if (!prompt) return toast("Please enter a prompt.", true);
+  if (!prompt) return toast(DU.t("ws.prompt.required", "Please enter a prompt."), true);
 
   let imageUrl = document.getElementById("imageUrlInput").value.trim();
   let lastUrl = (document.getElementById("lastImageUrlInput") || {}).value || "";
   lastUrl = String(lastUrl).trim();
 
   if (!token && currentMode === "video" && currentModel !== "lite") {
-    return toast("Free trial is Lite only — sign up for Medium and Pro.", true);
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("auth.gate.medium", "Medium and Pro need a free account. You get 10 credits — no card required."),
+        href: authHref("register"),
+      });
+    }
+    return;
   }
   if (!token && currentMode === "image") {
-    return toast("Image generation needs a free account (10 credits).", true);
+    if (DU.openAlert) {
+      await DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("auth.gate.image", "Image generation needs a free account (10 credits)."),
+        href: authHref("register"),
+      });
+    }
+    return;
   }
   if (!token && currentMode === "video" && !uploadedImage && !imageUrl) {
-    return toast("Free trial needs a start image.", true);
+    const msg = DU.t("err.image_url_required", "Free trial needs a start image.");
+    const area = document.getElementById("uploadArea");
+    if (area) area.setAttribute("aria-invalid", "true");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(document.getElementById("genStatus"), document.getElementById("genStatusText"), { error: true, text: msg });
+    }
+    if (DU.focusEl && area) DU.focusEl(area);
+    return toast(msg, true);
   }
 
+  genBusy = true;
   const btn = document.getElementById("genBtn");
   const status = document.getElementById("genStatus");
   const statusText = document.getElementById("genStatusText");
   const spinner = document.getElementById("genSpinner");
+  const cancel = document.getElementById("genCancel");
+  const card = document.getElementById("wsGenCard");
+  if (genPollAbort) genPollAbort.abort();
+  genPollAbort = new AbortController();
   btn.disabled = true;
   btn.classList.remove("ready");
-  document.getElementById("genBtnLabel").textContent = "Generating...";
-  status.classList.add("show");
+  document.getElementById("genBtnLabel").textContent = DU.t("progress.generating", "Generating…");
   spinner.style.display = "";
+  if (cancel) cancel.hidden = false;
+  const statusAct = document.getElementById("genStatusAction");
+  if (statusAct) statusAct.hidden = true;
+  if (card) card.setAttribute("aria-busy", "true");
   showResult(null);
-  statusText.textContent = "Starting KIE job…";
+  if (DU.setLiveStatus) {
+    DU.setLiveStatus(status, statusText, { busy: true, text: DU.t("progress.starting", "Starting…") });
+  } else {
+    status.classList.add("show");
+    statusText.textContent = DU.t("progress.starting", "Starting…");
+  }
 
   try {
-    if (uploadedImage && !uploadedImageUrl) {
-      statusText.textContent = "Uploading start image…";
+    const generateReady = !(DU.isGenerateReady && !DU.isGenerateReady());
+    if (!generateReady && !token && currentMode === "video" && !imageUrl) {
+      const err = new Error(DU.t("err.kie_api_key_missing", "Generation isn’t available on this preview yet. Try again later."));
+      err.code = "kie_api_key_missing";
+      throw err;
+    }
+    if (uploadedImage && !uploadedImageUrl && generateReady) {
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       try {
         const up = await uploadImageFile(uploadedImage);
         uploadedImageUrl = up.imageUrl || "";
@@ -1108,23 +1428,23 @@ async function generate() {
       }
     }
 
-    if (lastImage && !lastImageUrlStored) {
-      statusText.textContent = "Uploading last frame…";
+    if (lastImage && !lastImageUrlStored && generateReady) {
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       const up = await uploadImageFile(lastImage);
       lastImageUrlStored = up.imageUrl || "";
       lastUrl = lastImageUrlStored || lastUrl;
     }
 
     const extraUrls = [];
-    if (currentMode === "image" && blendFiles.length) {
-      statusText.textContent = "Uploading blend images…";
+    if (currentMode === "image" && blendFiles.length && generateReady) {
+      statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       for (const file of blendFiles) {
         const up = await uploadImageFile(file);
         if (up.imageUrl) extraUrls.push(up.imageUrl);
       }
     }
 
-    statusText.textContent = "Starting KIE job…";
+    statusText.textContent = DU.t("progress.starting", "Starting…");
     const payload = {
       prompt,
       kind: currentMode,
@@ -1145,46 +1465,84 @@ async function generate() {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    if (data.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
+    }
     if (data.credits !== undefined && data.credits !== null) updateAuthUI(data.credits);
     if (data.guestRemaining !== undefined) {
       guestRemaining = data.guestRemaining;
       if (!token) updateAuthUI();
     }
 
-    statusText.textContent = "Queued · waiting for provider…";
-    const done = await pollGeneration(data.generationId, statusText);
+    statusText.textContent = DU.t("progress.queued", "Queued · waiting for provider…");
+    loadHistory();
+    const done = await pollGeneration(data.generationId, statusText, genPollAbort && genPollAbort.signal);
     spinner.style.display = "none";
     const kind = done.kind || data.kind || currentMode;
-    statusText.innerHTML = `<span style="color:var(--green)">Done</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
+    const doneLabel = DU.t("progress.done", "Done");
+    if (DU.setLiveStatus) {
+      DU.setLiveStatus(status, statusText, {
+        busy: false,
+        html: true,
+        text: `<span style="color:var(--green)">${doneLabel}</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`,
+      });
+    } else {
+      statusText.innerHTML = `<span style="color:var(--green)">${doneLabel}</span> · ${escapeHtml(kind)} · ${escapeHtml(currentModel)}`;
+    }
     showResult(done.resultUrl, kind, done.generation && done.generation.id || data.generationId);
-    toast(kind === "image" ? "Image ready" : "Video ready");
+    if (DU.focusEl) DU.focusEl(document.getElementById("genResult"));
+    toast(kind === "image" ? DU.t("ws.ready.image", "Image ready") : DU.t("ws.ready.video", "Video ready"));
     loadHistory();
+    refreshCredits();
   } catch (e) {
     spinner.style.display = "none";
     const code = e && e.code ? String(e.code) : "";
-    let msg = e.message || "Generation failed";
-    if (code === "kie_api_key_missing") {
-      msg = "KIE_API_KEY missing — set it as a Pages secret.";
-    } else if (code === "schema_migration_required") {
-      msg = "D1 migration needed — run migrations/001_generations_kie.sql";
-    } else if (code === "media_not_bound") {
-      msg = "File upload isn’t bound — paste a public https image URL instead.";
-    } else if (code === "image_url_required" || code === "image_url_invalid") {
-      msg = e.message || "Upload an image or paste a public https URL.";
-    } else if (code === "guest_limit") {
-      msg = e.message || "Sign up for 10 credits to keep creating.";
+    let msg = DU.errorMessage(e, e.message || "Generation failed");
+    if (isUnauthorizedError(e) || code === "auth_required") {
+      handleAuthExpired();
+    } else if (e && e.payload && e.payload.credits !== undefined && e.payload.credits !== null) {
+      updateAuthUI(e.payload.credits);
+    } else {
+      refreshCredits();
+    }
+    if (e && e.payload && e.payload.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
+    }
+    if (code === "guest_limit") {
       guestRemaining = 0;
       updateAuthUI();
-    } else if (code === "guest_lite_only") {
-      msg = e.message || "Sign up for 10 credits to keep creating.";
-    } else if (code === "rate_limited" || code === "job_in_flight") {
-      msg = e.message || "Too many requests — wait a moment and try again.";
-    } else if (code === "unsupported_type" || code === "file_too_large") {
-      msg = e.message || "Use a JPG/PNG/WebP/GIF/TIFF under 20 MB.";
+    } else if (code !== "kie_api_key_missing" && e && e.payload && e.payload.guestRemaining !== undefined && !token) {
+      guestRemaining = e.payload.guestRemaining;
+      updateAuthUI();
     }
     statusText.textContent = msg;
-    toast(msg, true);
+    if (DU.setLiveStatus) DU.setLiveStatus(status, statusText, { error: true, text: msg });
+    if (DU.wireErrorAction) DU.wireErrorAction(document.getElementById("genStatusAction"), code);
+    if (code === "insufficient_credits" && DU.openAlert) {
+      toast(msg, true);
+      DU.openAlert({
+        title: DU.t("err.insufficient_credits", "Not enough credits for this generation."),
+        body: DU.t("err.insufficient_credits.p", "This generation costs more credits than you have."),
+        href: "/pricing",
+        action: DU.t("err.action.pricing", "View credit packs"),
+      });
+    } else if (code === "network_error" || (e && !e.status && code !== "poll_cancelled")) {
+      toast(DU.t("err.network", "Network error. Check your connection and try again."), true);
+    } else if (code === "guest_lite_only" && DU.openAlert) {
+      DU.openAlert({
+        title: DU.t("auth.gate.h", "Sign up to continue"),
+        body: DU.t("err.guest_lite_only", "Free trial is Lite image-to-video only. Sign up for 10 credits and every model."),
+        href: authHref("register"),
+      });
+    } else {
+      toast(msg, true);
+    }
+    loadHistory();
   }
+  if (card) card.setAttribute("aria-busy", "false");
+  const cancelBtn = document.getElementById("genCancel");
+  if (cancelBtn) cancelBtn.hidden = true;
+  genBusy = false;
   resetGenBtn();
 }
 
@@ -1196,11 +1554,48 @@ function resetGenBtn() {
   document.getElementById("genBtnLabel").textContent = token ? DU.t("ws.gen.go", "Generate") : DU.t("ws.gen.trial", "Generate Free Trial");
 }
 
+function stopHistoryRefresh() {
+  if (historyRefreshTimer) {
+    clearTimeout(historyRefreshTimer);
+    historyRefreshTimer = null;
+  }
+}
+
+function historyInFlight(gens) {
+  return (gens || []).filter(function (g) {
+    const s = String(g.status || "");
+    return s === "processing" || s === "pending";
+  });
+}
+
+function scheduleHistoryRefresh(gens) {
+  stopHistoryRefresh();
+  const historyView = document.getElementById("historyView");
+  if (!historyView || historyView.hidden) return;
+  if (typeof document.visibilityState === "string" && document.visibilityState === "hidden") return;
+  if (!historyInFlight(gens).length) {
+    historyRefreshLeft = 0;
+    return;
+  }
+  if (historyRefreshLeft <= 0) historyRefreshLeft = 24;
+  historyRefreshTimer = setTimeout(function () {
+    historyRefreshTimer = null;
+    if (historyRefreshLeft <= 0) return;
+    historyRefreshLeft -= 1;
+    loadHistory();
+  }, 5000);
+}
+
 function refreshHistoryEmpty() {
   const title = document.getElementById("historyEmptyTitle");
   const desc = document.getElementById("historyEmptyDesc");
   const cta = document.getElementById("historyEmptyCta");
-  if (token) {
+  if (DU.isGenerateReady && !DU.isGenerateReady()) {
+    title.textContent = DU.t("ws.history.unready.h", "Nothing here yet");
+    desc.textContent = DU.t("ws.history.unready.p", "Generation isn’t available on this preview yet. Guest tries will show here when it is.");
+    cta.textContent = DU.t("ws.history.start", "Start Creating");
+    cta.onclick = () => switchPrimaryTab("create");
+  } else if (token) {
     title.textContent = DU.t("ws.history.empty.h", "No creations yet");
     desc.textContent = DU.t("ws.history.empty.p", "Start creating to see your work here.");
     cta.textContent = DU.t("ws.history.start", "Start Creating");
@@ -1213,54 +1608,122 @@ function refreshHistoryEmpty() {
   }
 }
 
+function reuseGeneration(g) {
+  if (!g) return;
+  const kind = g.kind === "image" ? "image" : "video";
+  switchMode(kind);
+  const model = String(g.model || "lite");
+  if (kind === "image") pickModel(model === "pro" ? "pro" : "lite");
+  else pickModel(model === "medium" || model === "pro" ? model : "lite");
+  if (kind === "video") {
+    const dur = Number(g.duration_sec || g.durationSec || 5);
+    pickDuration(dur === 10 ? 10 : 5);
+  }
+  clearUpload();
+  clearLastUpload();
+  const startUrl = g.input_image_url || g.inputImageUrl || "";
+  const lastUrl = g.last_image_url || g.lastImageUrl || "";
+  const startInput = document.getElementById("imageUrlInput");
+  const lastInput = document.getElementById("lastImageUrlInput");
+  if (startInput) startInput.value = startUrl;
+  if (lastInput) lastInput.value = lastUrl;
+  const ta = document.getElementById("promptInput");
+  if (ta) {
+    ta.value = String(g.prompt || "").slice(0, 8000);
+    onPromptInput();
+  }
+  syncVideoOptions();
+  switchPrimaryTab("create");
+  if (DU.focusEl && ta) DU.focusEl(ta);
+  toast(DU.t("ws.history.reused", "Loaded into Create"));
+}
+
 async function loadHistory() {
   const empty = document.getElementById("historyEmpty");
   const list = document.getElementById("historyList");
   try {
-    const data = await api("/generate");
+    let data;
+    try {
+      // Canonical: GET /api/history. Fallback GET /api/generate if the alias is SPA HTML / missing.
+      data = await api("/history");
+      if (!data || data.ok !== true || !Array.isArray(data.generations)) {
+        data = await api("/generate");
+      }
+    } catch (e) {
+      if (isUnauthorizedError(e)) {
+        handleAuthExpired();
+        data = await api("/generate");
+      } else if (e && e.status === 404) {
+        data = await api("/generate");
+      } else {
+        throw e;
+      }
+    }
+    if (data.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
+    }
     if (data.guestRemaining !== undefined && !token) {
       guestRemaining = data.guestRemaining;
       updateAuthUI();
     }
+    if (token) refreshCredits();
     const gens = data.generations || [];
+    historyById = Object.create(null);
+    gens.forEach(function (g) {
+      historyById[String(g.id)] = g;
+    });
     if (!gens.length) {
       empty.hidden = false;
       list.hidden = true;
+      const toolbar = document.getElementById("historyToolbar");
+      if (toolbar) toolbar.hidden = true;
+      stopHistoryRefresh();
       refreshHistoryEmpty();
       return;
     }
     empty.hidden = true;
     list.hidden = false;
+    const toolbar = document.getElementById("historyToolbar");
+    if (toolbar) toolbar.hidden = false;
+    list.setAttribute("aria-busy", "true");
     list.innerHTML = gens.map((g) => {
       const url = g.result_url || g.resultUrl || "";
       const kind = g.kind || (String(g.model).indexOf("image") === 0 ? "image" : "video");
       const guestTag = g.guest ? " · guest" : "";
+      const statusRaw = String(g.status || "");
+      const statusLabel = DU.t("ws.status." + statusRaw, statusRaw);
+      const failCopy = statusRaw === "failed" ? (g.error_message || g.errorMessage || "") : "";
       const meta = kind === "image"
         ? `#${g.id} · image · ${escapeHtml(String(g.model))}${guestTag}`
         : `#${g.id} · ${escapeHtml(String(g.model))} · ${g.duration_sec || "—"}s${guestTag}`;
-      const link = url
-        ? `<div class="h-actions">
-            <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(DU.t("gen.open", "Open result"))}</a>
+      const openBits = url
+        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(DU.t("gen.open", "Open result"))}</a>
             <button type="button" data-act="download" data-url="${escapeHtml(url)}" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("gen.download", "Download"))}</button>
-            ${g.guest ? "" : `<button type="button" data-act="share" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.result.share", "Share to gallery"))}</button>`}
-          </div>`
+            ${g.guest ? "" : `<button type="button" data-act="share" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.result.share", "Share to gallery"))}</button>`}`
         : "";
+      const alt = escapeHtml((g.prompt || "").slice(0, 120) || (kind === "image" ? "Generated image" : "Generated video"));
       const preview = !url
         ? ""
         : kind === "image"
-          ? `<img src="${escapeHtml(url)}" alt="" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
-          : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
+          ? `<img src="${escapeHtml(url)}" alt="${alt}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px">`
+          : `<video src="${escapeHtml(url)}" muted playsinline preload="metadata" aria-label="${alt}" style="width:100%;max-height:180px;border-radius:8px;margin-top:8px;background:#000"></video>`;
+      const errLine = failCopy ? `<p class="h-error">${escapeHtml(failCopy)}</p>` : "";
       return `
-      <div class="history-item">
+      <article class="history-item" role="listitem">
         <div class="h-top">
           <span class="h-meta">${meta}</span>
-          <span class="h-status ${escapeHtml(String(g.status))}">${escapeHtml(String(g.status))}</span>
+          <span class="h-status ${escapeHtml(statusRaw)}">${escapeHtml(statusLabel)}</span>
         </div>
         <div class="h-prompt">${escapeHtml(g.prompt || "")}</div>
+        ${errLine}
         ${preview}
-        ${link}
-      </div>`;
+        <div class="h-actions">
+          ${openBits}
+          <button type="button" data-act="reuse" data-id="${escapeHtml(String(g.id))}">${escapeHtml(DU.t("ws.history.reuse", "Use again"))}</button>
+        </div>
+      </article>`;
     }).join("");
+    list.setAttribute("aria-busy", "false");
     if (!list.dataset.bound) {
       list.dataset.bound = "1";
       list.addEventListener("click", async function (e) {
@@ -1268,25 +1731,44 @@ async function loadHistory() {
         if (!btn) return;
         const id = btn.getAttribute("data-id");
         const url = btn.getAttribute("data-url");
-        if (btn.getAttribute("data-act") === "download") {
+        const act = btn.getAttribute("data-act");
+        if (act === "download") {
           DU.downloadResult(url, "dreamutopia-" + id);
-        } else if (btn.getAttribute("data-act") === "share") {
+        } else if (act === "share") {
           btn.disabled = true;
           try {
-            const res = await DU.publishGallery(Number(id));
+            await DU.publishGallery(Number(id));
             btn.textContent = DU.t("ws.result.shared", "In gallery");
-            toast(res.already ? DU.t("ws.result.shared", "In gallery") : "Shared");
+            toast(DU.t("ws.result.shared", "In gallery"));
           } catch (err) {
             btn.disabled = false;
             toast(err.message || "Could not share", true);
           }
+        } else if (act === "reuse") {
+          reuseGeneration(historyById[String(id)]);
         }
       });
     }
+    scheduleHistoryRefresh(gens);
   } catch (e) {
+    const cached = Object.keys(historyById);
+    if (cached.length) {
+      scheduleHistoryRefresh(cached.map(function (k) { return historyById[k]; }));
+      return;
+    }
     empty.hidden = false;
     list.hidden = true;
-    refreshHistoryEmpty();
+    const toolbar = document.getElementById("historyToolbar");
+    if (toolbar) toolbar.hidden = false;
+    const title = document.getElementById("historyEmptyTitle");
+    const desc = document.getElementById("historyEmptyDesc");
+    const cta = document.getElementById("historyEmptyCta");
+    if (title) title.textContent = DU.t("ws.history.error.h", "Couldn’t load history");
+    if (desc) desc.textContent = DU.t("ws.history.error.p", "Check your connection and tap Refresh. Your creations are still saved.");
+    if (cta) {
+      cta.textContent = DU.t("ws.history.refresh", "Refresh");
+      cta.onclick = function () { loadHistory(); };
+    }
   }
 }
 
@@ -1304,9 +1786,17 @@ function escapeHtml(s) {
   if (token) userCredits = readCachedCredits();
   updateAuthUI();
   showPackBanner();
+  if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("generateReadyBanner"));
+  document.addEventListener("du:generate-ready", function () {
+    updateAuthUI();
+  });
   try {
-    const cap = await fetch("/api/upload").then((r) => r.json());
+    const cap = await fetch("/api/upload", { credentials: "same-origin" }).then((r) => r.json());
     uploadReady = !!(cap && cap.mediaBound);
+    if (!token && cap && cap.guestRemaining !== undefined) {
+      guestRemaining = cap.guestRemaining;
+      updateAuthUI();
+    }
   } catch (e) {
     uploadReady = false;
   }
@@ -1324,8 +1814,11 @@ function escapeHtml(s) {
     history.replaceState(null, "", next);
   }
   const modeParam = params.get("mode");
-  if (modeParam === "image") switchMode("image");
+  const prefs = loadGenPrefs();
+  if (modeParam === "image" || modeParam === "video") switchMode(modeParam);
+  else if (prefs && prefs.mode === "image") switchMode("image");
   else switchMode("video");
+  applyGenPrefs(prefs);
   const qPrompt = params.get("prompt");
   if (qPrompt) {
     const ta = document.getElementById("promptInput");
@@ -1333,7 +1826,13 @@ function escapeHtml(s) {
     onPromptInput();
   }
   const urlInput = document.getElementById("imageUrlInput");
-  if (urlInput) urlInput.addEventListener("input", syncVideoOptions);
+  if (urlInput) {
+    urlInput.addEventListener("input", function () {
+      syncVideoOptions();
+      syncUploadEmptyHint();
+    });
+  }
+  syncUploadEmptyHint();
   if (token) {
     try {
       // Only a real unauthorized response may wipe the session. Transient
@@ -1345,9 +1844,7 @@ function escapeHtml(s) {
       loadHistory();
     } catch (e) {
       if (isUnauthorizedError(e)) {
-        clearAuthLocal();
-        updateAuthUI();
-        showPackBanner();
+        handleAuthExpired();
       }
       // else: keep sync-hydrated / cached logged-in UI
     }
@@ -1359,13 +1856,38 @@ function escapeHtml(s) {
     } catch (e) {}
     loadHistory();
   }
+  if (params.get("tab") === "history") switchPrimaryTab("history");
 })();
 
 document.addEventListener("du:i18n", function () {
   updateAuthUI();
   resetGenBtn();
-  const title = document.getElementById("genTitle");
-  if (title) title.textContent = currentMode === "video" ? DU.t("gen.videoTitle", "AI Video Generator") : DU.t("gen.imageTitle", "AI Image Generator");
+  syncModeLabels();
+  const ready = document.getElementById("generateReadyBanner");
+  if (ready && ready.getAttribute("data-generate-ready") === "false" && DU.applyGenerateReadyNote) {
+    DU.applyGenerateReadyNote(ready);
+  }
+});
+const genCancelBtn = document.getElementById("genCancel");
+if (genCancelBtn) {
+  genCancelBtn.addEventListener("click", function () {
+    if (genPollAbort) genPollAbort.abort();
+  });
+}
+const historyRefreshBtn = document.getElementById("historyRefresh");
+if (historyRefreshBtn) {
+  historyRefreshBtn.addEventListener("click", function () {
+    historyRefreshLeft = 0;
+    loadHistory();
+  });
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "hidden") {
+    stopHistoryRefresh();
+    return;
+  }
+  const historyView = document.getElementById("historyView");
+  if (historyView && !historyView.hidden) loadHistory();
 });
 </script>
 </body>

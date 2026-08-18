@@ -1,4 +1,7 @@
 # Cursor DreamUtopia clone (NOT pikbo, NOT magicremover-clone).
+# Live product is Cloudflare Pages. Do not set `main = ".open-next/worker.js"`
+# here — that belongs on the Next.js experiment branch (PR #14), not this one.
+# PR#13 A-line: cursor/overnight-prod-polish-db63 (not r2-upload-product-polish).
 name = "dreamutopia-clone"
 compatibility_date = "2026-01-01"
 pages_build_output_dir = "out"

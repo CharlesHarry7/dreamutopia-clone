@@ -2,11 +2,12 @@ import {
   json,
   structuredError,
   preflight,
+  asHead,
   hasSessions,
   hasMedia,
   bindingsUnavailable,
 } from "../../libs/utils";
-import { getSession, tokenFromRequest } from "../../libs/auth";
+import { expiredSessionResponse, getSession, tokenFromRequest } from "../../libs/auth";
 import {
   MAX_UPLOAD_BYTES,
   IMAGE_TYPES,
@@ -18,6 +19,7 @@ import {
 } from "../../libs/media";
 import {
   GUEST_USER_ID,
+  GUEST_LIMIT,
   GUEST_UPLOAD_LIMIT,
   ensureGuestId,
   guestHeaders,
@@ -31,8 +33,8 @@ import type { Env } from "../../libs/utils";
 export const onRequestOptions = (): Response => preflight();
 
 /** GET /api/upload — capability probe for the workspace UI */
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
-  return json({
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  const base = {
     ok: true,
     mediaBound: hasMedia(env),
     maxBytes: MAX_UPLOAD_BYTES,
@@ -40,8 +42,37 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       (t) => t !== "image/jpg" && t !== "image/tif" && t !== "image/x-tiff"
     ),
     generateUsesMedia: hasMedia(env),
-  });
+    guestUploadLimit: GUEST_UPLOAD_LIMIT,
+  };
+
+  if (!hasSessions(env)) return json(base);
+
+  const token = tokenFromRequest(request);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return json(base);
+  }
+  if (session) return json({ ...base, guest: false });
+
+  const guestId = ensureGuestId(request);
+  const rec = await loadGuest(env, guestId);
+  const quota = await guestQuota(env, rec, clientIp(request));
+  return json(
+    {
+      ...base,
+      guest: true,
+      guestRemaining: quota.remaining,
+      guestLimit: GUEST_LIMIT,
+      guestUploads: rec.uploads,
+    },
+    200,
+    guestHeaders(guestId, request)
+  );
 };
+
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));
 
 /**
  * POST /api/upload
@@ -61,7 +92,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError("upload_failed", "Upload failed. Please try again.", 500, { mediaRequired: false });
+  }
+  if (token && !session) return expiredSessionResponse();
   const guestId = ensureGuestId(request);
   const extra = session ? undefined : guestHeaders(guestId, request);
   let guestRec = session ? null : await loadGuest(env, guestId);
@@ -160,6 +197,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const imageUrl = publicMediaUrl(new URL(request.url).origin, key);
+  const quotaAfter =
+    !session && guestRec ? await guestQuota(env, guestRec, clientIp(request)) : null;
   return json(
     {
       ok: true,
@@ -168,6 +207,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       bytes: buf.byteLength,
       contentType: type,
       guest: !session,
+      ...(quotaAfter
+        ? {
+            guestRemaining: quotaAfter.remaining,
+            guestLimit: GUEST_LIMIT,
+            guestUploads: guestRec ? guestRec.uploads : 0,
+            guestUploadLimit: GUEST_UPLOAD_LIMIT,
+          }
+        : {}),
     },
     200,
     extra

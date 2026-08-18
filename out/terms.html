@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0d0d12">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -29,17 +30,38 @@ ul{padding-left:20px;margin:8px 0 16px}
 li{margin:6px 0}
 footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;color:var(--text3);font-size:13px}
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
-<nav>
-<a href="/">Home</a>
-<a href="/workspace">Workspace</a>
-<a href="/privacy">Privacy</a>
+<nav id="site-nav">
+<a href="/" data-i18n="nav.home">Home</a>
+<a href="/pricing" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
+<details class="nav-drop">
+<summary data-i18n="nav.features">Features</summary>
+<div class="nav-menu">
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
+<a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+</div>
+</details>
+<a href="/privacy" data-i18n="foot.privacy">Privacy</a>
 </nav>
+<div class="header-right">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
+</div>
 </header>
-<main>
+<main id="main">
 <h1>Terms of Service</h1>
 <p class="lead">Last updated 12 August 2026. By creating an account you agree to these terms for this clone site.</p>
 <h2>The service</h2>
@@ -53,13 +75,15 @@ footer{border-top:1px solid var(--border);padding:24px 20px;text-align:center;co
 <li>Until Stripe secrets are set, Pricing will not charge a card.</li>
 </ul>
 <h2>Your content</h2>
-<p>You must have the right to use images you upload. You keep rights to outputs the provider returns to you. Do not upload illegal, exploitative, or others’ private content. Sharing to the public gallery is optional and only happens when you tap Share to gallery.</p>
+<p>You must have the right to use images you upload. You keep rights to outputs the provider returns to you. Do not upload illegal, exploitative, or others’ private content. Sharing to the public gallery is optional and only happens when you tap Share to gallery. Anyone can like a public gallery item; we store an IP hash so the same visitor cannot inflate a count.</p>
 <h2>Availability</h2>
 <p>Generation depends on Cloudflare and KIE. We do not guarantee queue times, model quality, or uptime. Abuse (credential stuffing, scraping keys, overloading upload) may get an account closed.</p>
 <h2>Not affiliated</h2>
 <p>This project is a technical clone for learning and hosting on Cloudflare Pages. It is not operated by the original dreamutopia.net team.</p>
 </main>
-<footer>© 2026 DreamUtopia AI clone · <a href="/privacy">Privacy</a></footer>
+<footer>© 2026 DreamUtopia AI clone · <a href="/privacy" data-i18n="foot.privacy">Privacy</a></footer>
+<script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/seo.js"></script>
 </body>
 </html>

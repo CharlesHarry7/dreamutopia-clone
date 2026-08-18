@@ -21,7 +21,7 @@ export interface Env {
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
+  "access-control-allow-methods": "GET,HEAD,POST,PUT,DELETE,OPTIONS",
   "access-control-allow-headers": "Content-Type, Authorization, Idempotency-Key",
 };
 
@@ -49,9 +49,10 @@ export function structuredError(
   code: string,
   message: string,
   status = 400,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
 ): Response {
-  return json({ error: code, code, message, ...(extra || {}) }, status);
+  return json({ error: code, code, message, ...(extra || {}) }, status, extraHeaders);
 }
 
 export function hasKieKey(env: Env): env is Env & { KIE_API_KEY: string } {
@@ -61,6 +62,30 @@ export function hasKieKey(env: Env): env is Env & { KIE_API_KEY: string } {
 /** OPTIONS preflight with CORS headers (required for browser Authorization) */
 export function preflight(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
+/** HEAD with the same status/headers as a GET, no body (crawlers / uptime checks). */
+export function asHead(res: Response): Response {
+  return new Response(null, { status: res.status, headers: res.headers });
+}
+
+/** Last-resort JSON 500 — never let a Function throw become Cloudflare 1101 text/plain. */
+export function workerExceptionJson(message = "Request failed. Please try again."): Response {
+  return new Response(
+    JSON.stringify({
+      error: "worker_exception",
+      code: "worker_exception",
+      message,
+      mediaRequired: false,
+    }),
+    {
+      status: 500,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        ...CORS_HEADERS,
+      },
+    }
+  );
 }
 
 export function randomId(prefix = "gen"): string {

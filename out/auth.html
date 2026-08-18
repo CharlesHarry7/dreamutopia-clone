@@ -12,6 +12,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -19,6 +21,9 @@
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;display:flex;flex-direction:column}
 a{text-decoration:none;color:inherit}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:200;background:#fff;color:#111;padding:8px 14px;border-radius:8px;font-weight:700;font-size:13px}
+.skip-link:focus{left:8px}
 img{max-width:100%;display:block}
 
 header{background:rgba(13,13,18,.92);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
@@ -65,46 +70,56 @@ nav>a:hover{color:var(--text);background:rgba(255,255,255,.04)}
 footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);padding:28px 20px;text-align:center;font-size:13px;color:var(--text3)}
 
 @media(max-width:600px){
-nav{display:none}
 .auth-card{padding:26px 20px}
 }
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
-
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo" aria-label="DreamUtopia AI">
 <img class="logo-img" src="/assets/images/logo.webp" alt="DreamUtopia AI" width="28" height="28">
 <span>DreamUtopia AI</span>
 </a>
-<nav>
+<nav id="site-nav">
 <a href="/" data-i18n="nav.home">Home</a>
 <a href="/pricing" data-i18n="nav.pricing">Pricing</a>
+<a href="/#faq" data-i18n="nav.faq">FAQ</a>
+<details class="nav-drop">
+<summary data-i18n="nav.features">Features</summary>
+<div class="nav-menu">
+<a href="/#features" data-i18n="nav.models">AI Models</a>
+<a href="/#gallery" data-i18n="nav.gallery">Gallery</a>
+<a href="/#get-started" data-i18n="nav.how">How it works</a>
 <a href="/workspace" data-i18n="nav.workspace">Workspace</a>
+</div>
+</details>
 </nav>
 <div class="header-right">
 <a href="/auth?mode=login" class="btn-login" id="hdrLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-signup" id="hdrSignup" data-i18n="hdr.signup">Sign Up</a>
-<select class="lang-select" aria-label="Language">
+<select class="lang-select" aria-label="Language" data-i18n-aria="a11y.lang">
 <option value="en">English</option>
 <option value="zh">中文</option>
 <option value="ja">日本語</option>
 <option value="es">Español</option>
 </select>
+<button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="a11y.menu" aria-label="Menu"><span class="nav-toggle-bars" aria-hidden="true"></span></button>
 </div>
 </header>
 
-<main class="auth-main">
+<main id="main" class="auth-main">
 <div class="auth-card">
 <h1 id="title" data-i18n="auth.signup.h">Create your account</h1>
 <p class="lead" id="lead" data-i18n="auth.signup.lead">Claim 10 free credits and unlock advanced AI models in the workspace.</p>
 
-<div class="mode-tabs" role="tablist">
-<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true" data-i18n="hdr.signup">Sign Up</button>
-<button type="button" id="tabLogin" role="tab" aria-selected="false" data-i18n="hdr.login">Log In</button>
+<div class="mode-tabs" role="tablist" aria-label="Account">
+<button type="button" id="tabRegister" class="active" role="tab" aria-selected="true" aria-controls="authForm" tabindex="0" data-i18n="hdr.signup">Sign Up</button>
+<button type="button" id="tabLogin" role="tab" aria-selected="false" aria-controls="authForm" tabindex="-1" data-i18n="hdr.login">Log In</button>
 </div>
 
-<form id="authForm" novalidate>
+<form id="authForm" novalidate role="tabpanel" aria-labelledby="tabRegister">
 <div class="field">
 <label for="email" data-i18n="auth.email">Email</label>
 <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
@@ -113,7 +128,7 @@ nav{display:none}
 <label for="password" data-i18n="auth.password">Password</label>
 <input id="password" name="password" type="password" autocomplete="current-password" required minlength="6" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters">
 </div>
-<p class="forgot-link" id="forgotLinkWrap" hidden><a href="/auth?mode=forgot" id="forgotLink">Forgot password?</a></p>
+<p class="forgot-link" id="forgotLinkWrap" hidden><a href="/auth?mode=forgot" id="forgotLink" data-i18n="auth.forgot">Forgot password?</a></p>
 <button class="submit" id="submitBtn" type="submit" data-i18n="auth.submitSignup">Sign Up Free</button>
 <div class="form-error" id="formError" role="alert"></div>
 </form>
@@ -128,6 +143,7 @@ nav{display:none}
 
 <script src="/assets/js/du.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/nav.js"></script>
 <script src="/assets/js/pwa.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>
@@ -141,9 +157,13 @@ const PACKS = {
 };
 const params = new URLSearchParams(location.search);
 const REF_KEY = "du_ref";
-if ((params.get("ref") || "").trim()) localStorage.setItem(REF_KEY, params.get("ref").trim());
 function currentRef() {
-  return (params.get("ref") || localStorage.getItem(REF_KEY) || "").trim();
+  const raw = params.get("ref") || localStorage.getItem(REF_KEY) || "";
+  return DU.normalizeRef ? DU.normalizeRef(raw) : "";
+}
+{
+  const incoming = currentRef();
+  if (incoming) localStorage.setItem(REF_KEY, incoming);
 }
 let mode = params.get("mode") === "login" ? "login" : params.get("mode") === "forgot" ? "forgot" : "register";
 const packId = PACKS[params.get("pack")] ? params.get("pack") : "";
@@ -186,12 +206,12 @@ function setMode(next) {
   const passwordField = passwordInput.closest(".field");
   const forgotWrap = document.getElementById("forgotLinkWrap");
   title.textContent = isForgot
-    ? "Reset password"
+    ? DU.t("auth.forgot.h", "Reset password")
     : isLogin
       ? DU.t("auth.login.h", "Welcome back")
       : DU.t("auth.signup.h", "Create your account");
   if (isForgot) {
-    lead.textContent = "We’ll email a reset link if that address has an account. The link expires in one hour.";
+    lead.textContent = DU.t("auth.forgot.lead", "We’ll email a reset link if that address has an account. The link expires in one hour.");
   } else if (selectedPack) {
     lead.textContent = isLogin
       ? "Log in to continue with the " + selectedPack.name + " (" + selectedPack.price + " · " + selectedPack.credits + " credits)."
@@ -205,8 +225,11 @@ function setMode(next) {
   tabLogin.classList.toggle("active", isLogin);
   tabRegister.setAttribute("aria-selected", String(!isLogin && !isForgot));
   tabLogin.setAttribute("aria-selected", String(isLogin));
+  tabRegister.tabIndex = !isLogin && !isForgot ? 0 : -1;
+  tabLogin.tabIndex = isLogin ? 0 : -1;
+  document.getElementById("authForm").setAttribute("aria-labelledby", isForgot ? "title" : isLogin ? "tabLogin" : "tabRegister");
   submitBtn.textContent = isForgot
-    ? "Send reset link"
+    ? DU.t("auth.forgot.submit", "Send reset link")
     : isLogin
       ? DU.t("auth.submitLogin", "Log In")
       : DU.t("auth.submitSignup", "Sign Up Free");
@@ -219,16 +242,16 @@ function setMode(next) {
   } else if (!isLogin && !isForgot) {
     const ref = currentRef();
     perk.innerHTML = DU.t("auth.perk", "New accounts get <b>10 free credits</b> instantly — no credit card required.")
-      + (ref ? " Invite code <b>" + ref + "</b> will be attached." : "");
+      + (ref ? " Invite code <b>" + (DU.escapeHtml ? DU.escapeHtml(ref) : ref) + "</b> will be attached." : "");
   }
   switchLine.innerHTML = isForgot
-    ? 'Remembered it? <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
+    ? DU.t("auth.forgot.remember", "Remembered it?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>"
     : isLogin
       ? DU.t("auth.need", "Need an account?") + ' <a href="' + authUrl("register") + '" id="switchLink">' + DU.t("auth.submitSignup", "Sign Up Free") + "</a>"
       : DU.t("auth.have", "Already have an account?") + ' <a href="' + authUrl("login") + '" id="switchLink">' + DU.t("auth.submitLogin", "Log In") + "</a>";
   document.getElementById("switchLink").onclick = (e) => {
     e.preventDefault();
-    setMode(isForgot || isLogin ? "register" : "login");
+    setMode(isForgot ? "login" : isLogin ? "register" : "login");
   };
   passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
   hdrLogin.classList.toggle("active", isLogin);
@@ -240,11 +263,30 @@ function setMode(next) {
   if (location.pathname + location.search !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
-  document.title = (isForgot ? "Reset password" : isLogin ? "Log in" : "Sign up") + " — DreamUtopia";
+  document.title = (isForgot ? DU.t("auth.forgot.h", "Reset password") : isLogin ? DU.t("auth.submitLogin", "Log In") : DU.t("hdr.signup", "Sign Up")) + " — DreamUtopia";
+  const forgotLinkEl = document.getElementById("forgotLink");
+  if (forgotLinkEl) forgotLinkEl.textContent = DU.t("auth.forgot", "Forgot password?");
+  if (isForgot) {
+    fetch("/api/auth/forgot", { method: "GET", credentials: "same-origin" })
+      .then(function (res) {
+        return res.json().then(function (data) { return { data: data }; });
+      })
+      .then(function (out) {
+        if (mode !== "forgot") return;
+        const code = out.data && (out.data.code || out.data.error);
+        if (code === "email_not_configured" || (out.data && out.data.configured === false)) {
+          formError.textContent = DU.t("auth.forgot.unconfigured", "Password reset email isn’t set up yet. You can still log in with your password.");
+          formError.classList.add("show");
+        }
+      })
+      .catch(function () {});
+  }
 }
 
 tabRegister.onclick = () => setMode("register");
 tabLogin.onclick = () => setMode("login");
+if (DU.bindTablist) DU.bindTablist(document.querySelector(".mode-tabs"));
+if (DU.bindPasswordToggle) DU.bindPasswordToggle(passwordInput);
 const forgotLink = document.getElementById("forgotLink");
 if (forgotLink) {
   forgotLink.onclick = (e) => {
@@ -257,10 +299,15 @@ async function api(path, body) {
   const res = await fetch("/api" + path, {
     method: "POST",
     headers: { "content-type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || "request failed");
+  if (!res.ok) {
+    const err = new Error(data.message || data.error || "request failed");
+    err.code = data.code || data.error || null;
+    throw err;
+  }
   return data;
 }
 
@@ -270,24 +317,34 @@ document.getElementById("authForm").onsubmit = async (e) => {
   const email = document.getElementById("email").value.trim();
   const password = passwordInput.value;
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    formError.textContent = "Please enter a valid email.";
+    formError.textContent = DU.t("auth.email.invalid", "Please enter a valid email.");
     formError.classList.add("show");
+    document.getElementById("email").setAttribute("aria-invalid", "true");
+    document.getElementById("email").focus();
     return;
   }
+  document.getElementById("email").removeAttribute("aria-invalid");
   if (mode !== "forgot" && (!password || password.length < 6)) {
-    formError.textContent = "Password must be at least 6 characters.";
+    formError.textContent = DU.t("auth.pass.short", "Password must be at least 6 characters.");
     formError.classList.add("show");
+    passwordInput.setAttribute("aria-invalid", "true");
+    passwordInput.focus();
     return;
   }
+  passwordInput.removeAttribute("aria-invalid");
   submitBtn.disabled = true;
   const prev = submitBtn.textContent;
-  submitBtn.textContent = mode === "forgot" ? "Sending…" : mode === "login" ? "Logging in…" : "Creating account…";
+  submitBtn.textContent = mode === "forgot"
+    ? DU.t("auth.forgot.sending", "Sending…")
+    : mode === "login"
+      ? DU.t("auth.logging", "Logging in…")
+      : DU.t("auth.creating", "Creating account…");
   try {
     if (mode === "forgot") {
       const data = await api("/auth/forgot", { email });
       perk.style.display = "";
       perk.innerHTML = data && data.ok
-        ? "If that email has an account, a reset link is on the way. Check spam if you don’t see it."
+        ? DU.t("auth.forgot.sent", "If that email has an account, a reset link is on the way. Check spam if you don’t see it.")
         : "Request sent.";
       submitBtn.disabled = false;
       submitBtn.textContent = prev;
@@ -303,7 +360,11 @@ document.getElementById("authForm").onsubmit = async (e) => {
     }
     location.href = workspaceUrl();
   } catch (err) {
-    formError.textContent = err.message || "Something went wrong";
+    if (mode === "forgot" && err && err.code === "email_not_configured") {
+      formError.textContent = DU.t("auth.forgot.unconfigured", "Password reset email isn’t set up yet. You can still log in with your password.");
+    } else {
+      formError.textContent = DU.errorMessage ? DU.errorMessage(err, err.message || "Something went wrong") : (err.message || "Something went wrong");
+    }
     formError.classList.add("show");
     submitBtn.disabled = false;
     submitBtn.textContent = prev;
@@ -317,6 +378,7 @@ document.getElementById("authForm").onsubmit = async (e) => {
   try {
     const res = await fetch("/api/auth/me", {
       headers: { authorization: "Bearer " + existing },
+      credentials: "same-origin",
     });
     if (res.ok) {
       location.replace(workspaceUrl());

@@ -3,6 +3,7 @@ import {
   error,
   structuredError,
   preflight,
+  asHead,
   hasDb,
   hasSessions,
   hasMedia,
@@ -60,6 +61,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return json({ ok: true, demo: false, items });
 };
 
+export const onRequestHead: PagesFunction<Env> = async (ctx) => asHead(await onRequestGet(ctx));
+
 /**
  * POST /api/gallery — opt-in publish of a finished account generation.
  * Body: { generationId }
@@ -69,7 +72,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!hasDb(env)) return bindingsUnavailable("DB");
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError("gallery_failed", "Could not share to gallery. Please try again.", 500);
+  }
   if (!session) {
     return structuredError("unauthorized", "Sign in to share a creation to the gallery.", 401);
   }

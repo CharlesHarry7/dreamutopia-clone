@@ -6,11 +6,27 @@
   const CREDITS_KEY = "dreamutopia_credits";
   const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
+  function normalizeRef(value) {
+    const s = String(value || "").trim();
+    if (!s) return "";
+    // Keep in sync with libs/account.ts lookupReferrer.
+    if (/^[a-f0-9]{8}$/i.test(s)) return s.toLowerCase();
+    if (/^ref_[a-z0-9]{4,16}$/i.test(s)) return s;
+    if (/^[a-z0-9]{6,16}$/i.test(s)) return s;
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   try {
-    const ref = new URLSearchParams(location.search).get("ref");
-    if (ref && /^[a-z0-9]{6,16}$/i.test(ref.trim())) {
-      localStorage.setItem("du_ref", ref.trim());
-    }
+    const ref = normalizeRef(new URLSearchParams(location.search).get("ref"));
+    if (ref) localStorage.setItem("du_ref", ref);
   } catch (e) {}
 
   function getToken() {
@@ -27,6 +43,13 @@
       if (v && v !== key) return v;
     }
     return fallback || key;
+  }
+
+  function networkFailError() {
+    const err = new Error(t("err.network", "Network error. Check your connection and try again."));
+    err.code = "network_error";
+    err.status = 0;
+    return err;
   }
 
   function isAllowedImageFile(file) {
@@ -47,7 +70,19 @@
       headers["content-type"] = "application/json";
     }
     if (token) headers.authorization = "Bearer " + token;
-    const res = await fetch("/api" + path, Object.assign({}, options, { headers, credentials: "same-origin" }));
+    let res;
+    try {
+      res = await fetch("/api" + path, Object.assign({}, options, { headers, credentials: "same-origin" }));
+    } catch (e) {
+      throw networkFailError();
+    }
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("text/html")) {
+      const err = new Error("not found");
+      err.status = 404;
+      err.code = "not_found";
+      throw err;
+    }
     const data = await res.json().catch(function () { return {}; });
     if (!res.ok) {
       const err = new Error(data.message || data.error || "request failed");
@@ -74,12 +109,17 @@
     if (token) headers.authorization = "Bearer " + token;
     if (file.type && file.type !== "application/octet-stream") headers["content-type"] = file.type;
     else if (/\.tiff?$/i.test(file.name || "")) headers["content-type"] = "image/tiff";
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers: headers,
-      body: file,
-      credentials: "same-origin",
-    });
+    let res;
+    try {
+      res = await fetch("/api/upload", {
+        method: "POST",
+        headers: headers,
+        body: file,
+        credentials: "same-origin",
+      });
+    } catch (e) {
+      throw networkFailError();
+    }
     const data = await res.json().catch(function () { return {}; });
     if (!res.ok) {
       const err = new Error(data.message || data.error || "upload failed");
@@ -101,23 +141,125 @@
     return t("progress.generating", "Generating…") + (status ? " (" + status + ")" : "");
   }
 
-  async function pollGeneration(generationId, onStatus) {
-    const maxAttempts = 80;
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(function (r) { setTimeout(r, i < 10 ? 1500 : 3000); });
-      const data = await api("/generate?id=" + encodeURIComponent(generationId));
-      const g = data.generation || {};
-      const status = data.status || g.status;
-      const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
-      if (typeof onStatus === "function") onStatus(status, data);
-      if (status === "done" && resultUrl) {
-        return { status: status, resultUrl: resultUrl, generation: g, kind: g.kind || data.kind || "video" };
+  function cancelledError() {
+    const err = new Error(t("progress.cancelled", "Stopped waiting — the job may still finish. Check Workspace / History."));
+    err.code = "poll_cancelled";
+    return err;
+  }
+
+  function sleep(ms, signal) {
+    return new Promise(function (resolve, reject) {
+      if (signal && signal.aborted) {
+        reject(cancelledError());
+        return;
       }
-      if (status === "failed") {
-        throw new Error(g.error_message || t("progress.failed", "Generation failed"));
+      const timer = setTimeout(resolve, ms);
+      if (!signal) return;
+      signal.addEventListener(
+        "abort",
+        function () {
+          clearTimeout(timer);
+          reject(cancelledError());
+        },
+        { once: true }
+      );
+    });
+  }
+
+  function shouldRetryPoll(err) {
+    if (!err) return false;
+    if (err.code === "poll_cancelled") return false;
+    const code = String(err.code || "");
+    if (
+      code === "kie_api_key_missing" ||
+      code === "provider_credits_insufficient" ||
+      code === "kie_insufficient_balance" ||
+      code === "kie_unauthorized" ||
+      code === "kie_file_type_unsupported" ||
+      code === "guest_limit" ||
+      code === "unauthorized" ||
+      code === "not_found"
+    ) {
+      return false;
+    }
+    if (err.status === 400 || err.status === 401 || err.status === 402 || err.status === 404) return false;
+    if (err.status === 429 || code === "rate_limited") return true;
+    if (err.status === 502 || err.status === 504) return true;
+    if (!err.status) return true;
+    return false;
+  }
+
+  function failedJobError(message) {
+    const raw = String(message || "");
+    if (/credits insufficient|balance isn.?t enough|top[- ]?up/i.test(raw)) {
+      const err = new Error(t("err.kie_insufficient_balance", "Generation is temporarily unavailable. Please try again later."));
+      err.code = "kie_insufficient_balance";
+      return err;
+    }
+    if (/file type not supported|unsupported file|unsupported (image|format|type)/i.test(raw)) {
+      const err = new Error(t("err.kie_file_type_unsupported", "That image type isn’t supported. Use JPG, PNG, or WebP."));
+      err.code = "kie_file_type_unsupported";
+      return err;
+    }
+    return new Error(raw || t("progress.failed", "Generation failed"));
+  }
+
+  async function pollGeneration(generationId, onStatus, opts) {
+    opts = opts || {};
+    const signal = opts.signal;
+    const maxAttempts = opts.maxAttempts || 80;
+    const started = Date.now();
+    let networkFails = 0;
+    for (let i = 0; i < maxAttempts; i++) {
+      const hidden = typeof document !== "undefined" && document.hidden;
+      const delay = i === 0 ? 800 : i < 10 ? 1500 : hidden ? 5000 : 3000;
+      await sleep(delay, signal);
+      try {
+        const data = await api("/generate?id=" + encodeURIComponent(generationId));
+        networkFails = 0;
+        const g = data.generation || {};
+        const status = data.status || g.status;
+        const resultUrl = data.resultUrl || g.result_url || g.resultUrl || null;
+        const extra = {
+          elapsedSec: Math.round((Date.now() - started) / 1000),
+          attempt: i + 1,
+        };
+        if (typeof onStatus === "function") onStatus(status, Object.assign({}, data, extra));
+        if (status === "done" && resultUrl) {
+          return { status: status, resultUrl: resultUrl, generation: g, kind: g.kind || data.kind || "video" };
+        }
+        if (status === "failed") {
+          throw failedJobError(g.error_message || g.errorMessage);
+        }
+      } catch (e) {
+        if (e && e.code === "poll_cancelled") throw e;
+        if (!shouldRetryPoll(e)) throw e;
+        networkFails += 1;
+        if (networkFails >= 6) {
+          const err = new Error(t("err.network", "Network hiccup while waiting. Check Workspace / History."));
+          err.code = "network";
+          throw err;
+        }
+        if (typeof onStatus === "function") {
+          onStatus("processing", {
+            providerState: "waiting",
+            elapsedSec: Math.round((Date.now() - started) / 1000),
+            networkRetry: true,
+          });
+        }
       }
     }
     throw new Error(t("progress.timeout", "Timed out waiting for provider result — check History later"));
+  }
+
+  function formatProgress(status, data) {
+    if (data && data.networkRetry) {
+      const wait = data.elapsedSec ? " · " + data.elapsedSec + "s" : "";
+      return t("err.network", "Connection blip — still waiting.") + wait;
+    }
+    let label = progressLabel(status, data && data.providerState);
+    if (data && data.elapsedSec) label += " · " + data.elapsedSec + "s";
+    return label;
   }
 
   async function downloadResult(url, filename) {
@@ -151,6 +293,373 @@
     return api("/gallery", { method: "POST", body: JSON.stringify({ generationId: generationId }) });
   }
 
+  function errorMessage(err, fallback) {
+    const code = (err && (err.code || (err.payload && err.payload.code))) || "";
+    if (code) {
+      const translated = t("err." + code, "");
+      if (translated) return translated;
+    }
+    return (err && err.message) || fallback || t("progress.failed", "Generation failed");
+  }
+
+  function errorAction(code) {
+    const c = String(code || "");
+    if (c === "guest_limit" || c === "guest_lite_only") {
+      return { href: "/auth?mode=register", key: "err.action.signup", label: "Sign up for 10 credits" };
+    }
+    if (c === "auth_required" || c === "unauthorized") {
+      return { href: "/auth?mode=login", key: "err.action.login", label: "Log in" };
+    }
+    if (c === "insufficient_credits") {
+      return { href: "/pricing", key: "err.action.pricing", label: "View credit packs" };
+    }
+    // Preview / empty KIE wallet: signing up or opening Stripe will not start a job.
+    if (
+      c === "kie_api_key_missing" ||
+      c === "kie_insufficient_balance" ||
+      c === "provider_credits_insufficient"
+    ) {
+      return null;
+    }
+    if (c === "network_error") return null;
+    return null;
+  }
+
+  function isGenerateReady() {
+    try {
+      return document.documentElement.getAttribute("data-generate-ready") !== "false";
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function markGenerateUnready(el) {
+    const copy = t(
+      "err.kie_api_key_missing",
+      "Generation isn’t available on this preview yet. Try again later."
+    );
+    if (el) {
+      el.hidden = false;
+      el.classList.add("show");
+      const msg = el.querySelector("[data-ready-msg]");
+      if (msg) msg.textContent = copy;
+      else if (!el.querySelector("p,div,span")) el.textContent = copy;
+      el.setAttribute("data-generate-ready", "false");
+    }
+    try {
+      document.documentElement.setAttribute("data-generate-ready", "false");
+    } catch (e) {}
+    try {
+      document.dispatchEvent(new CustomEvent("du:generate-ready", { detail: { generateReady: false } }));
+    } catch (e) {}
+  }
+
+  function applyGenerateReadyNote(el) {
+    if (!el) return Promise.resolve();
+    return fetch("/api/health", { credentials: "same-origin" })
+      .then(function (r) {
+        const ct = (r.headers.get("content-type") || "").toLowerCase();
+        if (!ct.includes("json")) return null;
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || data.generateReady !== false) return;
+        markGenerateUnready(el);
+      })
+      .catch(function () {});
+  }
+
+  function wireErrorAction(el, code) {
+    if (!el) return;
+    const act = errorAction(code);
+    if (!act) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.href = act.href;
+    el.textContent = t(act.key, act.label);
+  }
+
+  async function likeGallery(id) {
+    return api("/gallery/like", { method: "POST", body: JSON.stringify({ id: id }) });
+  }
+
+  function fileFromClipboard(e) {
+    const cd = e && e.clipboardData;
+    if (!cd) return null;
+    const items = cd.items || [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//i.test(items[i].type || "")) {
+        const f = items[i].getAsFile();
+        if (f) return f;
+      }
+    }
+    const files = cd.files;
+    if (files && files[0] && isAllowedImageFile(files[0])) return files[0];
+    return null;
+  }
+
+  function bindImageDrop(area, onFiles) {
+    if (!area || typeof onFiles !== "function") return;
+    area.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      area.classList.add("drag");
+    });
+    area.addEventListener("dragleave", function (e) {
+      if (e.relatedTarget && area.contains(e.relatedTarget)) return;
+      area.classList.remove("drag");
+    });
+    area.addEventListener("drop", function (e) {
+      e.preventDefault();
+      area.classList.remove("drag");
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length) onFiles(files);
+    });
+  }
+
+  function bindImagePaste(onFile) {
+    if (typeof onFile !== "function") return;
+    document.addEventListener("paste", function (e) {
+      const file = fileFromClipboard(e);
+      if (!file) return;
+      e.preventDefault();
+      onFile(file);
+    });
+  }
+
+  function bindModEnter(el, fn) {
+    if (!el || typeof fn !== "function") return;
+    el.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        fn();
+      }
+    });
+  }
+
+  function setLiveStatus(box, textEl, opts) {
+    opts = opts || {};
+    if (!box) return;
+    box.classList.add("show");
+    box.setAttribute("aria-busy", opts.busy ? "true" : "false");
+    if (opts.error) {
+      box.setAttribute("role", "alert");
+      box.setAttribute("aria-live", "assertive");
+    } else {
+      box.setAttribute("role", "status");
+      box.setAttribute("aria-live", "polite");
+    }
+    if (textEl && opts.text != null) {
+      if (opts.html) textEl.innerHTML = opts.text;
+      else textEl.textContent = opts.text;
+    }
+    if (opts.busy || opts.error) {
+      try {
+        box.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      } catch (e) {}
+    }
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isShown(el) {
+    if (!el || el.hidden) return false;
+    if (el.closest && el.closest("[hidden]")) return false;
+    try {
+      const st = window.getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") return false;
+    } catch (e) {}
+    return true;
+  }
+
+  function trapFocus(container) {
+    function handler(e) {
+      if (e.key !== "Tab" || !container || !isShown(container)) return;
+      const nodes = container.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select, video[controls], [tabindex]:not([tabindex="-1"])'
+      );
+      const list = Array.prototype.filter.call(nodes, isShown);
+      if (!list.length) {
+        e.preventDefault();
+        if (typeof container.focus === "function") container.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handler);
+    return function () {
+      document.removeEventListener("keydown", handler);
+    };
+  }
+
+  function bindPasswordToggle(input) {
+    if (!input || input.dataset.toggleBound) return;
+    input.dataset.toggleBound = "1";
+    const wrap = document.createElement("div");
+    wrap.className = "pw-wrap";
+    if (input.parentNode) input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pw-toggle";
+    btn.setAttribute("aria-pressed", "false");
+    function label() {
+      const hidden = input.type === "password";
+      btn.textContent = hidden ? t("a11y.showPass", "Show") : t("a11y.hidePass", "Hide");
+      btn.setAttribute(
+        "aria-label",
+        hidden ? t("a11y.showPass", "Show password") : t("a11y.hidePass", "Hide password")
+      );
+    }
+    label();
+    btn.addEventListener("click", function () {
+      input.type = input.type === "password" ? "text" : "password";
+      btn.setAttribute("aria-pressed", input.type === "text" ? "true" : "false");
+      label();
+    });
+    wrap.appendChild(btn);
+    document.addEventListener("du:i18n", label);
+  }
+
+  function focusEl(el) {
+    if (!el) return;
+    if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+    try {
+      el.focus();
+    } catch (e) {}
+  }
+
+  function bindTablist(root) {
+    if (!root) return;
+    root.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+      const tabs = Array.prototype.slice.call(root.querySelectorAll('[role="tab"]'));
+      if (!tabs.length) return;
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      e.preventDefault();
+      let next = i;
+      if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") next = 0;
+      else next = tabs.length - 1;
+      tabs[next].focus();
+      tabs[next].click();
+    });
+  }
+
+  function bindActivate(el, fn) {
+    if (!el || typeof fn !== "function") return;
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fn(e);
+      }
+    });
+  }
+
+  // Browser shows a generic leave prompt; custom strings are ignored.
+  function bindBusyLeave(isBusy) {
+    if (typeof isBusy !== "function") return;
+    window.addEventListener("beforeunload", function (e) {
+      if (!isBusy()) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+  }
+
+  let alertUntrap = null;
+  function ensureAlertDialog() {
+    let dlg = document.getElementById("appDialog");
+    if (dlg) return dlg;
+    dlg = document.createElement("dialog");
+    dlg.id = "appDialog";
+    dlg.className = "alert-dialog";
+    dlg.setAttribute("aria-modal", "true");
+    dlg.setAttribute("aria-labelledby", "appDialogTitle");
+    dlg.setAttribute("aria-describedby", "appDialogBody");
+    dlg.innerHTML =
+      '<h2 class="alert-title" id="appDialogTitle"></h2>' +
+      '<p class="alert-body" id="appDialogBody"></p>' +
+      '<div class="alert-actions">' +
+      '<button type="button" class="alert-cancel" id="appDialogCancel"></button>' +
+      '<a class="alert-go" id="appDialogGo"></a>' +
+      "</div>";
+    document.body.appendChild(dlg);
+    return dlg;
+  }
+
+  function openAlert(opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      const dlg = ensureAlertDialog();
+      const title = document.getElementById("appDialogTitle");
+      const body = document.getElementById("appDialogBody");
+      const go = document.getElementById("appDialogGo");
+      const cancel = document.getElementById("appDialogCancel");
+      if (title) title.textContent = opts.title || t("auth.gate.h", "Sign up to continue");
+      if (body) body.textContent = opts.body || t("auth.gate.medium", "Medium and Pro need a free account (10 credits).");
+      if (go) {
+        go.href = opts.href || "/auth?mode=register";
+        go.textContent = opts.action || t("err.action.signup", "Sign up for 10 credits");
+      }
+      if (cancel) cancel.textContent = opts.cancel || t("auth.gate.later", "Not now");
+      let settled = false;
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        if (alertUntrap) {
+          alertUntrap();
+          alertUntrap = null;
+        }
+        if (cancel) cancel.removeEventListener("click", onCancel);
+        dlg.removeEventListener("cancel", onEsc);
+        try {
+          if (dlg.open) dlg.close();
+        } catch (e) {}
+        resolve(!!ok);
+      }
+      function onCancel() {
+        finish(false);
+      }
+      function onEsc(e) {
+        e.preventDefault();
+        finish(false);
+      }
+      if (cancel) cancel.addEventListener("click", onCancel);
+      dlg.addEventListener("cancel", onEsc);
+      if (typeof dlg.showModal === "function") {
+        try {
+          dlg.showModal();
+        } catch (e) {
+          location.href = (go && go.href) || "/auth?mode=register";
+          finish(true);
+          return;
+        }
+        alertUntrap = trapFocus(dlg);
+        if (go) focusEl(go);
+      } else {
+        location.href = (go && go.href) || "/auth?mode=register";
+        finish(true);
+      }
+    });
+  }
+
   global.DU = {
     TOKEN_KEY: TOKEN_KEY,
     CREDITS_KEY: CREDITS_KEY,
@@ -161,9 +670,31 @@
     uploadImage: uploadImage,
     pollGeneration: pollGeneration,
     progressLabel: progressLabel,
+    formatProgress: formatProgress,
     downloadResult: downloadResult,
     publishGallery: publishGallery,
+    likeGallery: likeGallery,
+    errorMessage: errorMessage,
+    errorAction: errorAction,
+    applyGenerateReadyNote: applyGenerateReadyNote,
+    markGenerateUnready: markGenerateUnready,
+    isGenerateReady: isGenerateReady,
+    wireErrorAction: wireErrorAction,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
+    bindImageDrop: bindImageDrop,
+    bindImagePaste: bindImagePaste,
+    bindModEnter: bindModEnter,
+    setLiveStatus: setLiveStatus,
+    focusEl: focusEl,
+    bindTablist: bindTablist,
+    bindActivate: bindActivate,
+    bindBusyLeave: bindBusyLeave,
+    openAlert: openAlert,
+    prefersReducedMotion: prefersReducedMotion,
+    trapFocus: trapFocus,
+    bindPasswordToggle: bindPasswordToggle,
+    normalizeRef: normalizeRef,
+    escapeHtml: escapeHtml,
   };
 })(window);

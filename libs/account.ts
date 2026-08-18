@@ -48,6 +48,7 @@ export async function lookupReferrer(
   code: string | null | undefined
 ): Promise<number | null> {
   const c = (code || "").trim().toLowerCase();
+  // Keep in sync with out/assets/js/du.js normalizeRef.
   if (!/^[a-f0-9]{8}$/.test(c) && !/^ref_[a-z0-9]+$/i.test(c)) {
     if (!/^[a-z0-9]{6,16}$/i.test(c)) return null;
   }

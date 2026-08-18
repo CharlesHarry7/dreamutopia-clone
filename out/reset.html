@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0d0d12">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -33,28 +34,40 @@ h1{font-size:24px;font-weight:800;margin-bottom:8px}
 .back{display:block;margin-top:16px;text-align:center;font-size:13px;color:var(--text3)}
 footer{padding:28px 20px;text-align:center;font-size:13px;color:var(--text3)}
 </style>
+<link rel="stylesheet" href="/assets/css/chrome.css">
 </head>
 <body>
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
 <header>
 <a href="/" class="logo"><img src="/assets/images/logo.webp" alt="" width="28" height="28"> DreamUtopia AI</a>
-<a href="/auth?mode=login" style="color:#a8a8b8;font-size:14px">Log In</a>
+<div style="display:flex;align-items:center;gap:12px">
+<a href="/auth?mode=login" style="color:#a8a8b8;font-size:14px" data-i18n="hdr.login">Log In</a>
+<select class="lang-select" aria-label="Language" style="appearance:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 28px 7px 12px;border-radius:999px;font-size:12.5px;font-family:inherit">
+<option value="en">English</option>
+<option value="zh">中文</option>
+<option value="ja">日本語</option>
+<option value="es">Español</option>
+</select>
+</div>
 </header>
-<main class="auth-main">
+<main id="main" class="auth-main">
 <div class="auth-card">
-<h1>Reset password</h1>
-<p class="lead" id="lead">Enter a new password. This link expires in one hour.</p>
+<h1 data-i18n="auth.reset.h">Reset password</h1>
+<p class="lead" id="lead" data-i18n="auth.reset.lead">Enter a new password. This link expires in one hour.</p>
 <form id="resetForm">
 <div class="field">
-<label for="password">New password</label>
-<input id="password" type="password" autocomplete="new-password" required minlength="6" placeholder="At least 6 characters">
+<label for="password" data-i18n="auth.reset.new">New password</label>
+<input id="password" type="password" autocomplete="new-password" required minlength="6" data-i18n-placeholder="auth.passPh" placeholder="At least 6 characters">
 </div>
-<button class="submit" id="submitBtn" type="submit">Save password</button>
+<button class="submit" id="submitBtn" type="submit" data-i18n="auth.reset.submit">Save password</button>
 <div class="form-error" id="formError" role="alert"></div>
 </form>
-<a class="back" href="/auth?mode=login">← Back to log in</a>
+<a class="back" href="/auth?mode=login" data-i18n="auth.back">← Back to log in</a>
 </div>
 </main>
-<footer>© DreamUtopia AI · <a href="/privacy" style="color:#c084fc">Privacy</a></footer>
+<footer>© DreamUtopia AI · <a href="/privacy" style="color:#c084fc" data-i18n="foot.privacy">Privacy</a></footer>
+<script src="/assets/js/du.js"></script>
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/seo.js"></script>
 <script>
 const TOKEN_KEY = "dreamutopia_token";
@@ -62,24 +75,32 @@ const params = new URLSearchParams(location.search);
 const token = (params.get("token") || "").trim();
 const formError = document.getElementById("formError");
 const submitBtn = document.getElementById("submitBtn");
+const passwordInput = document.getElementById("password");
+if (window.DU && DU.bindPasswordToggle) DU.bindPasswordToggle(passwordInput);
 if (!/^[a-f0-9]{32}$/.test(token)) {
-  document.getElementById("lead").textContent = "This reset link is missing or invalid. Request a new one from the login page.";
+  document.getElementById("lead").textContent = (window.DU && DU.t)
+    ? DU.t("auth.reset.invalid", "This reset link is missing or invalid. Request a new one from the login page.")
+    : "This reset link is missing or invalid. Request a new one from the login page.";
   document.getElementById("resetForm").hidden = true;
 }
 document.getElementById("resetForm").onsubmit = async function (e) {
   e.preventDefault();
   formError.classList.remove("show");
-  const password = document.getElementById("password").value;
+  const password = passwordInput.value;
   if (password.length < 6) {
-    formError.textContent = "Password must be at least 6 characters.";
+    formError.textContent = (window.DU && DU.t) ? DU.t("auth.pass.short", "Password must be at least 6 characters.") : "Password must be at least 6 characters.";
     formError.classList.add("show");
+    passwordInput.setAttribute("aria-invalid", "true");
+    passwordInput.focus();
     return;
   }
+  passwordInput.removeAttribute("aria-invalid");
   submitBtn.disabled = true;
   try {
     const res = await fetch("/api/auth/reset", {
       method: "POST",
       headers: { "content-type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ token: token, password: password }),
     });
     const data = await res.json().catch(function () { return {}; });

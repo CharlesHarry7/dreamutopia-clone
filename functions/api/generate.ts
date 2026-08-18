@@ -3,11 +3,13 @@ import {
   error,
   structuredError,
   preflight,
+  asHead,
   hasDb,
   hasSessions,
   hasKieKey,
+  workerExceptionJson,
 } from "../../libs/utils";
-import { getSession, tokenFromRequest } from "../../libs/auth";
+import { expiredSessionResponse, getSession, tokenFromRequest } from "../../libs/auth";
 import {
   createImageToVideoTask,
   createTextToVideoTask,
@@ -16,6 +18,9 @@ import {
   isPublicHttpsUrl,
   parseAspectRatio,
   parseImageResolution,
+  publicProviderFailMessage,
+  classifyProviderCreateError,
+  kieImageUrlIssue,
   type AspectRatio,
   type ImageResolution,
 } from "../../libs/kie";
@@ -51,6 +56,23 @@ import type { Env } from "../../libs/utils";
 
 export const onRequestOptions = (): Response => preflight();
 
+/**
+ * HEAD /api/generate — liveness only.
+ * Must not poll KIE (GET ?id= settles jobs and can hit an empty provider wallet).
+ */
+export const onRequestHead: PagesFunction<Env> = async ({ env }) => {
+  if (!hasSessions(env)) {
+    return asHead(
+      structuredError(
+        "bindings_missing",
+        "backend not configured: missing SESSIONS binding — see BACKEND.md",
+        503
+      )
+    );
+  }
+  return asHead(json({ ok: true, poll: false }));
+};
+
 const MAX_IN_FLIGHT = 3;
 
 type InputImages = { first: string | null; last: string | null };
@@ -73,12 +95,16 @@ function decodeInputImages(raw: string | null): InputImages {
   return { first: raw, last: null };
 }
 
-function kieMissingResponse(): Response {
+function kieMissingResponse(
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
+): Response {
   return structuredError(
     "kie_api_key_missing",
-    "KIE_API_KEY is not configured. Set it as a Cloudflare Pages secret to enable generation.",
+    "Generation isn’t available on this preview yet. Try again later.",
     503,
-    { kieConfigured: false, mediaRequired: false }
+    { kieConfigured: false, mediaRequired: false, generateReady: false, ...(extra || {}) },
+    extraHeaders
   );
 }
 
@@ -147,7 +173,7 @@ function publicGeneration(row: GenerationRow) {
     provider_job_id: row.provider_job_id,
     result_url: row.result_url,
     resultUrl: row.result_url,
-    error_message: row.error_message,
+    error_message: row.error_message ? publicProviderFailMessage(row.error_message) : null,
     created_at: row.created_at,
     guest: false,
   };
@@ -169,7 +195,7 @@ function publicGuestJob(job: GuestJob) {
     provider_job_id: job.providerJobId,
     result_url: job.resultUrl,
     resultUrl: job.resultUrl,
-    error_message: job.errorMessage,
+    error_message: job.errorMessage ? publicProviderFailMessage(job.errorMessage) : null,
     created_at: job.createdAt,
     guest: true,
   };
@@ -194,6 +220,10 @@ type GenerateBody = {
   idempotency_key?: string;
 };
 
+function asTrimmed(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function collectHttpsUrls(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   const out: string[] = [];
@@ -216,19 +246,84 @@ function uniqueUrls(...lists: (string | null | undefined)[][]): string[] {
 }
 
 function createFailedResponse(
-  created: { message: string; code?: number; status: number }
+  created: { message: string; code?: number | string; status: number },
+  extra?: Record<string, unknown>,
+  extraHeaders?: Record<string, string>
 ): Response {
-  const status =
-    created.code === 401 || created.status === 401
-      ? 502
-      : created.code === 402
-        ? 502
-        : 502;
-  return structuredError(
-    "kie_create_failed",
-    created.message || "Failed to create KIE generation task",
-    status,
-    { providerCode: created.code ?? null }
+  try {
+    const codeNum = created.code == null || created.code === "" ? NaN : Number(created.code);
+    const classified = classifyProviderCreateError(created);
+    const providerCode = classified.providerCode ?? (Number.isFinite(codeNum) ? codeNum : null);
+    const more = extra || {};
+    const safe = classified.message || publicProviderFailMessage(created.message || "");
+    if (classified.code === "kie_insufficient_balance") {
+      return structuredError(
+        "kie_insufficient_balance",
+        safe,
+        503,
+        {
+          providerCode,
+          kieConfigured: true,
+          provider_credits_insufficient: true,
+          ...more,
+        },
+        extraHeaders
+      );
+    }
+    if (classified.code === "kie_unauthorized") {
+      return structuredError(
+        "kie_unauthorized",
+        "Generation isn’t available right now. Please try again later.",
+        503,
+        { providerCode, kieConfigured: true, ...more },
+        extraHeaders
+      );
+    }
+    if (classified.code === "kie_file_type_unsupported") {
+      return structuredError(
+        "kie_file_type_unsupported",
+        safe,
+        400,
+        { providerCode, ...more },
+        extraHeaders
+      );
+    }
+    return structuredError(
+      "kie_create_failed",
+      safe,
+      classified.status || 502,
+      { providerCode, ...more },
+      extraHeaders
+    );
+  } catch {
+    return workerExceptionJson("Generation failed. Please try again.");
+  }
+}
+
+function guestImageRequiredResponse(): Response {
+  return json(
+    {
+      error: "image_url_required",
+      code: "image_url_required",
+      message: "Free trial needs a start image. Upload a file or paste a public https URL.",
+      mediaRequired: false,
+      guestRemaining: GUEST_LIMIT,
+      guestLimit: GUEST_LIMIT,
+    },
+    400
+  );
+}
+
+function guestLiteOnlyResponse(): Response {
+  return json(
+    {
+      error: "guest_lite_only",
+      code: "guest_lite_only",
+      message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
+      guestRemaining: GUEST_LIMIT,
+      guestLimit: GUEST_LIMIT,
+    },
+    401
   );
 }
 
@@ -237,22 +332,68 @@ function createFailedResponse(
  * Body: { prompt, kind?, imageUrl?, lastImageUrl?, imageUrls?, mediaKey?, model?, durationSec?, aspectRatio?, resolution? }
  * Guests (no session): 2 Lite image-to-video tries per device/IP.
  * Signed-in: T2V, I2V, first+last (Medium/Pro), image T2I/I2I/blend.
+ * PR#13 Pages A-line (cursor/overnight-prod-polish-db63): outer catch always JSON, never CF 1101.
+ * Do not land this contract only on cursor/r2-upload-product-polish-db63 (PR#12/#16).
  */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let body: GenerateBody;
+export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   try {
-    body = await request.json();
+    return await handleGeneratePost(ctx);
+  } catch {
+    try {
+      return structuredError(
+        "worker_exception",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    } catch {
+      return workerExceptionJson("Generation failed. Please try again.");
+    }
+  }
+};
+
+async function handleGeneratePost({ request, env }: { request: Request; env: Env }): Promise<Response> {
+  let parsed: unknown;
+  try {
+    parsed = await request.json();
   } catch {
     return error("invalid json");
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return error("invalid json");
+  }
+  const body = parsed as GenerateBody;
 
-  const prompt = (body.prompt || "").trim();
+  const prompt = asTrimmed(body.prompt);
   if (!prompt) return error("prompt required");
   if (prompt.length > 8000) return error("prompt too long");
 
   const kind: GenerationKind = body.kind === "image" ? "image" : "video";
-  const imageUrl = (body.imageUrl || body.image_url || "").trim();
-  const lastImageUrl = (body.lastImageUrl || body.last_image_url || "").trim();
+  const imageUrl = asTrimmed(body.imageUrl) || asTrimmed(body.image_url);
+  const lastImageUrl = asTrimmed(body.lastImageUrl) || asTrimmed(body.last_image_url);
+  const modelName = asTrimmed(body.model);
+  const model =
+    kind === "image"
+      ? IMAGE_COST[modelName]
+        ? modelName
+        : "lite"
+      : VIDEO_COST[modelName]
+        ? modelName
+        : "lite";
+  const token = tokenFromRequest(request);
+
+  // Guest no-image: never touch KV. Same contract as main — 400 image_url_required
+  // before hasSessions / getSession / guestRequestError / takeRateLimit (those throws were CF 1101).
+  if (!token && kind === "video" && model === "lite" && !imageUrl && !lastImageUrl) {
+    return guestImageRequiredResponse();
+  }
+  if (!token && (kind === "image" || model !== "lite")) {
+    return guestLiteOnlyResponse();
+  }
+  if (!token && lastImageUrl && !imageUrl) {
+    return guestImageRequiredResponse();
+  }
+
   const extraUrls = collectHttpsUrls(body.imageUrls || body.image_urls);
 
   if (imageUrl && !isPublicHttpsUrl(imageUrl)) {
@@ -269,21 +410,39 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       400
     );
   }
+  if (imageUrl && kieImageUrlIssue(imageUrl)) {
+    return structuredError(
+      "kie_file_type_unsupported",
+      "That image type isn’t supported. Use JPG, PNG, or WebP.",
+      400,
+      { field: "imageUrl" }
+    );
+  }
+  if (lastImageUrl && kieImageUrlIssue(lastImageUrl)) {
+    return structuredError(
+      "kie_file_type_unsupported",
+      "That image type isn’t supported. Use JPG, PNG, or WebP.",
+      400,
+      { field: "lastImageUrl" }
+    );
+  }
+  for (const extra of extraUrls) {
+    if (kieImageUrlIssue(extra)) {
+      return structuredError(
+        "kie_file_type_unsupported",
+        "That image type isn’t supported. Use JPG, PNG, or WebP.",
+        400,
+        { field: "imageUrls" }
+      );
+    }
+  }
 
-  const requestedKey = (body.mediaKey || body.media_key || "").trim();
+  const requestedKey = asTrimmed(body.mediaKey) || asTrimmed(body.media_key);
   if (requestedKey && !isSafeMediaKey(requestedKey)) {
     return structuredError("media_key_invalid", "mediaKey is not a valid upload key.", 400);
   }
   const mediaKey = requestedKey || (imageUrl ? mediaKeyFromUrl(imageUrl) : null) || null;
 
-  const model =
-    kind === "image"
-      ? IMAGE_COST[body.model || ""]
-        ? (body.model as string)
-        : "lite"
-      : VIDEO_COST[body.model || ""]
-        ? (body.model as string)
-        : "lite";
   const cost = kind === "image" ? IMAGE_COST[model] : VIDEO_COST[model];
   const durationSec = kind === "image" ? null : Math.min(Math.max(Number(body.durationSec) || 5, 3), 15);
   const aspectRatio: AspectRatio = parseAspectRatio(body.aspectRatio);
@@ -320,45 +479,99 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
-  const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
+  let session = null;
+  if (token) {
+    try {
+      session = await getSession(env, token);
+    } catch {
+      return structuredError(
+        "generate_failed",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
+    if (!session) {
+      return expiredSessionResponse({ mediaRequired: false });
+    }
+  }
+
+  // Guest 4xx (image_url_required / guest_limit / lite-only) must not touch rate-limit KV.
+  // A KV expirationTtl < 60 throw is Cloudflare 1101.
+  if (!session) {
+    try {
+      const blocked = await guestRequestError(env, request, {
+        kind,
+        model,
+        imageUrl,
+        lastImageUrl,
+      });
+      if (blocked) return blocked;
+    } catch {
+      if (!imageUrl) return guestImageRequiredResponse();
+      return structuredError(
+        "worker_exception",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
+  }
+
   const ip = clientIp(request);
-  const rl = await takeRateLimit(
-    env.SESSIONS,
-    session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
-    session ? 30 : 10,
-    60
-  );
+  let rl;
+  try {
+    rl = await takeRateLimit(
+      env.SESSIONS,
+      session ? `gen:u:${session.userId}` : `gen:ip:${ip || "unknown"}`,
+      session ? 30 : 10,
+      60
+    );
+  } catch {
+    rl = { ok: true as const, remaining: session ? 30 : 10, resetSec: Math.floor(Date.now() / 1000) + 60 };
+  }
   if (!rl.ok) return rateLimitedResponse(json, rl.retryAfter);
 
   const idempotencyKey = normalizeIdempotencyKey(
     body.idempotencyKey || body.idempotency_key || request.headers.get("idempotency-key")
   );
 
-  if (!session) {
-    const blocked = await guestRequestError(env, request, {
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-    });
-    if (blocked) return blocked;
-  }
-
   if (!hasKieKey(env)) {
+    if (!session) {
+      try {
+        const guestId = ensureGuestId(request);
+        const rec = await loadGuest(env, guestId);
+        const quota = await guestQuota(env, rec, clientIp(request));
+        return kieMissingResponse(
+          { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+          guestHeaders(guestId, request)
+        );
+      } catch {
+        return kieMissingResponse({ guestRemaining: GUEST_LIMIT, guestLimit: GUEST_LIMIT });
+      }
+    }
     return kieMissingResponse();
   }
 
   if (!session) {
-    return handleGuestPost(env, request, {
-      prompt,
-      kind,
-      model,
-      imageUrl,
-      lastImageUrl,
-      durationSec: durationSec || 5,
-      idempotencyKey,
-    });
+    try {
+      return await handleGuestPost(env, request, {
+        prompt,
+        kind,
+        model,
+        imageUrl,
+        lastImageUrl,
+        durationSec: durationSec || 5,
+        idempotencyKey,
+      });
+    } catch {
+      return structuredError(
+        "generate_failed",
+        "Generation failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    }
   }
 
   if (!hasDb(env)) {
@@ -428,7 +641,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(session.userId)
       .first<{ credits: number }>();
     const credits = row ? Number(row.credits) : 0;
-    return json({ error: "insufficient credits", credits }, 402);
+    return structuredError(
+      "insufficient_credits",
+      "Not enough credits for this generation.",
+      402,
+      { credits, cost, mediaRequired: false }
+    );
   }
 
   const callBackUrl = kieCallbackUrl(new URL(request.url).origin);
@@ -469,7 +687,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   if (!created.ok) {
     await refundCredits(env, session.userId, cost);
-    return createFailedResponse(created);
+    const bal = await env.DB.prepare("SELECT credits FROM users WHERE id = ?")
+      .bind(session.userId)
+      .first<{ credits: number }>();
+    return createFailedResponse(created, {
+      credits: bal ? Number(bal.credits) : 0,
+      cost,
+    });
   }
 
   const storedInput = encodeInputImages(imageUrl || null, lastImageUrl || null);
@@ -531,71 +755,70 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       guest: false,
     })
   );
-};
+}
 
 async function guestRequestError(
   env: Env & { SESSIONS: KVNamespace },
   request: Request,
   opts: { kind: GenerationKind; model: string; imageUrl: string; lastImageUrl: string }
 ): Promise<Response | null> {
-  const guestId = ensureGuestId(request);
-  const headers = guestHeaders(guestId, request);
-  const rec = await loadGuest(env, guestId);
-  const quota = await guestQuota(env, rec, clientIp(request));
-  if (opts.kind !== "video" || opts.model !== "lite") {
-    return json(
-      {
-        error: "guest_lite_only",
-        code: "guest_lite_only",
-        message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      401,
-      headers
+  try {
+    const guestId = ensureGuestId(request);
+    const headers = guestHeaders(guestId, request);
+    const rec = await loadGuest(env, guestId);
+    const quota = await guestQuota(env, rec, clientIp(request));
+    if (opts.kind !== "video" || opts.model !== "lite") {
+      return json(
+        {
+          error: "guest_lite_only",
+          code: "guest_lite_only",
+          message: "Free trial is Lite image-to-video only. Sign up for 10 credits and every model.",
+          guestRemaining: quota.remaining,
+          guestLimit: GUEST_LIMIT,
+        },
+        401,
+        headers
+      );
+    }
+    if (opts.lastImageUrl) {
+      return json(
+        {
+          error: "first_last_requires_medium",
+          code: "first_last_requires_medium",
+          message: "First + last frame needs a free account (Medium or Pro).",
+          guestRemaining: quota.remaining,
+          guestLimit: GUEST_LIMIT,
+        },
+        401,
+        headers
+      );
+    }
+    if (!opts.imageUrl) {
+      return guestImageRequiredResponse();
+    }
+    if (quota.blocked) {
+      return json(
+        {
+          error: "guest_limit",
+          code: "guest_limit",
+          message: "You used both free Lite videos on this device. Sign up for 10 credits.",
+          guestRemaining: 0,
+          guestLimit: GUEST_LIMIT,
+        },
+        402,
+        headers
+      );
+    }
+    return null;
+  } catch {
+    if (!opts.imageUrl) return guestImageRequiredResponse();
+    return structuredError(
+      "worker_exception",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
     );
   }
-  if (opts.lastImageUrl) {
-    return json(
-      {
-        error: "first_last_requires_medium",
-        code: "first_last_requires_medium",
-        message: "First + last frame needs a free account (Medium or Pro).",
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      401,
-      headers
-    );
-  }
-  if (!opts.imageUrl) {
-    return json(
-      {
-        error: "image_url_required",
-        code: "image_url_required",
-        message: "Free trial needs a start image. Upload a file or paste a public https URL.",
-        mediaRequired: false,
-        guestRemaining: quota.remaining,
-        guestLimit: GUEST_LIMIT,
-      },
-      400,
-      headers
-    );
-  }
-  if (quota.blocked) {
-    return json(
-      {
-        error: "guest_limit",
-        code: "guest_limit",
-        message: "You used both free Lite videos on this device. Sign up for 10 credits.",
-        guestRemaining: 0,
-        guestLimit: GUEST_LIMIT,
-      },
-      402,
-      headers
-    );
-  }
-  return null;
 }
 
 async function handleGuestPost(
@@ -611,10 +834,11 @@ async function handleGuestPost(
     idempotencyKey: string | null;
   }
 ): Promise<Response> {
-  const guestId = ensureGuestId(request);
-  const headers = guestHeaders(guestId, request);
+  try {
+    const guestId = ensureGuestId(request);
+    const headers = guestHeaders(guestId, request);
 
-  if (opts.idempotencyKey) {
+    if (opts.idempotencyKey) {
     const existingId = await loadIdempotentGenerationId(env, `g:${guestId}`, opts.idempotencyKey);
     if (existingId) {
       const rec0 = await loadGuest(env, guestId);
@@ -673,7 +897,11 @@ async function handleGuestPost(
     callBackUrl: kieCallbackUrl(new URL(request.url).origin),
   });
   if (!created.ok) {
-    return createFailedResponse(created);
+    return createFailedResponse(
+      created,
+      { guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+      headers
+    );
   }
 
   const job: GuestJob = {
@@ -715,6 +943,14 @@ async function handleGuestPost(
     200,
     headers
   );
+  } catch {
+    return structuredError(
+      "worker_exception",
+      "Generation failed. Please try again.",
+      500,
+      { mediaRequired: false }
+    );
+  }
 }
 
 function randomGuestJobId(): string {
@@ -727,7 +963,23 @@ function randomGuestJobId(): string {
  * GET /api/generate — history (account or this device's guest jobs)
  * GET /api/generate?id=N — single job; polls KIE when still processing
  */
-export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestGet: PagesFunction<Env> = async (ctx) => {
+  try {
+    return await handleGenerateGet(ctx);
+  } catch {
+    try {
+      return structuredError(
+        "worker_exception",
+        "Could not load history. Please try again.",
+        500
+      );
+    } catch {
+      return workerExceptionJson("Could not load history. Please try again.");
+    }
+  }
+};
+
+async function handleGenerateGet({ request, env }: { request: Request; env: Env }): Promise<Response> {
   if (!hasSessions(env)) {
     return structuredError(
       "bindings_missing",
@@ -737,13 +989,30 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const token = tokenFromRequest(request);
-  const session = await getSession(env, token);
-  const url = new URL(request.url);
+  let session = null;
+  try {
+    session = await getSession(env, token);
+  } catch {
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+  }
+  if (token && !session) {
+    return expiredSessionResponse();
+  }
+  let url: URL;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+  }
   const idParam = url.searchParams.get("id");
   const origin = url.origin;
 
   if (!session) {
-    return handleGuestGet(env, request, idParam, origin);
+    try {
+      return await handleGuestGet(env, request, idParam, origin);
+    } catch {
+      return structuredError("generate_failed", "Could not load history. Please try again.", 500);
+    }
   }
 
   if (!hasDb(env)) {
@@ -785,7 +1054,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           503
         );
       }
-      throw e;
+      return structuredError("generate_failed", "Could not load history. Please try again.", 500);
     }
 
     if (!row) return error("not found", 404);
@@ -795,9 +1064,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (!hasKieKey(env)) {
         return kieMissingResponse();
       }
-      const synced = await settleAccountJob(env, row, origin);
-      row = synced.row;
-      providerState = synced.providerState;
+      try {
+        const synced = await settleAccountJob(env, row, origin);
+        row = synced.row;
+        providerState = synced.providerState;
+      } catch {
+        /* return the D1 row even if KIE poll fails */
+      }
     }
 
     return json({
@@ -828,36 +1101,46 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         503
       );
     }
-    throw e;
+    return structuredError("generate_failed", "Could not load history. Please try again.", 500);
   }
 
   const list = rows.results || [];
   if (hasKieKey(env)) {
     for (const g of list.filter((r) => r.status === "processing" && r.provider_job_id).slice(0, 3)) {
-      await settleAccountJob(env, g, origin);
+      try {
+        await settleAccountJob(env, g, origin);
+      } catch {
+        /* keep listing even if one poll fails */
+      }
     }
-    const refreshed = await env.DB.prepare(
-      `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
-              input_image_url, provider_job_id, result_url, error_message, created_at
-       FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
-    )
-      .bind(session.userId)
-      .all<GenerationRow>();
-    return json({
-      ok: true,
-      demo: false,
-      guest: false,
-      generations: (refreshed.results || []).map(publicGeneration),
-    });
+    try {
+      const refreshed = await env.DB.prepare(
+        `SELECT id, user_id, model, prompt, status, media_key, duration_sec,
+                input_image_url, provider_job_id, result_url, error_message, created_at
+         FROM generations WHERE user_id = ? ORDER BY id DESC LIMIT 50`
+      )
+        .bind(session.userId)
+        .all<GenerationRow>();
+      return json({
+        ok: true,
+        demo: false,
+        guest: false,
+        generateReady: hasKieKey(env),
+        generations: (refreshed.results || []).map(publicGeneration),
+      });
+    } catch {
+      /* fall through to the pre-settle list */
+    }
   }
 
   return json({
     ok: true,
     demo: false,
     guest: false,
+    generateReady: hasKieKey(env),
     generations: list.map(publicGeneration),
   });
-};
+}
 
 async function handleGuestGet(
   env: Env & { SESSIONS: KVNamespace },
@@ -879,10 +1162,19 @@ async function handleGuestGet(
     if (!job) return json({ error: "not found", code: "not_found" }, 404, headers);
     let providerState: string | null = null;
     if (job.status === "processing" && job.providerJobId) {
-      if (!hasKieKey(env)) return kieMissingResponse();
-      const synced = await settleGuestJob(env, rec, job, origin, ip);
-      job = synced.job;
-      providerState = synced.providerState;
+      if (!hasKieKey(env)) {
+        return kieMissingResponse(
+          { guest: true, guestRemaining: quota.remaining, guestLimit: GUEST_LIMIT },
+          headers
+        );
+      }
+      try {
+        const synced = await settleGuestJob(env, rec, job, origin, ip);
+        job = synced.job;
+        providerState = synced.providerState;
+      } catch {
+        /* return the stored job even if KIE poll fails */
+      }
     }
     return json(
       {
@@ -903,7 +1195,11 @@ async function handleGuestGet(
 
   if (hasKieKey(env)) {
     for (const j of rec.jobs.filter((x) => x.status === "processing" && x.providerJobId).slice(0, 3)) {
-      await settleGuestJob(env, rec, j, origin, ip);
+      try {
+        await settleGuestJob(env, rec, j, origin, ip);
+      } catch {
+        /* keep listing even if one poll fails */
+      }
     }
   }
   const fresh = await loadGuest(env, guestId);
@@ -913,6 +1209,7 @@ async function handleGuestGet(
       ok: true,
       demo: false,
       guest: true,
+      generateReady: hasKieKey(env),
       guestRemaining: q2.remaining,
       guestLimit: GUEST_LIMIT,
       generations: fresh.jobs.map(publicGuestJob),
@@ -921,3 +1218,29 @@ async function handleGuestGet(
     headers
   );
 }
+
+/**
+ * Pages on some deploys does not invoke onRequestHead / onRequestPost —
+ * HEAD/POST then hit the SPA (HTML) or throw 1101. onRequest is the fallback.
+ */
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  try {
+    const method = ctx.request.method;
+    if (method === "HEAD") return onRequestHead(ctx);
+    if (method === "OPTIONS") return onRequestOptions();
+    if (method === "GET") return onRequestGet(ctx);
+    if (method === "POST") return onRequestPost(ctx);
+    return structuredError("method_not_allowed", "Method not allowed.", 405);
+  } catch {
+    try {
+      return structuredError(
+        "worker_exception",
+        "Request failed. Please try again.",
+        500,
+        { mediaRequired: false }
+      );
+    } catch {
+      return workerExceptionJson("Request failed. Please try again.");
+    }
+  }
+};
