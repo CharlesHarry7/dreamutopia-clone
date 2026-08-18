@@ -971,12 +971,9 @@ function WorkspaceInner() {
                   {!user && (
                     <p className="text-center text-sm text-muted-foreground">
                       Free trial.{" "}
-                      <Link
-                        href="/auth?mode=register"
-                        className="font-semibold text-[var(--primary2)] hover:underline"
-                      >
-                        Sign up
-                      </Link>{" "}
+                      <Button asChild variant="link" className="h-auto px-0 text-sm font-semibold">
+                        <Link href="/auth?mode=register">Sign up</Link>
+                      </Button>{" "}
                       for more.
                     </p>
                   )}
@@ -1033,7 +1030,12 @@ function WorkspaceInner() {
                         ? t("ws.history.empty.p", "Start creating to see your work here.")
                         : "No guest jobs on this device yet — generate a free Lite video to see it here."}
                     </p>
-                    <Button type="button" variant="outline" onClick={() => setTab("create")}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => setTab("create")}
+                    >
                       Go to Create
                     </Button>
                   </div>

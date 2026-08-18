@@ -107,9 +107,9 @@ export function SiteHeader({ active }: { active?: string }) {
               {/* md+ matches primary nav; below md auth CTAs live in the Menu drawer */}
               <Badge className="hidden md:inline-flex">
                 <span className="tabular-nums">{user.credits}</span> credits
-                <Link href="/pricing" className="ml-1.5 opacity-85 hover:underline">
-                  {t("hdr.buy", "Buy Credits")}
-                </Link>
+                <Button asChild variant="link" className="ml-1.5 h-auto px-0 text-xs opacity-85">
+                  <Link href="/pricing">{t("hdr.buy", "Buy Credits")}</Link>
+                </Button>
               </Badge>
               <Button
                 variant="ghost"

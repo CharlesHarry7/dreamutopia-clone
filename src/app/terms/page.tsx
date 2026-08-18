@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "Terms",
@@ -52,9 +53,9 @@ export default function TermsPage() {
 
         <p className="mt-10 text-sm text-muted-foreground">
           See also{" "}
-          <Link href="/privacy" className="font-semibold text-[var(--primary2)] hover:underline">
-            Privacy Policy
-          </Link>
+          <Button asChild variant="link" className="h-auto px-0 text-sm font-semibold">
+            <Link href="/privacy">Privacy Policy</Link>
+          </Button>
           .
         </p>
       </main>

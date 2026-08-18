@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 export function SiteFooter() {
   const { user, loading, logout } = useAuth();
 
   return (
-    <footer className="mt-auto border-t border-[var(--border)] bg-[var(--bg2)] px-6 py-12">
+    <footer className="mt-auto border-t border-[var(--border)] bg-[var(--bg2)] px-5 py-12 sm:px-6">
       <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <div className="mb-2 text-base font-bold">DreamUtopia</div>
@@ -39,13 +40,14 @@ export function SiteFooter() {
               <Link href="/pricing" className="hover:text-foreground">
                 Buy credits ({user.credits})
               </Link>
-              <button
+              <Button
                 type="button"
-                className="text-left hover:text-foreground"
+                variant="link"
+                className="h-auto justify-start px-0 text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => void logout()}
               >
                 Log Out
-              </button>
+              </Button>
             </>
           ) : (
             <>
