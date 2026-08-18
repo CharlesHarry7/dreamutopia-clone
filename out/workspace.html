@@ -81,6 +81,9 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .quota-banner h2{font-size:16px;font-weight:700;margin-bottom:4px}
 .quota-banner p{font-size:13.5px;color:var(--text2);max-width:560px}
 .quota-banner .btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;flex-shrink:0}
+.ready-banner{display:none;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.32);border-radius:16px;padding:16px 18px;margin-bottom:22px}
+.ready-banner.show{display:block}
+.ready-banner p{font-size:13.5px;color:var(--text2);line-height:1.5}
 .pack-banner{display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.35);border-radius:16px;padding:16px 20px;margin-bottom:22px;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .pack-banner.show{display:flex}
 .pack-banner h2{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--orange)}
@@ -360,6 +363,10 @@ footer{margin-top:auto;background:var(--bg2);border-top:1px solid var(--border);
 <a href="/auth?mode=login" class="btn-outline" id="welcomeLogin" data-i18n="hdr.login">Log In</a>
 <a href="/auth?mode=register" class="btn-primary" id="welcomeSignup" data-i18n="hdr.signup">Sign Up Free</a>
 </div>
+</section>
+
+<section class="ready-banner" id="generateReadyBanner" hidden role="status">
+<p data-ready-msg data-i18n="err.kie_api_key_missing">Generation isn’t available on this preview yet. Try again later.</p>
 </section>
 
 <section class="quota-banner" id="guestQuotaBanner" hidden>
@@ -1746,6 +1753,7 @@ function escapeHtml(s) {
   if (token) userCredits = readCachedCredits();
   updateAuthUI();
   showPackBanner();
+  if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("generateReadyBanner"));
   try {
     const cap = await fetch("/api/upload", { credentials: "same-origin" }).then((r) => r.json());
     uploadReady = !!(cap && cap.mediaBound);
@@ -1819,6 +1827,10 @@ document.addEventListener("du:i18n", function () {
   updateAuthUI();
   resetGenBtn();
   syncModeLabels();
+  const ready = document.getElementById("generateReadyBanner");
+  if (ready && ready.getAttribute("data-generate-ready") === "false" && DU.applyGenerateReadyNote) {
+    DU.applyGenerateReadyNote(ready);
+  }
 });
 const genCancelBtn = document.getElementById("genCancel");
 if (genCancelBtn) {

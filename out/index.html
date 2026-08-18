@@ -112,6 +112,8 @@ nav>a:hover,nav>a.active,.nav-drop>summary:hover{color:var(--text);background:rg
 .gen-btn.ready{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;cursor:pointer}
 .gen-btn.ready:hover{opacity:.9}
 .gen-foot{margin-top:14px;font-size:13px;color:var(--text2);text-align:center}
+.home-ready{display:none;margin:12px 0 0;padding:10px 12px;border-radius:10px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.32);font-size:13px;color:var(--text2);line-height:1.45;text-align:left}
+.home-ready.show{display:block}
 .gen-foot a{color:var(--primary2);font-weight:500}
 .gen-foot a:hover{text-decoration:underline}
 .gen-status{margin-top:16px;display:none;text-align:center;padding:16px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08)}
@@ -379,6 +381,7 @@ footer{margin-top:80px;background:var(--bg2);border-top:1px solid var(--border);
 <button type="button" class="gen-btn" id="genBtn" disabled data-i18n="gen.btn">Generate Free Trial</button>
 
 <p class="gen-foot" id="homeFoot" data-i18n-html="gen.foot">Free trial. <a href="/auth?mode=register">Sign up</a> for more.</p>
+<p class="home-ready" id="homeGenerateReady" hidden role="status" data-ready-msg data-i18n="err.kie_api_key_missing">Generation isn’t available on this preview yet. Try again later.</p>
 <div class="gen-status" id="homeStatus" role="status" aria-live="polite">
 <div class="spinner" aria-hidden="true"></div>
 <div class="cap" id="homeStatusText">Generating…</div>
@@ -965,6 +968,7 @@ async function homeGenerate() {
 }
 
 document.getElementById("genBtn").addEventListener("click", homeGenerate);
+if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("homeGenerateReady"));
 const homeCancelBtn = document.getElementById("homeCancel");
 if (homeCancelBtn) {
   homeCancelBtn.addEventListener("click", function () {
@@ -1013,6 +1017,12 @@ if (homeCancelBtn) {
   }
   applyLoggedInChrome();
   document.addEventListener("du:i18n", applyLoggedInChrome);
+  document.addEventListener("du:i18n", function () {
+    const ready = document.getElementById("homeGenerateReady");
+    if (ready && ready.getAttribute("data-generate-ready") === "false" && DU.applyGenerateReadyNote) {
+      DU.applyGenerateReadyNote(ready);
+    }
+  });
 })();
 
 (function loadLiveGallery() {

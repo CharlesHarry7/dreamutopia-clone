@@ -184,6 +184,11 @@ function extractI18nKeys(src) {
   mustContain("out/workspace.html", "auth.gate.medium", "unauth Medium/Pro opens register dialog");
   mustContain("out/assets/js/du.js", "function errorAction", "generate fail has a next-step CTA");
   mustContain("out/workspace.html", "guestQuotaBanner", "guest quota empty state");
+  mustContain("out/workspace.html", "generateReadyBanner", "workspace generateReady banner");
+  mustContain("out/workspace.html", "applyGenerateReadyNote", "workspace probes /api/health generateReady");
+  mustContain("out/index.html", "homeGenerateReady", "homepage generateReady note");
+  mustContain("out/assets/js/du.js", "function applyGenerateReadyNote", "shared generateReady probe");
+  mustContain("out/assets/js/du.js", "generateReady !== false", "banner only when generateReady is false");
   mustContain("out/workspace.html", "ws.history.error.h", "history load error is not fake-empty");
   mustContain("out/pricing.html", "Starter Pack", "live pack names unchanged");
   mustContain("out/pricing.html", "$5", "starter $5 unchanged");
@@ -491,7 +496,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v23", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v24", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

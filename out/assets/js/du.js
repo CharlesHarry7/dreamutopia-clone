@@ -317,6 +317,31 @@
     return null;
   }
 
+  function applyGenerateReadyNote(el) {
+    if (!el) return Promise.resolve();
+    function paint(copy) {
+      el.hidden = false;
+      el.classList.add("show");
+      const msg = el.querySelector("[data-ready-msg]");
+      if (msg) msg.textContent = copy;
+      else el.textContent = copy;
+    }
+    return fetch("/api/health", { credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || data.generateReady !== false) return;
+        const copy = t(
+          "err.kie_api_key_missing",
+          "Generation isn’t available on this preview yet. Try again later."
+        );
+        paint(copy);
+        el.setAttribute("data-generate-ready", "false");
+      })
+      .catch(function () {});
+  }
+
   function wireErrorAction(el, code) {
     if (!el) return;
     const act = errorAction(code);
@@ -624,6 +649,7 @@
     likeGallery: likeGallery,
     errorMessage: errorMessage,
     errorAction: errorAction,
+    applyGenerateReadyNote: applyGenerateReadyNote,
     wireErrorAction: wireErrorAction,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
