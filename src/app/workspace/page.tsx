@@ -508,7 +508,7 @@ function WorkspaceInner() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Invite friends — earn 10%</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+            <CardContent className="flex min-w-0 flex-wrap gap-2">
               <Label htmlFor="invite-url" className="sr-only">
                 Invite URL
               </Label>
@@ -516,18 +516,26 @@ function WorkspaceInner() {
                 id="invite-url"
                 readOnly
                 value={inviteUrl}
-                className="min-w-[180px] flex-1"
+                className="min-w-0 flex-1 basis-full sm:basis-auto sm:min-w-[180px]"
                 onFocus={(e) => e.currentTarget.select()}
               />
               <Button
                 type="button"
                 variant="outline"
+                className="min-h-11 sm:min-h-8"
                 aria-label={inviteCopied ? "Invite URL copied" : "Copy invite URL"}
                 onClick={() => {
-                  void navigator.clipboard.writeText(inviteUrl).then(() => {
-                    setInviteCopied(true);
-                    window.setTimeout(() => setInviteCopied(false), 1600);
-                  });
+                  void navigator.clipboard.writeText(inviteUrl).then(
+                    () => {
+                      setCopyNote("");
+                      setInviteCopied(true);
+                      window.setTimeout(() => setInviteCopied(false), 1600);
+                    },
+                    () => {
+                      setCopyNote("Couldn’t copy — clipboard permission denied or unavailable.");
+                      window.setTimeout(() => setCopyNote(""), 2800);
+                    }
+                  );
                 }}
               >
                 {inviteCopied ? "Copied" : "Copy"}
@@ -673,7 +681,7 @@ function WorkspaceInner() {
                         ref={lastFileRef}
                         id="last-image-file"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/tiff,.jpg,.jpeg,.png,.webp,.gif,.tif,.tiff"
                         onChange={(e) => void onFile(e.target.files?.[0] || null, "last")}
                       />
                       <Label htmlFor="last-image-url" className="sr-only">
@@ -800,6 +808,7 @@ function WorkspaceInner() {
                               key={d}
                               type="button"
                               size="sm"
+                              className="min-h-11 sm:min-h-8"
                               variant={effectiveDurationSec === d ? "default" : "outline"}
                               aria-pressed={effectiveDurationSec === d}
                               onClick={() => setDurationSec(d)}
@@ -823,6 +832,7 @@ function WorkspaceInner() {
                                 key={a}
                                 type="button"
                                 size="sm"
+                                className="min-h-11 sm:min-h-8"
                                 variant={aspectRatio === a ? "default" : "outline"}
                                 aria-pressed={aspectRatio === a}
                                 onClick={() => setAspectRatio(a)}
@@ -847,6 +857,7 @@ function WorkspaceInner() {
                             key={r}
                             type="button"
                             size="sm"
+                            className="min-h-11 sm:min-h-8"
                             variant={resolution === r ? "default" : "outline"}
                             aria-pressed={resolution === r}
                             onClick={() => setResolution(r)}
@@ -902,14 +913,17 @@ function WorkspaceInner() {
                       <p>{error}</p>
                       {(errorCode === "insufficient_credits" ||
                         errorCode === "insufficient credits" ||
-                        errorCode === "guest_limit") && (
+                        errorCode === "guest_limit" ||
+                        errorCode === "guest_upload_limit") && (
                         <Button asChild variant="link" className="h-auto px-0 font-semibold">
                           <Link
                             href={
-                              errorCode === "guest_limit" ? "/auth?mode=register" : "/pricing"
+                              errorCode === "guest_limit" || errorCode === "guest_upload_limit"
+                                ? "/auth?mode=register"
+                                : "/pricing"
                             }
                           >
-                            {errorCode === "guest_limit"
+                            {errorCode === "guest_limit" || errorCode === "guest_upload_limit"
                               ? "Sign up for 10 credits"
                               : "View credit packs"}
                           </Link>
@@ -947,7 +961,7 @@ function WorkspaceInner() {
                         <img
                           src={resultUrl}
                           alt="Generated result"
-                          className="mx-auto max-h-[420px] rounded-lg"
+                          className="mx-auto max-h-[420px] w-full max-w-full rounded-lg object-contain"
                         />
                       ) : (
                         <video
@@ -1097,7 +1111,7 @@ function WorkspaceInner() {
                             {!user ? " · guest" : ""}
                           </div>
                           {item.status === "failed" && item.errorMessage ? (
-                            <p className="mt-1 text-xs text-destructive">
+                            <p className="mt-1 break-words text-xs text-destructive">
                               {formatStoredJobError(item.errorMessage)}
                             </p>
                           ) : null}

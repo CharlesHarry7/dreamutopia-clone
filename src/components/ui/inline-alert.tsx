@@ -14,13 +14,16 @@ export function InlineAlert({
   variant = "error",
   children,
   className,
+  id,
 }: {
   variant?: InlineAlertVariant;
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
     <div
+      id={id}
       className={cn("space-y-2 rounded-xl border px-3 py-3 text-sm", variantClass[variant], className)}
       role={variant === "error" ? "alert" : "status"}
       aria-live={variant === "error" ? "assertive" : "polite"}

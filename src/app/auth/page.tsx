@@ -13,6 +13,7 @@ import { PasswordField } from "@/components/password-field";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, getStoredReferral, type ApiError } from "@/lib/api";
+import { formatAuthError } from "@/lib/auth-errors";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -77,12 +78,12 @@ function AuthForm() {
       const e = err as ApiError;
       if (e.status === 409 || e.message?.includes("already registered")) {
         switchMode("login", "That email is already registered — switched to Log In.");
-      } else if (e.status === 401) {
-        setError("Invalid email or password.");
       } else if (e.code === "schema_migration_required") {
-        setError(e.message || "Database migration required (see BACKEND.md).");
+        setError(
+          "Database needs a migration before signup/login works. See BACKEND.md / DEPLOY.md."
+        );
       } else {
-        setError(e.message || "Auth failed");
+        setError(formatAuthError(err, "Auth failed"));
       }
     } finally {
       setBusy(false);
@@ -103,12 +104,7 @@ function AuthForm() {
       await api("/auth/forgot", { method: "POST", body: JSON.stringify({ email }) });
       setForgotMsg("If that email exists and mail is configured, a reset link was sent.");
     } catch (err) {
-      const e = err as ApiError;
-      if (e.code === "email_not_configured" || e.status === 503) {
-        setError("Password reset email is not configured (Resend).");
-      } else {
-        setError(e.message || "Forgot password failed");
-      }
+      setError(formatAuthError(err, "Forgot password failed"));
     } finally {
       setForgotBusy(false);
     }
@@ -166,13 +162,19 @@ function AuthForm() {
             placeholder={t("auth.passPh", "At least 6 characters")}
             value={password}
             onChange={setPassword}
+            invalid={!!error}
+            describedBy={error ? "auth-form-error" : undefined}
           />
 
           {infoMsg && <InlineAlert variant="success">{infoMsg}</InlineAlert>}
-          {error && <InlineAlert variant="error">{error}</InlineAlert>}
+          {error && (
+            <InlineAlert variant="error" id="auth-form-error">
+              {error}
+            </InlineAlert>
+          )}
           {forgotMsg && <InlineAlert variant="success">{forgotMsg}</InlineAlert>}
 
-          <Button type="submit" className="w-full" disabled={busy}>
+          <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
             {busy
               ? "…"
               : mode === "register"

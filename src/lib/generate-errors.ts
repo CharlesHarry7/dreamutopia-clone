@@ -50,6 +50,18 @@ export function formatGenerateError(err: unknown, fallback = "Generation failed"
       return message || "You already have jobs rendering. Wait for one to finish.";
     case "media_not_bound":
       return message || "Uploads need the MEDIA (R2) binding. Paste a public https image URL instead.";
+    case "media_put_failed":
+      return "Couldn’t store the upload. Try again or paste a public https image URL.";
+    case "guest_upload_limit":
+      return message || "Guest upload limit reached — sign up to upload more.";
+    case "unsupported_type":
+      return message || "Use JPG, PNG, WebP, GIF, or TIFF.";
+    case "file_too_large":
+      return message || "Image must be ≤ 20 MB.";
+    case "file_empty":
+      return message || "That file looks empty — pick another image.";
+    case "upload_read_failed":
+      return message || "Couldn’t read that file. Try another image.";
     case "generation_failed":
       // Settle/poll failure — map provider text the same way as history rows.
       return formatStoredJobError(message);

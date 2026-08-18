@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordField } from "@/components/password-field";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { api, type ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { formatAuthError } from "@/lib/auth-errors";
 
 function ResetForm() {
   const params = useSearchParams();
@@ -36,7 +37,7 @@ function ResetForm() {
       });
       router.push("/auth?mode=login&reset=1");
     } catch (err) {
-      setError((err as ApiError).message || "Reset failed");
+      setError(formatAuthError(err, "Reset failed"));
     } finally {
       setBusy(false);
     }
@@ -65,6 +66,8 @@ function ResetForm() {
               autoComplete="new-password"
               value={password}
               onChange={setPassword}
+              invalid={!!error}
+              describedBy={error ? "reset-form-error" : undefined}
             />
             <PasswordField
               id="confirm"
@@ -72,8 +75,14 @@ function ResetForm() {
               autoComplete="new-password"
               value={confirm}
               onChange={setConfirm}
+              invalid={!!error}
+              describedBy={error ? "reset-form-error" : undefined}
             />
-            {error && <InlineAlert variant="error">{error}</InlineAlert>}
+            {error && (
+              <InlineAlert variant="error" id="reset-form-error">
+                {error}
+              </InlineAlert>
+            )}
             <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
               {busy ? "Updating…" : "Update password"}
             </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -13,6 +14,8 @@ type Props = {
   placeholder?: string;
   minLength?: number;
   required?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 export function PasswordField({
@@ -24,6 +27,8 @@ export function PasswordField({
   placeholder,
   minLength = 6,
   required = true,
+  invalid = false,
+  describedBy,
 }: Props) {
   const [show, setShow] = useState(false);
 
@@ -41,16 +46,20 @@ export function PasswordField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="pr-20"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
         />
-        <button
+        <Button
           type="button"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          variant="ghost"
+          size="sm"
+          className="absolute right-1 top-1/2 h-9 min-h-9 -translate-y-1/2 px-2 text-xs"
           aria-pressed={show}
           aria-label={show ? "Hide password" : "Show password"}
           onClick={() => setShow((v) => !v)}
         >
           {show ? "Hide" : "Show"}
-        </button>
+        </Button>
       </div>
     </div>
   );
