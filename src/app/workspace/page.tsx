@@ -1045,7 +1045,7 @@ function WorkspaceInner() {
                     {history.map((item) => (
                       <li
                         key={String(item.id)}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
+                        className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm text-muted-foreground">
@@ -1061,14 +1061,14 @@ function WorkspaceInner() {
                             </p>
                           ) : null}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                           {item.status === "processing" && (
                             <Badge variant="secondary">rendering</Badge>
                           )}
                           {item.status === "failed" && <Badge variant="warning">failed</Badge>}
                           {item.resultUrl && (
                             <>
-                              <Button asChild size="sm" variant="outline">
+                              <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none">
                                 <a href={item.resultUrl} target="_blank" rel="noreferrer">
                                   Open
                                 </a>
@@ -1077,6 +1077,7 @@ function WorkspaceInner() {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
+                                className="flex-1 sm:flex-none"
                                 disabled={downloadBusy}
                                 onClick={() =>
                                   void onDownloadResult(
@@ -1091,6 +1092,7 @@ function WorkspaceInner() {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
+                                className="flex-1 sm:flex-none"
                                 aria-label={
                                   historyCopiedId === String(item.id)
                                     ? "Link copied"

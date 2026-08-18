@@ -203,9 +203,9 @@ function AuthForm() {
             ),
           }}
         />
-        <Link href="/workspace" className="mt-4 inline-block text-sm text-muted-foreground hover:text-foreground">
-          {t("auth.back", "← Back to workspace")}
-        </Link>
+        <Button asChild variant="link" className="mt-4 h-auto px-0 text-sm text-muted-foreground">
+          <Link href="/workspace">{t("auth.back", "← Back to workspace")}</Link>
+        </Button>
       </CardContent>
     </Card>
   );
