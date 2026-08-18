@@ -820,8 +820,13 @@ if (DU.bindModEnter) {
 
 function setGuestFoot(n) {
   const foot = document.getElementById("homeFoot");
-  if (!foot || n === undefined || n === null) return;
-  window.__duGuestLeft = n;
+  if (!foot) return;
+  if (n !== undefined && n !== null) window.__duGuestLeft = n;
+  if (DU.isGenerateReady && !DU.isGenerateReady()) {
+    foot.textContent = DU.t("guest.left.unready", "Generation isn’t available yet. Free Lite tries will work when it is.");
+    return;
+  }
+  if (n === undefined || n === null) return;
   const key = n <= 0 ? "guest.left.none" : n === 1 ? "guest.left.one" : "guest.left.many";
   const fallback = n <= 0
     ? 'Free tries used. <a href="/auth?mode=register">Sign up</a> for 10 credits.'
@@ -882,12 +887,18 @@ async function homeGenerate() {
   }
   try {
     let imageUrl = homeImageUrl;
-    if (homeFile && !imageUrl) {
+    const generateReady = !(DU.isGenerateReady && !DU.isGenerateReady());
+    if (homeFile && !imageUrl && generateReady) {
       text.textContent = DU.t("progress.uploading", "Uploading image…");
       const up = await DU.uploadImage(homeFile);
       imageUrl = up.imageUrl || "";
       homeImageUrl = imageUrl;
       if (up.guestRemaining !== undefined) setGuestFoot(up.guestRemaining);
+    }
+    if (!generateReady && !imageUrl) {
+      const err = new Error(DU.t("err.kie_api_key_missing", "Generation isn’t available on this preview yet. Try again later."));
+      err.code = "kie_api_key_missing";
+      throw err;
     }
     text.textContent = DU.t("progress.starting", "Starting…");
     const payload = { prompt: prompt, kind: "video", model: "lite", durationSec: 5, idempotencyKey: DU.newIdempotencyKey() };
@@ -924,8 +935,13 @@ async function homeGenerate() {
     if (DU.setLiveStatus) DU.setLiveStatus(status, text, { error: true, text: msg });
     else text.textContent = msg;
     if (DU.focusEl) DU.focusEl(text);
+    if (e && e.payload && e.payload.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("homeGenerateReady"));
+    }
     if (code === "guest_limit") setGuestFoot(0);
-    if (e && e.payload && e.payload.guestRemaining !== undefined) setGuestFoot(e.payload.guestRemaining);
+    else if (code !== "kie_api_key_missing" && e && e.payload && e.payload.guestRemaining !== undefined) {
+      setGuestFoot(e.payload.guestRemaining);
+    }
     if (code === "auth_required" || (e && e.status === 401)) {
       try {
         localStorage.removeItem("dreamutopia_token");
@@ -969,6 +985,9 @@ async function homeGenerate() {
 
 document.getElementById("genBtn").addEventListener("click", homeGenerate);
 if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("homeGenerateReady"));
+document.addEventListener("du:generate-ready", function () {
+  setGuestFoot(window.__duGuestLeft);
+});
 const homeCancelBtn = document.getElementById("homeCancel");
 if (homeCancelBtn) {
   homeCancelBtn.addEventListener("click", function () {

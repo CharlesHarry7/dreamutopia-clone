@@ -103,7 +103,7 @@ function kieMissingResponse(
     "kie_api_key_missing",
     "Generation isn’t available on this preview yet. Try again later.",
     503,
-    { kieConfigured: false, mediaRequired: false, ...(extra || {}) },
+    { kieConfigured: false, mediaRequired: false, generateReady: false, ...(extra || {}) },
     extraHeaders
   );
 }
@@ -1125,6 +1125,7 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
         ok: true,
         demo: false,
         guest: false,
+        generateReady: hasKieKey(env),
         generations: (refreshed.results || []).map(publicGeneration),
       });
     } catch {
@@ -1136,6 +1137,7 @@ async function handleGenerateGet({ request, env }: { request: Request; env: Env 
     ok: true,
     demo: false,
     guest: false,
+    generateReady: hasKieKey(env),
     generations: list.map(publicGeneration),
   });
 }
@@ -1207,6 +1209,7 @@ async function handleGuestGet(
       ok: true,
       demo: false,
       guest: true,
+      generateReady: hasKieKey(env),
       guestRemaining: q2.remaining,
       guestLimit: GUEST_LIMIT,
       generations: fresh.jobs.map(publicGuestJob),

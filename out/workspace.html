@@ -998,10 +998,23 @@ function updateAuthUI(credits) {
     }
     welcome.classList.toggle("show", !usedUp);
     save.classList.add("show");
-    const left = guestRemaining == null ? 2 : guestRemaining;
-    foot.innerHTML = left > 0
-      ? left + ' free Lite video' + (left === 1 ? '' : 's') + ' left. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.'
-      : 'Free tries used. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.';
+    const welcomeP = welcome.querySelector("p");
+    if (DU.isGenerateReady && !DU.isGenerateReady()) {
+      if (welcomeP) {
+        welcomeP.setAttribute("data-i18n", "ws.welcome.unready");
+        welcomeP.textContent = DU.t("ws.welcome.unready", "Generation isn’t available yet. Free Lite tries on this device will work when it is.");
+      }
+      foot.textContent = DU.t("guest.left.unready", "Generation isn’t available yet. Free Lite tries will work when it is.");
+    } else {
+      if (welcomeP) {
+        welcomeP.setAttribute("data-i18n", "ws.welcome.p");
+        welcomeP.textContent = DU.t("ws.welcome.p", "2 free Lite videos on this device — no account. Sign up for 10 credits and every model.");
+      }
+      const left = guestRemaining == null ? 2 : guestRemaining;
+      foot.innerHTML = left > 0
+        ? left + ' free Lite video' + (left === 1 ? '' : 's') + ' left. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.'
+        : 'Free tries used. <a href="' + authHref("register") + '" id="genFootSignup">Sign up</a> for 10 credits.';
+    }
     btnLabel.textContent = DU.t("ws.gen.trial", "Generate Free Trial");
     bindAuthTriggers();
   }
@@ -1392,7 +1405,13 @@ async function generate() {
   }
 
   try {
-    if (uploadedImage && !uploadedImageUrl) {
+    const generateReady = !(DU.isGenerateReady && !DU.isGenerateReady());
+    if (!generateReady && !token && currentMode === "video" && !imageUrl) {
+      const err = new Error(DU.t("err.kie_api_key_missing", "Generation isn’t available on this preview yet. Try again later."));
+      err.code = "kie_api_key_missing";
+      throw err;
+    }
+    if (uploadedImage && !uploadedImageUrl && generateReady) {
       statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       try {
         const up = await uploadImageFile(uploadedImage);
@@ -1409,7 +1428,7 @@ async function generate() {
       }
     }
 
-    if (lastImage && !lastImageUrlStored) {
+    if (lastImage && !lastImageUrlStored && generateReady) {
       statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       const up = await uploadImageFile(lastImage);
       lastImageUrlStored = up.imageUrl || "";
@@ -1417,7 +1436,7 @@ async function generate() {
     }
 
     const extraUrls = [];
-    if (currentMode === "image" && blendFiles.length) {
+    if (currentMode === "image" && blendFiles.length && generateReady) {
       statusText.textContent = DU.t("progress.uploading", "Uploading image…");
       for (const file of blendFiles) {
         const up = await uploadImageFile(file);
@@ -1446,6 +1465,9 @@ async function generate() {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    if (data.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
+    }
     if (data.credits !== undefined && data.credits !== null) updateAuthUI(data.credits);
     if (data.guestRemaining !== undefined) {
       guestRemaining = data.guestRemaining;
@@ -1483,10 +1505,13 @@ async function generate() {
     } else {
       refreshCredits();
     }
+    if (e && e.payload && e.payload.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
+    }
     if (code === "guest_limit") {
       guestRemaining = 0;
       updateAuthUI();
-    } else if (e && e.payload && e.payload.guestRemaining !== undefined && !token) {
+    } else if (code !== "kie_api_key_missing" && e && e.payload && e.payload.guestRemaining !== undefined && !token) {
       guestRemaining = e.payload.guestRemaining;
       updateAuthUI();
     }
@@ -1565,7 +1590,12 @@ function refreshHistoryEmpty() {
   const title = document.getElementById("historyEmptyTitle");
   const desc = document.getElementById("historyEmptyDesc");
   const cta = document.getElementById("historyEmptyCta");
-  if (token) {
+  if (DU.isGenerateReady && !DU.isGenerateReady()) {
+    title.textContent = DU.t("ws.history.unready.h", "Nothing here yet");
+    desc.textContent = DU.t("ws.history.unready.p", "Generation isn’t available on this preview yet. Guest tries will show here when it is.");
+    cta.textContent = DU.t("ws.history.start", "Start Creating");
+    cta.onclick = () => switchPrimaryTab("create");
+  } else if (token) {
     title.textContent = DU.t("ws.history.empty.h", "No creations yet");
     desc.textContent = DU.t("ws.history.empty.p", "Start creating to see your work here.");
     cta.textContent = DU.t("ws.history.start", "Start Creating");
@@ -1628,6 +1658,9 @@ async function loadHistory() {
       } else {
         throw e;
       }
+    }
+    if (data.generateReady === false && DU.markGenerateUnready) {
+      DU.markGenerateUnready(document.getElementById("generateReadyBanner"));
     }
     if (data.guestRemaining !== undefined && !token) {
       guestRemaining = data.guestRemaining;
@@ -1754,6 +1787,9 @@ function escapeHtml(s) {
   updateAuthUI();
   showPackBanner();
   if (DU.applyGenerateReadyNote) DU.applyGenerateReadyNote(document.getElementById("generateReadyBanner"));
+  document.addEventListener("du:generate-ready", function () {
+    updateAuthUI();
+  });
   try {
     const cap = await fetch("/api/upload", { credentials: "same-origin" }).then((r) => r.json());
     uploadReady = !!(cap && cap.mediaBound);

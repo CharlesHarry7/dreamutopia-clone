@@ -98,6 +98,9 @@ function extractI18nKeys(src) {
     "ws.quota.h",
     "price.cta.free",
     "ws.history.error.h",
+    "guest.left.unready",
+    "ws.welcome.unready",
+    "ws.history.unready.h",
   ]) {
     if (!langs.en.has(key)) fail.push(`i18n EN missing required key ${key}`);
   }
@@ -189,6 +192,23 @@ function extractI18nKeys(src) {
   mustContain("out/index.html", "homeGenerateReady", "homepage generateReady note");
   mustContain("out/assets/js/du.js", "function applyGenerateReadyNote", "shared generateReady probe");
   mustContain("out/assets/js/du.js", "generateReady !== false", "banner only when generateReady is false");
+  mustContain("out/assets/js/du.js", "function markGenerateUnready", "shared generateReady mark");
+  mustContain("out/assets/js/du.js", "function isGenerateReady", "shared generateReady flag");
+  mustContain("out/assets/js/du.js", "du:generate-ready", "generateReady event for guest copy");
+  mustContain("out/index.html", "isGenerateReady", "homepage skips upload when generate is not ready");
+  mustContain("out/index.html", "guest.left.unready", "homepage foot does not promise trials when unready");
+  mustContain("out/workspace.html", "isGenerateReady", "workspace skips upload when generate is not ready");
+  mustContain("out/workspace.html", "ws.welcome.unready", "workspace welcome is honest when unready");
+  mustContain("out/workspace.html", "ws.history.unready.h", "history empty is honest when unready");
+  {
+    const du = read("out/assets/js/du.js");
+    const start = du.indexOf("function errorAction");
+    const end = du.indexOf("function isGenerateReady");
+    const fn = start >= 0 && end > start ? du.slice(start, end) : "";
+    if (!fn.includes("kie_api_key_missing") || !fn.includes("return null")) {
+      fail.push("errorAction must not send kie_api_key_missing to Stripe/signup");
+    } else ok.push("errorAction has no Stripe CTA for kie_api_key_missing");
+  }
   mustContain("out/workspace.html", "ws.history.error.h", "history load error is not fake-empty");
   mustContain("out/pricing.html", "Starter Pack", "live pack names unchanged");
   mustContain("out/pricing.html", "$5", "starter $5 unchanged");
@@ -212,6 +232,8 @@ function extractI18nKeys(src) {
   mustContain("libs/kie.ts", "classifyProviderCreateError", "classify KIE create errors");
   mustContain("libs/kie.ts", "kieImageUrlIssue", "reject non-image URL extensions");
   mustContain("functions/api/generate.ts", "kie_api_key_missing", "missing KIE key");
+  mustContain("functions/api/generate.ts", "generateReady: false", "kie missing JSON includes generateReady");
+  mustContain("functions/api/generate.ts", "generateReady: hasKieKey", "history JSON includes generateReady");
   mustContain("functions/api/generate.ts", "kie_unauthorized", "bad KIE key");
   if (read("functions/api/generate.ts").includes("Check KIE_API_KEY")) {
     fail.push("generate.ts must not tell guests to Check KIE_API_KEY");
@@ -496,7 +518,7 @@ function extractI18nKeys(src) {
     fail.push("_routes.json must include /api/*");
   } else ok.push("_routes.json includes /api/*");
   mustContain("out/sw.js", 'url.pathname.startsWith("/api/")', "SW never caches /api");
-  mustContain("out/sw.js", "du-static-v24", "SW cache bump");
+  mustContain("out/sw.js", "du-static-v25", "SW cache bump");
   mustContain("out/assets/js/du.js", "bindBusyLeave", "leave warning while generate is in flight");
   mustContain("out/index.html", "homeWorkspaceLink", "homepage view-in-workspace CTA");
   mustContain("out/workspace.html", 'get("tab") === "history"', "workspace history deep link");

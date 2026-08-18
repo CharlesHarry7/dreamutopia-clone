@@ -313,31 +313,58 @@
     if (c === "insufficient_credits") {
       return { href: "/pricing", key: "err.action.pricing", label: "View credit packs" };
     }
+    // Preview / empty KIE wallet: signing up or opening Stripe will not start a job.
+    if (
+      c === "kie_api_key_missing" ||
+      c === "kie_insufficient_balance" ||
+      c === "provider_credits_insufficient"
+    ) {
+      return null;
+    }
     if (c === "network_error") return null;
     return null;
   }
 
-  function applyGenerateReadyNote(el) {
-    if (!el) return Promise.resolve();
-    function paint(copy) {
+  function isGenerateReady() {
+    try {
+      return document.documentElement.getAttribute("data-generate-ready") !== "false";
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function markGenerateUnready(el) {
+    const copy = t(
+      "err.kie_api_key_missing",
+      "Generation isn’t available on this preview yet. Try again later."
+    );
+    if (el) {
       el.hidden = false;
       el.classList.add("show");
       const msg = el.querySelector("[data-ready-msg]");
       if (msg) msg.textContent = copy;
-      else el.textContent = copy;
+      else if (!el.querySelector("p,div,span")) el.textContent = copy;
+      el.setAttribute("data-generate-ready", "false");
     }
+    try {
+      document.documentElement.setAttribute("data-generate-ready", "false");
+    } catch (e) {}
+    try {
+      document.dispatchEvent(new CustomEvent("du:generate-ready", { detail: { generateReady: false } }));
+    } catch (e) {}
+  }
+
+  function applyGenerateReadyNote(el) {
+    if (!el) return Promise.resolve();
     return fetch("/api/health", { credentials: "same-origin" })
       .then(function (r) {
+        const ct = (r.headers.get("content-type") || "").toLowerCase();
+        if (!ct.includes("json")) return null;
         return r.json();
       })
       .then(function (data) {
         if (!data || data.generateReady !== false) return;
-        const copy = t(
-          "err.kie_api_key_missing",
-          "Generation isn’t available on this preview yet. Try again later."
-        );
-        paint(copy);
-        el.setAttribute("data-generate-ready", "false");
+        markGenerateUnready(el);
       })
       .catch(function () {});
   }
@@ -650,6 +677,8 @@
     errorMessage: errorMessage,
     errorAction: errorAction,
     applyGenerateReadyNote: applyGenerateReadyNote,
+    markGenerateUnready: markGenerateUnready,
+    isGenerateReady: isGenerateReady,
     wireErrorAction: wireErrorAction,
     isAllowedImageFile: isAllowedImageFile,
     newIdempotencyKey: newIdempotencyKey,
