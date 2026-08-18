@@ -1,5 +1,9 @@
 node_modules/
 .next/
+.open-next/
+.wrangler/
+/out/
+dist/
 build/
 .env*.local
 .env
@@ -9,7 +13,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vercel
-.wrangler/
 *.tsbuildinfo
 next-env.d.ts
 nohup.out
+.turbo/

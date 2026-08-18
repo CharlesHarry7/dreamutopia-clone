@@ -1,0 +1,21 @@
+import type { Env } from "@/server/libs/utils";
+
+export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
+  const origin = new URL(request.url).origin;
+  const body = [
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /api/",
+    "Disallow: /auth",
+    "Disallow: /reset",
+    "Disallow: /workspace",
+    `Sitemap: ${origin}/sitemap.xml`,
+    "",
+  ].join("\n");
+  return new Response(body, {
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    },
+  });
+};

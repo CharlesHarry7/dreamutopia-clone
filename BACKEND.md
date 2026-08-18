@@ -2,7 +2,13 @@
 
 本仓库 = Cursor 临摹的 DreamUtopia，不是 pikbo（主站），也不是 OpenCode 的 magicremover-clone。
 
-Cloudflare 资源名：Pages `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+**Runtime (2026 migration):** Next.js App Router on **Cloudflare Workers** via OpenNext (`npm run cf:deploy`). API handlers live in `src/server/handlers` → `src/app/api/**/route.ts`. Bindings stay D1 / KV / R2 (same IDs in `wrangler.toml`).
+
+**Production today is still Pages** ([dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev)). The Worker is a parallel/staging target until the manual cutover in **DEPLOY.md**. Merging this tree does not flip live traffic.
+
+Cloudflare 资源名：Pages (live) + Worker (Next) `dreamutopia-clone` · D1 `dreamutopia-db` · R2 `dreamutopia-media` · KV `SESSIONS`。
+
+Legacy Pages snapshot: `legacy/out` + `legacy/functions` (see `legacy/README.md`).
 
 Auth, credits, and generation history need Cloudflare bindings. Image-to-video, text-to-video, first+last frame, and stills accept either:
 
@@ -23,7 +29,7 @@ The first commit in this repo is the purchased Cloudflare Pages backend template
 
 Webhook: `POST /api/webhooks/stripe` (alias `POST /api/stripe/webhook`) with `Stripe-Signature`. On `checkout.session.completed` credits are added (idempotent via `credit_events.stripe_session_id`). First purchase adds **31** bonus credits (5 Lite + 1 Pro). If the buyer has `referred_by`, the referrer gets **10%** of the pack credits. Repeat checkouts reuse `users.stripe_customer_id` when migration `004` is applied.
 
-Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`.
+Stripe Dashboard → Developers → Webhooks → endpoint `https://<host>/api/webhooks/stripe` → event `checkout.session.completed`. Paste the signing secret as Workers secret `STRIPE_WEBHOOK_SECRET` (`wrangler secret put`).
 
 ## Password reset (optional Resend)
 
@@ -37,13 +43,13 @@ Register/login copies guest KV jobs into D1 history (`mergeGuestJobs`). Register
 |------------------|------|--------------|---------|
 | `DB` | D1 | auth + generate + checkout | users, credits, generations, gallery, credit_events |
 | `SESSIONS` | KV | auth + generate + reset | login/register/logout/me session tokens, guest trials, reset tokens, rate limits |
-| `KIE_API_KEY` | Pages **secret** | real generate | `/api/generate` → KIE Market API |
-| `KIE_WEBHOOK_HMAC_KEY` | Pages **secret** | optional callback auth | `POST /api/webhooks/kie` (`X-Webhook-Signature`) |
+| `KIE_API_KEY` | Workers **secret** | real generate | `/api/generate` → KIE Market API |
+| `KIE_WEBHOOK_HMAC_KEY` | Workers **secret** | optional callback auth | `POST /api/webhooks/kie` (`X-Webhook-Signature`) |
 | `MEDIA` | R2 | **file upload** | `POST /api/upload`, `GET /api/media` |
-| `STRIPE_SECRET_KEY` | Pages **secret** | paid packs | `POST /api/checkout` |
-| `STRIPE_WEBHOOK_SECRET` | Pages **secret** | paid packs | `POST /api/webhooks/stripe` |
-| `RESEND_API_KEY` | Pages **secret** | password reset email | `POST /api/auth/forgot` |
-| `MAIL_FROM` | Pages var/secret | password reset email | verified Resend from-address |
+| `STRIPE_SECRET_KEY` | Workers **secret** | paid packs | `POST /api/checkout` |
+| `STRIPE_WEBHOOK_SECRET` | Workers **secret** | paid packs | `POST /api/webhooks/stripe` |
+| `RESEND_API_KEY` | Workers **secret** | password reset email | `POST /api/auth/forgot` |
+| `MAIL_FROM` | Workers var/secret | password reset email | verified Resend from-address |
 
 ## Generate path
 
@@ -153,51 +159,67 @@ binding = "MEDIA"
 bucket_name = "dreamutopia-media"
 ```
 
-## 3. Set `KIE_API_KEY` (Pages secret)
+## 3. Set `KIE_API_KEY` (Workers secret — B-line)
 
 1. Create a key at [kie.ai API keys](https://kie.ai/api-key)
-2. Cloudflare Dashboard → **Workers & Pages** → project → **Settings** → **Variables and Secrets**
-3. Add secret **`KIE_API_KEY`** (Production; Preview if needed)
-4. Redeploy so Functions see the secret
+2. From repo root (Wrangler auth required): `npm run cf:secret:kie`  
+   Or Cloudflare Dashboard → **Workers** → `dreamutopia-clone` → **Settings** → **Variables and Secrets**
+3. Redeploy the Worker (`npm run cf:deploy`) so the secret is live
 
-Do **not** commit the key.
+Do **not** commit the key.  
+A-line live Pages keeps its own Pages secrets; they do **not** copy to the Worker.
 
-## 3b. Optional Stripe + Resend secrets
+## 3b. Optional Stripe + Resend secrets (Workers)
 
 **Stripe (paid credit packs)**
 
-1. Stripe Dashboard → Developers → API keys → Secret key → Pages secret `STRIPE_SECRET_KEY`
-2. Developers → Webhooks → Add endpoint `https://<your-host>/api/webhooks/stripe` → event `checkout.session.completed`
-3. Paste the webhook signing secret as Pages secret `STRIPE_WEBHOOK_SECRET`
+1. Stripe Dashboard → Developers → API keys → Secret key → `npm run cf:secret:stripe` (`STRIPE_SECRET_KEY`)
+2. Developers → Webhooks → Add endpoint `https://<your-worker-host>/api/webhooks/stripe` → event `checkout.session.completed`
+3. `npm run cf:secret:stripe-webhook` (`STRIPE_WEBHOOK_SECRET`)
 4. Redeploy. `GET /api/health` → `checkoutConfigured: true`. Pricing CTAs then open Stripe.
 
-Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settings), set Pages secret `KIE_WEBHOOK_HMAC_KEY` to the same `webhookHmacKey`. Until then, `/api/webhooks/kie` still settles by re-querying KIE (does not trust the POST body for credits).
+Optional: after enabling webhook HMAC on [kie.ai Settings](https://kie.ai/settings), `npm run cf:secret:kie-hmac` (`KIE_WEBHOOK_HMAC_KEY`). Until then, `/api/webhooks/kie` still settles by re-querying KIE.
 
 **Resend (password reset email)**
 
 1. Create an API key at [resend.com](https://resend.com)
-2. Pages secrets: `RESEND_API_KEY` and `MAIL_FROM` (a verified sender, e.g. `DreamUtopia <noreply@yourdomain.com>`)
+2. `npm run cf:secret:resend` + `npm run cf:secret:mail-from` (verified sender, e.g. `DreamUtopia <noreply@yourdomain.com>`)
 3. Without these, `POST /api/auth/forgot` returns `email_not_configured` (503) and does **not** leak a reset URL
 
-## 4. Cloudflare Pages dashboard bindings
+## 4. Worker bindings (`wrangler.toml`)
 
-1. [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → project
-2. **Settings** → **Bindings**
-3. Add **D1** `DB`, **KV** `SESSIONS`, **R2** `MEDIA`
-4. Redeploy
+Bindings for B-line are declared in `wrangler.toml` (D1 `DB`, KV `SESSIONS`, R2 `MEDIA`). Same resource IDs as A-line Pages so staging can reuse data — prefer one writer stack at a time.
 
-## 5. Verify
+A-line Pages bindings stay in the Pages project dashboard; do not cut Pages over from B-line.
+
+## 5. Deploy runtime (Workers staging)
+
+APIs on this branch run on the **Worker** (`npm run cf:deploy` — see **DEPLOY.md** / **B-LINE.md**). Does **not** replace live Pages.
 
 ```bash
-curl -s https://dreamutopia-clone.pages.dev/api/health | jq
+npm run cf:secret:kie
+npm run cf:deploy
+npm run check:health -- https://<worker-host> --expect-worker
+```
+
+## 6. Verify
+
+```bash
+curl -s https://<worker-host>/api/health | jq
+# live A-line Pages (unchanged):
+# curl -s https://dreamutopia-clone.pages.dev/api/health | jq
 ```
 
 Expect:
 
-- `authReady: true`
-- `kieConfigured: true` (after secret is set)
-- `generateReady: true`
+- `runtime: "next-opennext-workers"` (Worker only; live Pages today has no this value)
+- `productionSurface: "pages-until-cutover"` and `cutoverComplete: false` until you finish **DEPLOY.md** cutover
+- `authReady: true` (D1 + KV bound **and** soft probes OK)
+- `guestTrialsReady: true` (KV probe OK — guest cookie/IP trials)
+- `kieConfigured: true` (after Workers secret is set)
+- `generateReady: true` (`guestTrialsReady` ∧ `kieConfigured`)
 - `guestTrials: true`
+- `degraded: false` (bound DB/KV must answer probes)
 - `uploadReady: true` (MEDIA bound)
 - `checkoutConfigured: true` after `STRIPE_SECRET_KEY` is set (otherwise `false`; GET `/api/checkout` is 503 until then)
 - `mailConfigured: true` after `RESEND_API_KEY` is set
@@ -235,6 +257,7 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 |-----------|--------|
 | Missing DB/SESSIONS | `bindings_missing` 503 |
 | Auth OK, no `KIE_API_KEY` | `kie_api_key_missing` 503 |
+| KIE key set, wallet empty / 402 | `kie_insufficient_balance` 502 (honest — no fake result; site credits refunded) |
 | Auth + KIE, no MEDIA | Generate works with public `imageUrl`; upload returns `media_not_bound` |
 | Auth + KIE + MEDIA | Upload file **or** paste URL |
 | Missing `imageUrl` on **guest** video | `image_url_required` 400 |
@@ -250,14 +273,15 @@ Without the secret, the same POST returns `code: "kie_api_key_missing"` (503).
 
 ## Checklist
 
-- [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create`
-- [ ] `schema.sql` (+ `001`–`004` migrations if the DB already existed)
-- [ ] Pages bindings: `DB`, `SESSIONS`, `MEDIA`
-- [ ] Pages secret: `KIE_API_KEY`
+- [ ] `wrangler d1 create` + `kv namespace create` + `r2 bucket create` (or reuse existing IDs in `wrangler.toml`)
+- [ ] `npm run db:schema` (+ `npm run db:migrate` if the DB already existed)
+- [ ] `wrangler.toml` bindings: `DB`, `SESSIONS`, `MEDIA`
+- [ ] Workers secret: `KIE_API_KEY` (`npm run cf:secret:kie`)
 - [ ] Optional: `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (webhook URL `/api/webhooks/stripe`)
 - [ ] Optional: `RESEND_API_KEY` + `MAIL_FROM` (password reset + welcome)
 - [ ] Optional: `KIE_WEBHOOK_HMAC_KEY` after enabling HMAC on kie.ai Settings
-- [ ] Redeploy
+- [ ] `npm run cf:deploy` (OpenNext Worker — not Pages `out/`)
 - [ ] `/api/health` → `generateReady: true`, `uploadReady: true`
 - [ ] Logged-in POST `/api/upload` then `/api/generate` queues a KIE job; GET returns `resultUrl`
 - [ ] Logged-out POST `/api/generate` with `imageUrl` consumes one of two guest Lite tries
+- [ ] Guest **My Creations** lists KV jobs from `GET /api/generate` on this device

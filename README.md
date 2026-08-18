@@ -1,119 +1,134 @@
-# DreamUtopia Clone — Cursor 临摹站（不是 pikbo）
+# DreamUtopia Clone — Next.js + Tailwind + shadcn/ui
 
-这是 **Cursor 做的** [dreamutopia.net](https://dreamutopia.net) 1:1 临摹。  
-**不是** 主站 pikbo，**也不是** OpenCode 做的 Magic Remover。
+Cursor’s [dreamutopia.net](https://dreamutopia.net) image-to-video clone, migrated in-repo to:
 
-## 你同时在做的三个网站
+**Next.js (App Router) · Tailwind CSS · shadcn/ui · Cloudflare Workers (OpenNext)**
 
-| # | 谁做的 | 仓库 | 抄谁 / 产品 | 线上 |
-|---|---|---|---|---|
-| 1 主站 | 你自己 | [**pikbo**](https://github.com/CharlesHarry7/pikbo) | 原创：潮玩私密 AI 视频 | [pikbo.ai](https://pikbo.ai) |
-| 2 本仓库 | **Cursor** | [**dreamutopia-clone**](https://github.com/CharlesHarry7/dreamutopia-clone) | 临摹 dreamutopia.net（图生视频） | [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) |
-| 3 另一个临摹 | **OpenCode** | [**magicremover-clone**](https://github.com/CharlesHarry7/magicremover-clone) | 临摹 magicremover.org（AI 去物体） | 看该仓库 README / 部署 |
+> Not pikbo, not magicremover-clone.
 
-记法：`pikbo` = 正业 · `dreamutopia-clone` = Cursor 抄 DreamUtopia · `magicremover-clone` = OpenCode 抄 Magic Remover。
+## Live site vs this branch (B-line)
 
-GitHub 简介若还写 `taletok.io`，是旧文案，忽略。仓库曾从 `taletok-clone` 改名而来。
-
-## 本仓库内部名字（DreamUtopia 这一站）
-
-| 名字 | 是什么 |
+| | |
 |---|---|
-| dreamutopia.net | 原站（抄的对象，不是我们的） |
-| dreamutopia-clone | GitHub 仓库 + Cloudflare Pages 项目 |
-| https://dreamutopia-clone.pages.dev | **生产**（`main`，合 PR 前仍是旧版） |
-| https://cursor-r2-upload-product-pol.dreamutopia-clone.pages.dev | **PR #12 预览**（最新功能） |
-| [PR #12](https://github.com/CharlesHarry7/dreamutopia-clone/pull/12) | 游客试用 / 文生视频 / 首尾帧，待合并 |
-| dreamutopia-db | D1 数据库 |
-| dreamutopia-media | R2 媒体桶 |
-| SESSIONS | KV（登录 + 游客次数） |
-| KIE_API_KEY | 出图/出视频密钥（生产有，预览没有） |
+| **Production today (A-line)** | Still **Cloudflare Pages**: [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev) (`legacy/out` + Pages Functions) |
+| **This codebase (B-line)** | Next + shadcn Worker path (`npm run cf:deploy`) — **staging / experiment only** |
+| **Merging `main`** | Does **not** auto-cut over production. Blind merge while Pages still expects `out/` can break Pages. |
+| **B-line status** | **[B-LINE.md](./B-LINE.md)** — CI meaning, A vs B auth/credits/generate gaps, no cutover |
 
-## Tech Stack
+Do **not** cut over live Pages from the B-line workstream. Worker health must keep `productionSurface: "pages-until-cutover"` and `cutoverComplete: false`.
 
-| Layer | Technology |
+## Why Cloudflare (not Vercel)
+
+Production already has **D1** (`dreamutopia-db`), **KV** (`SESSIONS`), **R2** (`dreamutopia-media`), and **KIE / Stripe / Resend** secrets. The generate, guest-trial, upload, and auth paths depend on those bindings.
+
+**OpenNext on Workers** reuses the same bindings with the least product risk. Vercel would require replacing D1/KV/R2 — a larger cutover for no product gain.
+
+| Layer | Stack |
 |---|---|
-| Frontend | Pure HTML + CSS + vanilla JS (no build step) |
-| Hosting | Cloudflare Pages (unlimited bandwidth, free) |
-| API | Cloudflare Pages Functions |
-| Database | Cloudflare D1 (SQLite at the edge) |
-| Sessions | Cloudflare KV (login sessions + guest trial counters) |
-| Inference | [KIE](https://kie.ai) Market API (`KIE_API_KEY` secret) |
-| File Storage | Cloudflare R2 (`MEDIA`) for start-image uploads |
-| Payments | Stripe Checkout (`STRIPE_SECRET_KEY` + webhook) — optional |
-| Auth | Session token + KV + PBKDF2 (Web Crypto); optional Resend reset |
+| Frontend | Next.js App Router + React + Tailwind + shadcn/ui |
+| Hosting | Cloudflare Workers + Assets (OpenNext) |
+| Database | Cloudflare D1 |
+| Sessions / guest trials | Cloudflare KV (`SESSIONS`) |
+| Media | Cloudflare R2 (`MEDIA`) |
+| Inference | KIE Market API (`KIE_API_KEY`) |
+| Payments | Stripe Checkout (optional — honest **503** when unset) |
 
-## Project Structure
+Legacy static HTML + Pages Functions are preserved under `legacy/` for reference.
+
+## Product capabilities (preserved)
+
+- Auth (register / login / logout / me) + PBKDF2 passwords
+- Guest trials: **2 Lite image-to-video** tries (KV cookie + IP)
+- Signed-in credits + generate (T2V / I2V / first+last / stills)
+- Upload to R2 or paste public `imageUrl`
+- Gallery opt-in publish
+- Checkout catalog + Stripe session when configured; otherwise **503 `configured: false`** (no fake charge)
+- Password reset via Resend when configured
+- EN / 中文 / 日本語 / Español i18n
+- PWA manifest + service worker install banner
+- `/robots.txt` + `/sitemap.xml`
+
+## Project layout
 
 ```
-/out               # Static pages (build output dir)
-  index.html       # Homepage (2 free Lite I2V on-page)
-  pricing.html     # Pricing (Stripe when configured; otherwise honest no-charge CTAs)
-  workspace.html   # Generation workspace + invite link
-  auth.html        # Login / register / forgot password
-  reset.html       # Password reset from email token
-  image-to-video.html / photo-to-video.html / free-ai-video.html
-  privacy.html     # Privacy
-  terms.html       # Terms
-  assets/js/du.js  # Shared fetch / upload / poll / download
-  assets/js/i18n.js # EN / 中文 / 日本語 / Español
-  assets/js/pwa.js  # Service worker + install banner
-  assets/js/seo.js  # Canonical + Open Graph
-  manifest.webmanifest
-  sw.js
-/functions          # Pages Functions
-  robots.txt.ts    # GET /robots.txt
-  sitemap.xml.ts   # GET /sitemap.xml
-/functions/api     # API routes
-  health.ts        # GET /api/health
-  auth/            # register / login / logout / me / forgot / reset
-  credits.ts       # GET /api/credits (account or guest remaining)
-  upload.ts        # GET probe + POST file → R2 (auth or guest)
-  media.ts         # GET/HEAD /api/media?key= (public image bytes)
-  generate.ts      # POST/GET /api/generate (KIE)
-  gallery.ts       # GET public gallery + POST opt-in publish
-  checkout.ts      # GET catalog + POST Stripe session
-  stripe/          # template aliases → checkout + stripe webhook
-  webhooks/stripe.ts
-  webhooks/kie.ts  # KIE callBackUrl (re-verify + idempotent refund)
-  upload-ticket.ts # Legacy probe
-/libs              # Shared backend logic
-/schema.sql        # D1 database schema
-/migrations        # D1 ALTER scripts for existing DBs
-/wrangler.toml     # Cloudflare configuration
+src/app/                 # App Router pages + API routes
+src/components/ui/       # shadcn/ui primitives
+src/lib/                 # client api, auth, i18n
+src/server/libs/         # D1/KV/R2/KIE/Stripe business logic
+src/server/handlers/     # Migrated Pages Function handlers
+src/server/cf.ts         # OpenNext getCloudflareContext adapter
+public/                  # icons, images, manifest, sw.js
+schema.sql + migrations/ # D1 schema
+wrangler.toml            # Workers + D1/KV/R2 bindings
+legacy/                  # Previous Pages static site + Functions
 ```
 
-## Generate path
+## Local development
 
-1. **Guest:** homepage or `/workspace` — 2 Lite image-to-video tries per device/IP, no account. Jobs live in KV, not D1.
-2. **Account:** sign up (10 credits). Video: text-to-video, image-to-video, or first+last frame (Medium/Pro). Image: T2I / I2I / blend, 1K–4K.
-3. `POST /api/generate` creates a KIE task (`kling-2.6/image-to-video`, `kling-2.6/text-to-video`, `kling-3.0/video`, or `nano-banana-2`).
-4. Client polls `GET /api/generate?id=…` until `status=done` (UI shows provider state: queue → render). When R2 is bound, the provider file is copied to `/api/media`.
-5. Signed-in users can **Download** a result or **Share to gallery** (opt-in). Homepage loads live gallery items when any exist.
-6. Language selector switches EN / 中文 / 日本語 / Español. PWA: add to home screen (`manifest.webmanifest` + `sw.js`).
-7. Paid packs: without Stripe secrets, `GET/POST /api/checkout` is **503** (`configured: false`) — no fake charge. With secrets, signed-in POST redirects to Stripe. First purchase +31 credits; invites earn 10% of the pack. Password reset needs Resend. `/robots.txt` and `/sitemap.xml` are Functions.
+```bash
+npm install
+npm run dev
+```
 
-## Backend setup
+Open [http://localhost:3000](http://localhost:3000).
 
-See **[BACKEND.md](./BACKEND.md)** for bindings, Pages secrets (`KIE_API_KEY`, optional Stripe + Resend + KIE webhook HMAC), and D1 migrations `001`–`004`.
+`next.config.ts` calls `initOpenNextCloudflareForDev()` so route handlers can reach local/remote bindings defined in `wrangler.toml` (Wrangler login / API token required for remote D1/KV/R2).
 
-**Required for live generate:** `SESSIONS` + `KIE_API_KEY` (guest trials). Signed-in generate also needs `DB`.  
-**Required for file upload:** `MEDIA` / R2. Public `imageUrl` still works without R2.
+Without bindings/secrets, UI still loads; `/api/health` reports readiness, and generate/checkout return honest errors (not fake demos).
 
-## Deploy
+## Build & deploy (Cloudflare Workers)
 
-1. Follow BACKEND.md (D1/KV/R2 + schema/migration + `KIE_API_KEY` secret)
-2. Bind `DB` / `SESSIONS` / `MEDIA` in Pages Settings
-3. Connect repo to Cloudflare Pages (build command: none, output dir: `out`) or `wrangler pages deploy out`
+Staging Worker: **[DEPLOY.md](./DEPLOY.md)**. B-line verification / gaps: **[B-LINE.md](./B-LINE.md)**.  
+Live production remains [dreamutopia-clone.pages.dev](https://dreamutopia-clone.pages.dev).  
+`productionSurface` stays `pages-until-cutover`; `cutoverComplete` stays `false`.  
+Use `npm run check:health -- <url> --expect-worker` (or `--expect-pages`) to tell the surfaces apart.  
+`cf:deploy` does **not** replace Pages. Pages CI red on this PR is expected (see B-LINE.md).
 
-`out/_routes.json` sends `/api/*` to Pages Functions so unknown API paths return Function responses instead of the homepage.
+```bash
+npm run verify       # lint + Next build (CI)
+npm run cf:build     # OpenNext Workers bundle (CI) — not the Pages git build
+npm run cf:preview   # OpenNext build + local Workers runtime
+npm run cf:deploy    # publish Worker staging URL (needs wrangler login / API token)
+npm run cf:secret:kie
+npm run check:health -- https://<your-worker-host> --expect-worker
+# Worker health should show: "runtime": "next-opennext-workers", cutoverComplete: false
+```
+
+Pages git build failing on this PR is expected. Worker path ≠ Pages. See **[B-LINE.md](./B-LINE.md)**.
+
+| Binding / secret | Required for |
+|---|---|
+| `DB` (D1) | auth, credits, history, checkout |
+| `SESSIONS` (KV) | sessions, guest trials, rate limits |
+| `MEDIA` (R2) | file upload |
+| `KIE_API_KEY` | real generate (Workers secret — not Pages) |
+| `STRIPE_*` / `RESEND_*` | optional paid packs / reset email |
+
+D1: `npm run db:schema` (new) or `npm run db:migrate` (existing). See **BACKEND.md**.
+
+Empty KIE wallet → `kie_insufficient_balance` (honest 502, no fake video). Checkout without Stripe → **503** `{ configured: false }`.
+
+## Vercel (not chosen)
+
+`npm run build` produces a standard Next.js build. Deploying to Vercel would work for the UI shell only; API routes that call `getCloudflareContext()` need Cloudflare bindings. Prefer Cloudflare for this product.
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Next.js dev server |
+| `npm run verify` | `lint && build` (B-line CI gate) |
+| `npm run verify:worker` | `verify` + `cf:build` |
+| `npm run build` / `lint` | Next production build / ESLint |
+| `npm run cf:build` | OpenNext Workers build only |
+| `npm run cf:dry-run` | `cf:build` + `wrangler deploy --dry-run` (no publish) |
+| `npm run cf:preview` / `preview` | Build + local Workers runtime |
+| `npm run cf:deploy` / `deploy` | Build + deploy Worker (staging; not Pages) |
+| `npm run cf:secret:kie` | `wrangler secret put KIE_API_KEY` |
+| `npm run db:schema` / `db:migrate` | Remote D1 schema / migrations |
+| `npm run check:health` | Smoke `/api/health` + checkout honesty |
+| `npm run cf:typegen` | Regenerate `cloudflare-env.d.ts` |
 
 ## Cost
 
-| Item | Monthly Cost |
-|---|---|
-| Cloudflare Pages | $0 (free tier) |
-| Cloudflare D1 | $0 (5GB free) |
-| Cloudflare KV | $0 (1GB free) |
-| Cloudflare R2 | $0 (10 GB storage / 1M Class A on free) |
-| KIE API | usage-based (your KIE account) |
+Cloudflare Pages/Workers + D1 + KV + R2 free tiers cover typical hobby traffic; KIE and Stripe are usage-based on your accounts.

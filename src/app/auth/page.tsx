@@ -1,0 +1,242 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useMemo, useState } from "react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/password-field";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { api, getStoredReferral, type ApiError } from "@/lib/api";
+import { formatAuthError } from "@/lib/auth-errors";
+import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
+
+function AuthForm() {
+  const { t } = useI18n();
+  const { applyAuthResponse } = useAuth();
+  const router = useRouter();
+  const params = useSearchParams();
+  const initialMode = params.get("mode") === "login" ? "login" : "register";
+  const pack = params.get("pack") || "";
+  const ref = params.get("ref") || getStoredReferral();
+  const resetOk = params.get("reset") === "1";
+
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [infoMsg, setInfoMsg] = useState(
+    resetOk ? "Password updated — log in with your new password." : ""
+  );
+
+  const nextPath = useMemo(() => {
+    if (pack) return `/workspace?pack=${encodeURIComponent(pack)}`;
+    return "/workspace";
+  }, [pack]);
+
+  function switchMode(next: "login" | "register", keepError?: string) {
+    setMode(next);
+    setError(keepError || "");
+    setForgotMsg("");
+    const q = new URLSearchParams();
+    q.set("mode", next);
+    if (pack) q.set("pack", pack);
+    if (ref) q.set("ref", ref);
+    router.replace(`/auth?${q.toString()}`, { scroll: false });
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setForgotMsg("");
+    setInfoMsg("");
+    try {
+      const path = mode === "login" ? "/auth/login" : "/auth/register";
+      const body: Record<string, string> = { email, password };
+      if (mode === "register" && ref) body.referralCode = ref;
+      const data = await api<{
+        token: string;
+        userId: number;
+        email: string;
+        credits: number;
+        referralCode?: string;
+        referralUrl?: string;
+      }>(path, { method: "POST", body: JSON.stringify(body) });
+      applyAuthResponse(data);
+      router.push(nextPath);
+    } catch (err) {
+      const e = err as ApiError;
+      if (e.status === 409 || e.message?.includes("already registered")) {
+        switchMode("login", "That email is already registered — switched to Log In.");
+      } else if (e.code === "schema_migration_required") {
+        setError(
+          "Database needs a migration before signup/login works. See BACKEND.md / DEPLOY.md."
+        );
+      } else {
+        setError(formatAuthError(err, "Auth failed"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onForgot() {
+    if (forgotBusy) return;
+    setForgotMsg("");
+    setError("");
+    setInfoMsg("");
+    if (!email) {
+      setError("Enter your email first");
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      await api("/auth/forgot", { method: "POST", body: JSON.stringify({ email }) });
+      setForgotMsg("If that email exists and mail is configured, a reset link was sent.");
+    } catch (err) {
+      setError(formatAuthError(err, "Forgot password failed"));
+    } finally {
+      setForgotBusy(false);
+    }
+  }
+
+  return (
+    <Card className="mx-auto w-full max-w-md">
+      <CardHeader>
+        <CardTitle>
+          {mode === "register"
+            ? t("auth.signup.h", "Create your account")
+            : t("auth.login.h", "Welcome back")}
+        </CardTitle>
+        <CardDescription>
+          {mode === "register"
+            ? t("auth.signup.lead", "Claim 10 credits and unlock advanced models.")
+            : t("auth.login.lead", "Sign in to spend credits and save history.")}
+          {pack ? ` Pack “${pack}” will be remembered in workspace (no charge unless Stripe is live).` : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs
+          value={mode}
+          onValueChange={(v) => switchMode(v as "login" | "register")}
+          className="mb-4"
+        >
+          <TabsList className="w-full" aria-label="Account mode">
+            <TabsTrigger value="register" className="flex-1">
+              Sign Up
+            </TabsTrigger>
+            <TabsTrigger value="login" className="flex-1">
+              Log In
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="register" />
+          <TabsContent value="login" />
+        </Tabs>
+
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <div className="space-y-2">
+            <Label htmlFor="email">{t("auth.email", "Email")}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <PasswordField
+            id="password"
+            label={t("auth.password", "Password")}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            placeholder={t("auth.passPh", "At least 6 characters")}
+            value={password}
+            onChange={setPassword}
+            invalid={!!error}
+            describedBy={error ? "auth-form-error" : undefined}
+          />
+
+          {infoMsg && <InlineAlert variant="success">{infoMsg}</InlineAlert>}
+          {error && (
+            <InlineAlert variant="error" id="auth-form-error">
+              {error}
+            </InlineAlert>
+          )}
+          {forgotMsg && <InlineAlert variant="success">{forgotMsg}</InlineAlert>}
+
+          <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
+            {busy
+              ? "…"
+              : mode === "register"
+                ? t("auth.submitSignup", "Sign up free")
+                : t("auth.submitLogin", "Log in")}
+          </Button>
+        </form>
+
+        {mode === "login" && (
+          <Button
+            type="button"
+            variant="link"
+            className="mt-3 h-auto px-0"
+            disabled={forgotBusy || busy}
+            aria-busy={forgotBusy}
+            onClick={() => void onForgot()}
+          >
+            {forgotBusy ? "Sending reset link…" : "Forgot password?"}
+          </Button>
+        )}
+
+        <p
+          className="mt-4 text-sm text-muted-foreground"
+          dangerouslySetInnerHTML={{
+            __html: t(
+              "auth.perk",
+              "New accounts get <b>10 free credits</b> instantly — no card required."
+            ),
+          }}
+        />
+        <Button asChild variant="link" className="mt-4 h-auto px-0 text-sm text-muted-foreground">
+          <Link href="/workspace">{t("auth.back", "← Back to workspace")}</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <>
+      <SiteHeader />
+      <main className="flex flex-1 items-start justify-center px-5 py-14">
+        <Suspense
+          fallback={
+            <Card className="mx-auto w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Account</CardTitle>
+                <CardDescription>Loading…</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3" aria-busy="true">
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+                <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+              </CardContent>
+            </Card>
+          }
+        >
+          <AuthForm />
+        </Suspense>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
