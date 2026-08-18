@@ -50,6 +50,9 @@ export function formatGenerateError(err: unknown, fallback = "Generation failed"
       return message || "You already have jobs rendering. Wait for one to finish.";
     case "media_not_bound":
       return message || "Uploads need the MEDIA (R2) binding. Paste a public https image URL instead.";
+    case "generation_failed":
+      // Settle/poll failure — map provider text the same way as history rows.
+      return formatStoredJobError(message);
     default:
       return message || fallback;
   }

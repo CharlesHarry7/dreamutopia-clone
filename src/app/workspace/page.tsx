@@ -109,6 +109,7 @@ function WorkspaceInner() {
   const [inviteCopied, setInviteCopied] = useState(false);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
   const [historyCopiedId, setHistoryCopiedId] = useState<string | null>(null);
+  const [copyNote, setCopyNote] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
   const [shareDone, setShareDone] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
@@ -386,15 +387,22 @@ function WorkspaceInner() {
   }
 
   function copyLink(url: string, which: "result" | string) {
-    void navigator.clipboard.writeText(url).then(() => {
-      if (which === "result") {
-        setResultLinkCopied(true);
-        window.setTimeout(() => setResultLinkCopied(false), 1600);
-      } else {
-        setHistoryCopiedId(which);
-        window.setTimeout(() => setHistoryCopiedId(null), 1600);
+    void navigator.clipboard.writeText(url).then(
+      () => {
+        setCopyNote("");
+        if (which === "result") {
+          setResultLinkCopied(true);
+          window.setTimeout(() => setResultLinkCopied(false), 1600);
+        } else {
+          setHistoryCopiedId(which);
+          window.setTimeout(() => setHistoryCopiedId(null), 1600);
+        }
+      },
+      () => {
+        setCopyNote("Couldn’t copy — clipboard permission denied or unavailable.");
+        window.setTimeout(() => setCopyNote(""), 2800);
       }
-    });
+    );
   }
 
   return (
@@ -486,6 +494,12 @@ function WorkspaceInner() {
           <InlineAlert variant="info" className="mb-5 px-4">
             <b>Generate offline.</b> KIE or guest-trial bindings are not ready on this Worker — jobs
             return an honest error (no fake demo video).
+          </InlineAlert>
+        )}
+
+        {copyNote && (
+          <InlineAlert variant="error" className="mb-5">
+            {copyNote}
           </InlineAlert>
         )}
 
@@ -711,50 +725,66 @@ function WorkspaceInner() {
                   <fieldset className="min-w-0 border-0 p-0">
                     <legend className="mb-2 text-sm font-medium">Model</legend>
                     <div
-                      className={`grid gap-2.5 ${mode === "video" ? "grid-cols-3" : "grid-cols-2"}`}
+                      className={`grid gap-2.5 ${
+                        mode === "video"
+                          ? user
+                            ? "grid-cols-3"
+                            : "grid-cols-1 sm:grid-cols-3"
+                          : user
+                            ? "grid-cols-2"
+                            : "grid-cols-1 sm:grid-cols-2"
+                      }`}
                       role="radiogroup"
                       aria-label="Model"
                     >
-                      {(mode === "video" ? ["lite", "medium", "pro"] : ["lite", "pro"]).map((m) => {
-                        const c =
-                          mode === "video"
-                            ? VIDEO_COSTS[m as keyof typeof VIDEO_COSTS]
-                            : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
-                        const locked = !user && m !== "lite";
-                        const selected = activeModel === m;
-                        if (locked) {
+                      {(mode === "video" ? ["lite", "medium", "pro"] : ["lite", "pro"])
+                        .filter((m) => user || m === "lite")
+                        .map((m) => {
+                          const c =
+                            mode === "video"
+                              ? VIDEO_COSTS[m as keyof typeof VIDEO_COSTS]
+                              : IMAGE_COSTS[m as keyof typeof IMAGE_COSTS];
+                          const selected = activeModel === m;
                           return (
-                            <Link
+                            <button
                               key={m}
-                              href="/auth?mode=register"
-                              className="rounded-xl border border-white/10 bg-black/20 px-2.5 py-3 text-center opacity-70 transition hover:border-[var(--primary2)]/50 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={`${m} model — sign up to unlock`}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              aria-label={`${m} model, ${c} credits`}
+                              onClick={() => setModel(m)}
+                              className={`min-h-11 rounded-xl border px-2.5 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                selected
+                                  ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
+                                  : "border-white/10 bg-black/20 hover:border-white/22"
+                              }`}
                             >
                               <div className="text-[13px] font-bold capitalize">{m}</div>
-                              <div className="mt-0.5 text-[11px] text-[var(--primary2)]">Sign up</div>
-                            </Link>
+                              <div className="mt-0.5 text-[11px] text-[var(--text3)]">
+                                {c} credits
+                              </div>
+                            </button>
                           );
-                        }
-                        return (
-                          <button
-                            key={m}
-                            type="button"
-                            role="radio"
-                            aria-checked={selected}
-                            aria-label={`${m} model, ${c} credits`}
-                            onClick={() => setModel(m)}
-                            className={`rounded-xl border px-2.5 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                              selected
-                                ? "border-[rgba(168,85,247,.7)] bg-[rgba(168,85,247,.12)]"
-                                : "border-white/10 bg-black/20 hover:border-white/22"
-                            }`}
-                          >
-                            <div className="text-[13px] font-bold capitalize">{m}</div>
-                            <div className="mt-0.5 text-[11px] text-[var(--text3)]">{c} credits</div>
-                          </button>
-                        );
-                      })}
+                        })}
                     </div>
+                    {!user && mode === "video" && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Medium / Pro locked —{" "}
+                        <Button asChild variant="link" className="h-auto px-0 text-xs">
+                          <Link href="/auth?mode=register">sign up to unlock</Link>
+                        </Button>
+                        .
+                      </p>
+                    )}
+                    {!user && mode === "image" && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Image models need an account —{" "}
+                        <Button asChild variant="link" className="h-auto px-0 text-xs">
+                          <Link href="/auth?mode=register">sign up</Link>
+                        </Button>
+                        .
+                      </p>
+                    )}
                   </fieldset>
 
                   {mode === "video" && (
@@ -908,6 +938,7 @@ function WorkspaceInner() {
                   {resultUrl && (
                     <div
                       className="space-y-3 rounded-xl border border-[var(--border)] bg-black/20 p-3"
+                      role="region"
                       aria-label="Generation result"
                     >
                       {resultKind === "image" ||
@@ -922,11 +953,12 @@ function WorkspaceInner() {
                         <video
                           src={resultUrl}
                           controls
-                          className="mx-auto max-h-[420px] rounded-lg"
+                          aria-label="Generated video"
+                          className="mx-auto max-h-[420px] w-full max-w-full rounded-lg"
                         />
                       )}
                       <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline" size="sm">
+                        <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-8">
                           <a href={resultUrl} target="_blank" rel="noreferrer">
                             {t("gen.open", "Open result")}
                           </a>
@@ -935,8 +967,11 @@ function WorkspaceInner() {
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-8"
                           disabled={downloadBusy}
-                          onClick={() => void onDownloadResult(resultUrl, `dreamutopia-${resultId || "result"}`)}
+                          onClick={() =>
+                            void onDownloadResult(resultUrl, `dreamutopia-${resultId || "result"}`)
+                          }
                         >
                           {downloadBusy ? "…" : t("gen.download", "Download")}
                         </Button>
@@ -944,6 +979,7 @@ function WorkspaceInner() {
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="min-h-11 sm:min-h-8"
                           aria-label={resultLinkCopied ? "Result link copied" : "Copy result link"}
                           onClick={() => copyLink(resultUrl, "result")}
                         >
@@ -954,6 +990,7 @@ function WorkspaceInner() {
                             type="button"
                             size="sm"
                             variant="secondary"
+                            className="min-h-11 sm:min-h-8"
                             disabled={shareBusy || shareDone}
                             aria-busy={shareBusy}
                             onClick={() => void shareToGallery()}
@@ -1042,7 +1079,11 @@ function WorkspaceInner() {
                 )}
                 {!authLoading && !historyLoading && history.length > 0 && (
                   <ul className="space-y-3" aria-label="Creations list">
-                    {history.map((item) => (
+                    {history.map((item) => {
+                      const labelHint =
+                        item.prompt.trim().slice(0, 48) ||
+                        t("ws.history.untitled", "Untitled job");
+                      return (
                       <li
                         key={String(item.id)}
                         className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
@@ -1068,8 +1109,18 @@ function WorkspaceInner() {
                           {item.status === "failed" && <Badge variant="warning">failed</Badge>}
                           {item.resultUrl && (
                             <>
-                              <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none">
-                                <a href={item.resultUrl} target="_blank" rel="noreferrer">
+                              <Button
+                                asChild
+                                size="sm"
+                                variant="outline"
+                                className="min-h-11 flex-1 sm:min-h-8 sm:flex-none"
+                              >
+                                <a
+                                  href={item.resultUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  aria-label={`Open result: ${labelHint}`}
+                                >
                                   Open
                                 </a>
                               </Button>
@@ -1077,8 +1128,9 @@ function WorkspaceInner() {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                className="flex-1 sm:flex-none"
+                                className="min-h-11 flex-1 sm:min-h-8 sm:flex-none"
                                 disabled={downloadBusy}
+                                aria-label={`Download result: ${labelHint}`}
                                 onClick={() =>
                                   void onDownloadResult(
                                     item.resultUrl!,
@@ -1092,11 +1144,11 @@ function WorkspaceInner() {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                className="flex-1 sm:flex-none"
+                                className="min-h-11 flex-1 sm:min-h-8 sm:flex-none"
                                 aria-label={
                                   historyCopiedId === String(item.id)
-                                    ? "Link copied"
-                                    : "Copy result link"
+                                    ? `Link copied: ${labelHint}`
+                                    : `Copy result link: ${labelHint}`
                                 }
                                 onClick={() => copyLink(item.resultUrl!, String(item.id))}
                               >
@@ -1106,7 +1158,8 @@ function WorkspaceInner() {
                           )}
                         </div>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
                 <span className="sr-only" aria-live="polite">

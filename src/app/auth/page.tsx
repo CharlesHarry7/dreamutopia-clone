@@ -135,7 +135,7 @@ function AuthForm() {
           onValueChange={(v) => switchMode(v as "login" | "register")}
           className="mb-4"
         >
-          <TabsList className="w-full">
+          <TabsList className="w-full" aria-label="Account mode">
             <TabsTrigger value="register" className="flex-1">
               Sign Up
             </TabsTrigger>
